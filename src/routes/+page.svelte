@@ -298,14 +298,12 @@
     localLimiterNode.threshold.setValueAtTime(-8, localAudioContext.currentTime);
     localLimiterNode.knee.setValueAtTime(0, localAudioContext.currentTime);
     localLimiterNode.ratio.setValueAtTime(20, localAudioContext.currentTime);
-    localLimiterNode.attack.setValueAtTime(0.003, localAudioContext.currentTime);
+    localLimiterNode.attack.setValueAtTime(0.03, localAudioContext.currentTime);
     localLimiterNode.release.setValueAtTime(0.25, localAudioContext.currentTime);
 
 
     let localAnalyserNode: AnalyserNode = localAudioContext.createAnalyser();
-    localAnalyserNode.fftSize = 512;
-    const PEAK_DECAY = 0.9;
-    let heldPeak = 0;
+    localAnalyserNode.fftSize = 128;
 
     let localNoiseGate: any = $state(undefined);
     createInlineNoiseGate(localAudioContext).then((v) => {
@@ -319,23 +317,41 @@
          };
     })
     let localNoiseGateThreshold = $state(-100);
+    let localLoudnessPeakLevel = $state(0);
     let localLoudnessLevel = $state(0);
     let localGateState = $state(0); // 0 = closed, 1 = open
-    setInterval(() => {
-        const bufferLength = localAnalyserNode.fftSize;
-        const timeDomainData = new Float32Array(bufferLength);
-        localAnalyserNode.getFloatTimeDomainData(timeDomainData);
 
-        let instantPeak = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          const absVal = Math.abs(timeDomainData[i]);
-          if (absVal > instantPeak) instantPeak = absVal;
-        }
+    // const PEAK_DECAY = 0.9;
+    // let heldPeak = 0;
+    // const SMOOTHING_ALPHA = 0.8;
+    // let smoothedRms = 0;
+    // setInterval(() => {
+    //     const bufferLength = localAnalyserNode.fftSize;
+    //     const timeDomainData = new Float32Array(bufferLength);
+    //     localAnalyserNode.getFloatTimeDomainData(timeDomainData);
 
-        heldPeak = Math.max(instantPeak, heldPeak * PEAK_DECAY);
-        const heldPeakDb = toDb(heldPeak);
-        localLoudnessLevel = Math.max(0, 60 + heldPeakDb);
-    }, 16.666);
+    //     let instantPeak = 0;
+    //     for (let i = 0; i < bufferLength; i++) {
+    //       const absVal = Math.abs(timeDomainData[i]);
+    //       if (absVal > instantPeak) instantPeak = absVal;
+    //     }
+
+    //     let sumSquares = 0;
+    //     for (let i = 0; i < bufferLength; i++) {
+    //       sumSquares += timeDomainData[i] * timeDomainData[i];
+    //     }
+    //     const instantRms = Math.sqrt(sumSquares / bufferLength);
+
+    //     // one-pole smoothing
+    //     smoothedRms = SMOOTHING_ALPHA * smoothedRms
+    //                 + (1 - SMOOTHING_ALPHA) * instantRms;
+
+    //     heldPeak = Math.max(instantPeak, heldPeak * PEAK_DECAY);
+    //     const heldPeakDb = toDb(heldPeak);
+    //     localLoudnessPeakLevel = Math.max(0, 60 + heldPeakDb);
+
+    //     localLoudnessLevel = Math.max(0, 60 + toDb(smoothedRms));
+    // }, 16.666);
 
 
     let localGain: number = $state(1);
@@ -897,7 +913,8 @@
                 </div>
                 <div>
                     <div style={`height: 50px; background-color: #f0f0f0; width: 500px`}>
-                        <div style={`height: 50px; background-color: #00FF00; width: ${localLoudnessLevel * 500/60}px; transition: all 0.033s ease;`}></div>
+                        <div style={`position: absolute; height: 50px; background-color: #FF0000; width: ${localLoudnessPeakLevel * 500/60}px; transition: all 0.04s ease;`}></div>
+                        <div style={`position: absolute; height: 50px; background-color: #00FF00; width: ${localLoudnessLevel * 500/60}px; transition: all 0.04s ease;`}></div>
                     </div>
 
 
@@ -912,7 +929,6 @@
                                 console.log(v, param)
                             }
                             } ondblclick={() => localNoiseGateThreshold = -30}>
-
                     </div>
                     <div style={`height: 30px; background-color: #f0f0f0; width: 200px; margin-top: 10px; display: flex; align-items: center; justify-content: center; border-radius: 4px;`}>
                         <div style={`height: 20px; background-color: ${localGateState > 0.5 ? '#00FF00' : '#FF0000'}; border-radius: 2px; transition: all 0.1s ease; width: 100%;`}></div>
@@ -925,18 +941,6 @@
                         }}
                     >
                         {muted ? 'Unmute' : 'Mute'}
-                    </button>
-                    <button onclick={() => changeBitrate(5_000)}>
-                        Bitrate 5
-                    </button>
-                    <button onclick={() => changeBitrate(10_000)}>
-                        Bitrate 10
-                    </button>
-                    <button onclick={() => changeBitrate(100_000)}>
-                        Bitrate 100
-                    </button>
-                    <button onclick={() => changeBitrate(400_000)}>
-                        Bitrate 400
                     </button>
 
                     <label for="gain">gain</label>
@@ -1025,7 +1029,7 @@
     }
 
     h1 {
-        text-align: center;
+        text-align: left;
         margin-bottom: 30px;
     }
 
@@ -1033,7 +1037,7 @@
         padding: 20px;
         border-radius: 10px;
         margin-bottom: 30px;
-        text-align: center;
+        text-align: left;
     }
 
     .connect-section h3,
@@ -1045,7 +1049,7 @@
     .input-group {
         display: flex;
         gap: 10px;
-        justify-content: center;
+        justify-content: left;
         flex-wrap: wrap;
     }
 
@@ -1063,7 +1067,7 @@
     }
 
     .room-info {
-        text-align: center;
+        text-align: left;
     }
 
     .room-info p {
@@ -1121,7 +1125,7 @@
         padding: 8px 12px;
         border-radius: 5px;
         display: flex;
-        align-items: center;
+        align-items: left;
         gap: 8px;
         z-index: 10;
     }
@@ -1199,7 +1203,7 @@
     @media (max-width: 768px) {
         .input-group {
             flex-direction: column;
-            align-items: center;
+            align-items: left;
         }
 
         .input-group input {
