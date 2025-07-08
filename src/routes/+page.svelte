@@ -192,7 +192,7 @@
       attackTime = 0.01,
       releaseTime = 0.2
     } = {}) {
-      // 1) Define the processor as a JS string
+      // Define the processor as a JS string
       const processorCode = `
           class NoiseGateProcessor extends AudioWorkletProcessor {
             static get parameterDescriptors() {
@@ -205,42 +205,67 @@
             constructor() {
               super();
               this._gain = 1;
+              this._prevIsOpen = false;
             }
             process(inputs, outputs, params) {
-              const inCh = inputs[0][0];
-              const outGain = outputs[0][0];
-              if (!inCh) return true;
+              const input = inputs[0];
+              const output = outputs[0];
 
-              // Grab the single (k-rate) threshold value this block
+              if (!input || !output || !input[0] || !output[0]) {
+                return true;
+              }
+
+              const inputChannel = input[0];
+              const outputChannel = output[0];
+
+              // Grab the threshold value for this block
               const threshDB = params.threshold[0];
               const threshLin = Math.pow(10, threshDB / 20);
 
-              // Compute RMS
+              // Get attack and release times
+              const attackTime = params.attackTime[0];
+              const releaseTime = params.releaseTime[0];
+
+              // Compute RMS of the input
               let sumSq = 0;
-              for (let i = 0; i < inCh.length; i++) sumSq += inCh[i] * inCh[i];
-              const rms = Math.sqrt(sumSq / inCh.length);
+              for (let i = 0; i < inputChannel.length; i++) {
+                sumSq += inputChannel[i] * inputChannel[i];
+              }
+              const rms = Math.sqrt(sumSq / inputChannel.length);
 
               // Decide whether to open (1) or close (0) gate
               const target = (rms >= threshLin ? 1 : 0);
 
-              // Simple single-pole smoothing
-              const attackTime  = 0.005;
-              const releaseTime = 0.1;
-              const aC = Math.exp(-1/(attackTime * sampleRate));
-              const rC = Math.exp(-1/(releaseTime * sampleRate));
-              if (target < this._gain) {
-                this._gain = aC * (this._gain - target) + target;
-              } else {
-                this._gain = rC * (this._gain - target) + target;
+
+
+              // Calculate step size per block (multiply by block size)
+              const attackStep = inputChannel.length / (attackTime * sampleRate);
+              const releaseStep = inputChannel.length / (releaseTime * sampleRate);
+
+              const oldGain = this._gain;
+
+              // Apply simple linear interpolation for predictable timing
+              if (target > this._gain) {
+                // Opening gate - use attack step
+                this._gain = Math.min(1, this._gain + attackStep);
+              } else if (target < this._gain) {
+                // Closing gate - use release step
+                this._gain = Math.max(0, this._gain - releaseStep);
               }
 
-              // Fill control-rate output with the same gain
-              for (let i = 0; i < outGain.length; i++) {
-                outGain[i] = this._gain;
+
+
+              // Apply gain to audio and output
+              for (let i = 0; i < inputChannel.length; i++) {
+                outputChannel[i] = inputChannel[i] * this._gain;
               }
 
-              // Send a debug message every 128 samples to main thread:
-              this.port.postMessage({ rms, threshDB, gain: this._gain });
+              // Send gate state changes only
+              const isOpen = this._gain > 0.1;
+              if (isOpen !== this._prevIsOpen) {
+                this.port.postMessage({ isOpen });
+                this._prevIsOpen = isOpen;
+              }
 
               return true;
             }
@@ -253,20 +278,16 @@
       await context.audioWorklet.addModule(blobURL);
       URL.revokeObjectURL(blobURL);
 
-      // 3) build the nodes
+      // Create the single noise gate node
       const gateNode = new AudioWorkletNode(context, 'noise-gate-processor', {
         parameterData: { threshold, attackTime, releaseTime },
-        numberOfInputs:  1,        // you read from inputs[0]
-        numberOfOutputs: 1,        // you write to outputs[0]
-        outputChannelCount: [1],   // that one output has 1 channel
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
       });
-      console.log(gateNode)
-      const gainNode = new GainNode(context);
-      console.log(gainNode)
 
-      gateNode.connect(gainNode.gain);
-
-      return { gateNode, gateGainNode: gainNode };
+      // Return the single node - no separate gain node needed
+      return { gateNode };
     }
 
     let localSourceNode: MediaStreamAudioSourceNode | undefined;
@@ -289,33 +310,28 @@
     let localNoiseGate: any = $state(undefined);
     createInlineNoiseGate(localAudioContext).then((v) => {
         localNoiseGate = v;
-        // localNoiseGate.gateNode.port.onmessage = e => {
-        //    const { rms, threshDB, gain } = e.data;
-        //    console.log(
-        //      'RMS:', rms.toFixed(4),
-        //      '  ThreshLin=', (Math.pow(10, threshDB/20)).toFixed(4),
-        //      '  GateGain=', gain.toFixed(3),
-        //      '  GateRealGain=', localNoiseGate.gateGainNode.gain.value.toFixed(3)
-        //    );
-        //  };
+        console.log('Noise gate created successfully:', localNoiseGate);
+
+        // Handle gate state changes
+        localNoiseGate.gateNode.port.onmessage = (e: MessageEvent) => {
+           const { isOpen } = e.data;
+           localGateState = isOpen ? 1 : 0;
+         };
     })
     let localNoiseGateThreshold = $state(-100);
     let localLoudnessLevel = $state(0);
+    let localGateState = $state(0); // 0 = closed, 1 = open
     setInterval(() => {
-        // 1) grab your buffer
         const bufferLength = localAnalyserNode.fftSize;
         const timeDomainData = new Float32Array(bufferLength);
         localAnalyserNode.getFloatTimeDomainData(timeDomainData);
 
-        // 2) find the instantaneous peak in this frame
         let instantPeak = 0;
         for (let i = 0; i < bufferLength; i++) {
           const absVal = Math.abs(timeDomainData[i]);
           if (absVal > instantPeak) instantPeak = absVal;
         }
 
-        // 3) apply a simple decay so the displayed peak 'holds' briefly
-        //    You could also just do: heldPeak = instantPeak;  // for no hold
         heldPeak = Math.max(instantPeak, heldPeak * PEAK_DECAY);
         const heldPeakDb = toDb(heldPeak);
         localLoudnessLevel = Math.max(0, 60 + heldPeakDb);
@@ -330,10 +346,10 @@
     let monitor = $state(false)
     $effect(() => {
         if (monitor) {
-            localNoiseGate.connect(localAudioContext.destination);
+            localNoiseGate.gateNode.connect(localAudioContext.destination);
         } else {
             try {
-                localNoiseGate.disconnect(localAudioContext.destination);
+                localNoiseGate.gateNode.disconnect(localAudioContext.destination);
             } catch (_) {}
         }
     })
@@ -350,12 +366,12 @@
             localSourceNode.disconnect();
         }
         localSourceNode = localAudioContext.createMediaStreamSource(localStream);
+        // localSourceNode.connect(localDestination);
         localSourceNode.connect(localGainNode);
         localGainNode.connect(localLimiterNode);
         localLimiterNode.connect(localAnalyserNode);
-        localAnalyserNode.connect(localNoiseGate.gateGainNode);
         localAnalyserNode.connect(localNoiseGate.gateNode);
-        localNoiseGate.gateGainNode.connect(localDestination);
+        localNoiseGate.gateNode.connect(localDestination);
         const [audioTrack] = localDestination.stream.getAudioTracks();
 
         for (const pc of peerConnections.values()) {
@@ -881,8 +897,26 @@
                 </div>
                 <div>
                     <div style={`height: 50px; background-color: #f0f0f0; width: 500px`}>
-                        <div style={`height: 50px; background-color: #00FF00; width: ${localLoudnessLevel * 500/60}px;`}>
+                        <div style={`height: 50px; background-color: #00FF00; width: ${localLoudnessLevel * 500/60}px; transition: all 0.033s ease;`}></div>
                     </div>
+
+
+                    <div>
+                        <input id="gate" type="range" min="-60" max="0" step="0.1" style="width: 500px;"
+                            bind:value={
+                            () => localNoiseGateThreshold,
+                            (v) => {
+                                localNoiseGateThreshold = v;
+                                const param = localNoiseGate?.gateNode?.parameters?.get("threshold")
+                                param?.setValueAtTime(v, localAudioContext.currentTime);
+                                console.log(v, param)
+                            }
+                            } ondblclick={() => localNoiseGateThreshold = -30}>
+
+                    </div>
+                    <div style={`height: 30px; background-color: #f0f0f0; width: 200px; margin-top: 10px; display: flex; align-items: center; justify-content: center; border-radius: 4px;`}>
+                        <div style={`height: 20px; background-color: ${localGateState > 0.5 ? '#00FF00' : '#FF0000'}; border-radius: 2px; transition: all 0.1s ease; width: 100%;`}></div>
+                        <span style="position: absolute; color: ${localGateState > 0.5 ? '#000' : '#fff'}; font-size: 12px; font-weight: bold;">GATE</span>
                     </div>
 
                     <button
@@ -916,17 +950,6 @@
                         },
                             (v) => localGain = v == -20 ? 0 : fromDb(v)
                         } ondblclick={() => localGain = 1}>
-
-                    <label for="gate">gate</label>
-                    <input id="gate" type="range" min="-80" max="0" step="0.1" bind:value={
-                        () => localNoiseGateThreshold,
-                        (v) => {
-                            localNoiseGateThreshold = v;
-                            const param = localNoiseGate?.gateNode?.parameters?.get("threshold")
-                            param?.setValueAtTime(v, localAudioContext.currentTime);
-                            console.log(v, param)
-                        }
-                        } ondblclick={() => localNoiseGateThreshold = -30}>
 
                     <button onclick={() => monitor = !monitor}>
                         {monitor ? 'Monitoring on' : 'Monitoring off'}
@@ -1142,20 +1165,6 @@
         font-size: 12px;
         min-width: 30px;
         text-align: right;
-    }
-
-    .waiting-message {
-        text-align: center;
-        padding: 40px;
-        background: #e9ecef;
-        border-radius: 10px;
-        margin-top: 20px;
-    }
-
-    .waiting-message p {
-        font-size: 18px;
-        color: #6c757d;
-        margin: 0;
     }
 
     button {
