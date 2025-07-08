@@ -64,6 +64,7 @@
 
 
 
+    const MAX_VIDEO_BITRATE = 1000;
     const SIGNALING_SERVER_URL = "ws://lolo-desktop:3000";
     const TURN_SERVER_IP = "45.143.95.55";
     const ICE_CONFIG = {
@@ -92,10 +93,20 @@
         });
     });
 
-    async function changeBitrate(bitrate: number) {
-        BITRATE = bitrate;
-        for (const user of remoteUsers.values()) {
-            initiateCall(user.id);
+
+    let tempBitrate = $state(2000);
+    async function changeVideoBitrate(bitrate: number) {
+        for (const pc of peerConnections.values()) {
+            const sender = pc.getSenders().find((sender) => sender.track?.kind === "video");
+            if (!sender) {
+                continue
+            }
+            const parameters = sender.getParameters();
+            if (!parameters.encodings) {
+              parameters.encodings = [{}];
+            }
+            parameters.encodings[0].maxBitrate = bitrate;
+            await sender.setParameters(parameters);
         }
     }
 
@@ -107,52 +118,75 @@
     ): string | undefined {
         if (!sdp) return sdp;
 
-        const ptList: string[] = [];
+        const audioPtList: string[] = [];
+        const videoPtList: string[] = [];
         const lines = sdp.split(/\r\n|\n/);
+
         for (const line of lines) {
-            const m = line.match(/^a=rtpmap:(\d+)\s+opus\/48000\/(\d+)/i);
-            if (m) {
-                const pt = m[1];
-                ptList.push(pt);
+            // Match audio codecs (opus)
+            const audioMatch = line.match(/^a=rtpmap:(\d+)\s+opus\/48000\/(\d+)/i);
+            if (audioMatch) {
+                audioPtList.push(audioMatch[1]);
+            }
+
+            // Match video codecs (H264, VP8, VP9, etc.)
+            const videoMatch = line.match(/^a=rtpmap:(\d+)\s+(H264|VP8|VP9|AV1)\/90000/i);
+            if (videoMatch) {
+                videoPtList.push(videoMatch[1]);
             }
         }
 
-        if (ptList.length === 0) {
+        if (audioPtList.length === 0 && videoPtList.length === 0) {
             return sdp;
         }
 
         const newLines = lines.map((line) => {
             let m = line.match(/^a=fmtp:(\d+)\s+(.+)$/i);
-            if (m && ptList.includes(m[1])) {
+            if (m) {
                 const pt = m[1];
                 let params = m[2].trim();
 
-                if (/maxaveragebitrate=\d+/i.test(params)) {
-                    params = params.replace(
-                        /maxaveragebitrate=\d+/i,
-                        `maxaveragebitrate=${bps}`
-                    );
-                } else {
-                    const sep = params.endsWith(";") ? "" : ";";
-                    params = `${params}${sep}maxaveragebitrate=${bps}`;
+                // Handle audio codecs
+                if (audioPtList.includes(pt)) {
+                    if (/maxaveragebitrate=\d+/i.test(params)) {
+                        params = params.replace(
+                            /maxaveragebitrate=\d+/i,
+                            `maxaveragebitrate=${bps}`
+                        );
+                    } else {
+                        const sep = params.endsWith(";") ? "" : ";";
+                        params = `${params}${sep}maxaveragebitrate=${bps}`;
+                    }
+
+                    if (channels === 2) {
+                        if (!/stereo=1/i.test(params)) {
+                            params += `;stereo=1`;
+                        }
+                        if (!/sprop-stereo=1/i.test(params)) {
+                            params += `;sprop-stereo=1`;
+                        }
+                    } else {
+                        params = params
+                            .replace(/;?stereo=\d+/gi, "")
+                            .replace(/;?sprop-stereo=\d+/gi, "")
+                            .replace(/;;+/g, ";")
+                            .replace(/;$/g, "");
+                    }
+
+                    return `a=fmtp:${pt} ${params}`;
                 }
 
-                if (channels === 2) {
-                    if (!/stereo=1/i.test(params)) {
-                        params += `;stereo=1`;
+                // Handle video codecs
+                if (videoPtList.includes(pt)) {
+                    if (/max-br=\d+/i.test(params)) {
+                        params = params.replace(/max-br=\d+/i, `max-br=${MAX_VIDEO_BITRATE}`);
+                    } else {
+                        const sep = params.endsWith(";") ? "" : ";";
+                        params = `${params}${sep}max-br=${MAX_VIDEO_BITRATE}`;
                     }
-                    if (!/sprop-stereo=1/i.test(params)) {
-                        params += `;sprop-stereo=1`;
-                    }
-                } else {
-                    params = params
-                        .replace(/;?stereo=\d+/gi, "")
-                        .replace(/;?sprop-stereo=\d+/gi, "")
-                        .replace(/;;+/g, ";")
-                        .replace(/;$/g, "");
-                }
 
-                return `a=fmtp:${pt} ${params}`;
+                    return `a=fmtp:${pt} ${params}`;
+                }
             }
 
             return line;
@@ -577,6 +611,11 @@
             if (!userVolumes.has(targetId)) {
                 userVolumes.set(targetId, 1.0);
             }
+            if (event.streams.length > 1 && event.streams[1]) {
+                console.log("Received remote video stream from:", targetId);
+                const stream = event.streams[1];
+                console.log(stream)
+            }
         };
 
         // Handle ICE candidates
@@ -866,7 +905,43 @@
             },
         };
     }
+
+    let videoStream: MediaStream;
 </script>
+
+<button
+    onclick={async () => {
+        videoStream = await window.navigator.mediaDevices.getDisplayMedia({
+            video: {
+                frameRate: 30,
+            },
+        });
+        console.log(videoStream)
+
+        localVideo.srcObject = videoStream;
+
+        for (const user of remoteUsers) {
+            const pc = await createPeerConnection(user.id)
+            const tracks = videoStream?.getTracks() ?? [];
+            tracks.forEach(track => {
+                pc.addTrack(track, videoStream);
+                track.onended = () => {
+                    const video = pc.getSenders().find(sender => sender.track === track);
+                    if (video) {
+                        pc.removeTrack(video);
+                    }
+                    localVideo.srcObject = null;
+                }
+            });
+        }
+    }}
+>
+    Hii
+</button>
+
+<input type="number" bind:value={tempBitrate}>
+<button onclick={() => changeVideoBitrate(tempBitrate)}>Change</button>
+
 <main>
     <div class="container">
         <h1>WebRTC Multi-User Video Chat</h1>
