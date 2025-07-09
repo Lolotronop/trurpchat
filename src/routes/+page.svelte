@@ -2,6 +2,8 @@
     import { register, unregisterAll } from "@tauri-apps/plugin-global-shortcut";
     import { untrack } from "svelte";
     import { SvelteMap } from "svelte/reactivity";
+    import OvenPlayer from "ovenplayer";
+    import type { Action } from "svelte/action";
 
     let localVideo: HTMLVideoElement;
 
@@ -65,7 +67,7 @@
 
 
     const MAX_VIDEO_BITRATE = 1000;
-    const SIGNALING_SERVER_URL = "ws://lolo-desktop:3000";
+    const SIGNALING_SERVER_URL = "ws://lolotronop.ru:3000";
     const TURN_SERVER_IP = "45.143.95.55";
     const ICE_CONFIG = {
         iceServers: [
@@ -355,37 +357,37 @@
     let localLoudnessLevel = $state(0);
     let localGateState = $state(0); // 0 = closed, 1 = open
 
-    // const PEAK_DECAY = 0.9;
-    // let heldPeak = 0;
-    // const SMOOTHING_ALPHA = 0.8;
-    // let smoothedRms = 0;
-    // setInterval(() => {
-    //     const bufferLength = localAnalyserNode.fftSize;
-    //     const timeDomainData = new Float32Array(bufferLength);
-    //     localAnalyserNode.getFloatTimeDomainData(timeDomainData);
+    const PEAK_DECAY = 0.9;
+    let heldPeak = 0;
+    const SMOOTHING_ALPHA = 0.8;
+    let smoothedRms = 0;
+    setInterval(() => {
+        const bufferLength = localAnalyserNode.fftSize;
+        const timeDomainData = new Float32Array(bufferLength);
+        localAnalyserNode.getFloatTimeDomainData(timeDomainData);
 
-    //     let instantPeak = 0;
-    //     for (let i = 0; i < bufferLength; i++) {
-    //       const absVal = Math.abs(timeDomainData[i]);
-    //       if (absVal > instantPeak) instantPeak = absVal;
-    //     }
+        let instantPeak = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          const absVal = Math.abs(timeDomainData[i]);
+          if (absVal > instantPeak) instantPeak = absVal;
+        }
 
-    //     let sumSquares = 0;
-    //     for (let i = 0; i < bufferLength; i++) {
-    //       sumSquares += timeDomainData[i] * timeDomainData[i];
-    //     }
-    //     const instantRms = Math.sqrt(sumSquares / bufferLength);
+        let sumSquares = 0;
+        for (let i = 0; i < bufferLength; i++) {
+          sumSquares += timeDomainData[i] * timeDomainData[i];
+        }
+        const instantRms = Math.sqrt(sumSquares / bufferLength);
 
-    //     // one-pole smoothing
-    //     smoothedRms = SMOOTHING_ALPHA * smoothedRms
-    //                 + (1 - SMOOTHING_ALPHA) * instantRms;
+        // one-pole smoothing
+        smoothedRms = SMOOTHING_ALPHA * smoothedRms
+                    + (1 - SMOOTHING_ALPHA) * instantRms;
 
-    //     heldPeak = Math.max(instantPeak, heldPeak * PEAK_DECAY);
-    //     const heldPeakDb = toDb(heldPeak);
-    //     localLoudnessPeakLevel = Math.max(0, 60 + heldPeakDb);
+        heldPeak = Math.max(instantPeak, heldPeak * PEAK_DECAY);
+        const heldPeakDb = toDb(heldPeak);
+        localLoudnessPeakLevel = Math.max(0, 60 + heldPeakDb);
 
-    //     localLoudnessLevel = Math.max(0, 60 + toDb(smoothedRms));
-    // }, 16.666);
+        localLoudnessLevel = Math.max(0, 60 + toDb(smoothedRms));
+    }, 16.666);
 
 
     let localGain: number = $state(1);
@@ -907,7 +909,27 @@
     }
 
     let videoStream: MediaStream;
+
+    let ovenVolume = $state(1);
+    const setupOven: Action = (node)  => {
+        const player = OvenPlayer.create(node.id, {
+            // controls: false,
+            // disableSeekUI: true,
+            sources: [
+                {
+                    type : "webrtc",
+                    file : "ws://90.188.89.207:3333/app/test",
+                    label: "WebRTC Stream", // optional
+                    framerate: 60 // optional
+                },
+            ]
+        })
+        player.play();
+        // ovenVolume = player.getVolume();
+    }
 </script>
+
+<video id="oven" use:setupOven></video>
 
 <button
     onclick={async () => {
@@ -1001,7 +1023,6 @@
                                 localNoiseGateThreshold = v;
                                 const param = localNoiseGate?.gateNode?.parameters?.get("threshold")
                                 param?.setValueAtTime(v, localAudioContext.currentTime);
-                                console.log(v, param)
                             }
                             } ondblclick={() => localNoiseGateThreshold = -30}>
                     </div>
@@ -1097,6 +1118,12 @@
 </main>
 
 <style>
+    :global(body) {
+        background-color: #333;
+        color: #eee;
+        font-family: Arial, sans-serif;
+    }
+
     .container {
         padding: 20px;
         max-width: 1400px;
