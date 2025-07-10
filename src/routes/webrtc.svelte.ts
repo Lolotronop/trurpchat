@@ -152,6 +152,28 @@ export class WebRTC {
     const [audioTrack] = this.localAudio.destination.stream.getAudioTracks();
     pc.addTrack(audioTrack, this.localAudio.stream);
 
+    /**
+     * Attach a DOM audio element to a MediaStream
+     * because chrome WOULD NOT behave without it
+     * (data from the stream just doesn't get sent to the sink without it)
+     */
+    function attachDomAudio(id: string, stream: MediaStream) {
+      // Try to find an existing element
+      let audio = document.getElementById(id) as HTMLAudioElement;
+
+      if (!audio) {
+        audio = document.createElement("audio");
+        audio.id = id;
+        audio.autoplay = true;
+        audio.muted = true; // so you don't get loud feedback
+        audio.style.display = "none";
+        document.body.appendChild(audio);
+      }
+
+      audio.srcObject = stream;
+      return audio;
+    }
+
     // Handle remote stream
     pc.ontrack = (event) => {
       console.log("Received remote stream from:", targetId);
@@ -181,9 +203,13 @@ export class WebRTC {
         meter.connect(this.audioContext.destination);
       }
 
-      this.audioContext
-        .createMediaStreamSource(event.streams[0])
-        .connect(gainNode);
+      const stream = event.streams[0];
+      console.log("Received stream:", stream);
+      const source = this.audioContext.createMediaStreamSource(stream);
+      console.log("Source:", source);
+      source.connect(gainNode);
+      attachDomAudio("user-audio-" + targetId, stream);
+      this.audioContext.resume();
     };
 
     // Handle ICE candidates
