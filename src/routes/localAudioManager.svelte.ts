@@ -8,7 +8,7 @@ export function fromDb(value: number, minDb: number = -60) {
 
 export const MIN_DB = -60;
 
-export const createLoudnessMeter = (
+export const createLoudnessMeterHEHE = (
   analyserNode: AnalyserNode,
   FPS: number,
   callback: (rms: number, peak: number) => void,
@@ -66,9 +66,8 @@ export class LocalSourceManager {
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private inputGainNode: GainNode;
   private limiterNode: DynamicsCompressorNode;
-  private analyserNode: AnalyserNode;
-  // private noiseGate: AudioWorkletNode;
-  private noiseGate: GainNode;
+  private analyserNode: AudioWorkletNode;
+  private noiseGate: AudioWorkletNode;
   private outputGainNode: GainNode;
   destination: MediaStreamAudioDestinationNode;
   private preferredInputDeviceId: string | null = null;
@@ -77,7 +76,6 @@ export class LocalSourceManager {
 
   loudnessPeakLevel: number = $state(0);
   loudnessLevel: number = $state(0);
-  private loudnessInterval: number | null = null;
 
   availableMics: MediaDeviceInfo[] = $state([]);
 
@@ -95,14 +93,17 @@ export class LocalSourceManager {
     echoCancellation: false,
   });
 
-  constructor() {
+  constructor(
+    audioContext: AudioContext,
+    createGate: () => AudioWorkletNode,
+    createLoudnessMeter: () => AudioWorkletNode,
+  ) {
     console.log("Creating audio context");
-    this.audioContext = new AudioContext();
+    this.audioContext = audioContext;
     this.inputGainNode = this.audioContext.createGain();
     this.limiterNode = this.audioContext.createDynamicsCompressor();
-    this.analyserNode = this.audioContext.createAnalyser();
-    this.analyserNode.fftSize = 128;
-    this.noiseGate = this.audioContext.createGain();
+    this.analyserNode = createLoudnessMeter();
+    this.noiseGate = createGate();
     this.destination = this.audioContext.createMediaStreamDestination();
     this.outputGainNode = this.audioContext.createGain();
 
@@ -111,18 +112,20 @@ export class LocalSourceManager {
     this.noiseGate.connect(this.outputGainNode);
     this.outputGainNode.connect(this.destination);
 
-    $effect(() => {
-      if (this.isMuted) {
-        this.outputGainNode.gain.setValueAtTime(
-          0,
-          this.audioContext.currentTime,
-        );
-      } else {
-        this.outputGainNode.gain.setValueAtTime(
-          1,
-          this.audioContext.currentTime,
-        );
-      }
+    $effect.root(() => {
+      $effect(() => {
+        if (this.isMuted) {
+          this.outputGainNode.gain.setValueAtTime(
+            0,
+            this.audioContext.currentTime,
+          );
+        } else {
+          this.outputGainNode.gain.setValueAtTime(
+            1,
+            this.audioContext.currentTime,
+          );
+        }
+      });
     });
   }
 
@@ -197,15 +200,11 @@ export class LocalSourceManager {
 
   // TODO: Move to a worklet
   enableAnalyzer() {
-    const { interval } = createLoudnessMeter(
-      this.analyserNode,
-      60,
-      (rms, peak) => {
-        this.loudnessPeakLevel = peak;
-        this.loudnessLevel = rms;
-      },
-    );
-    this.loudnessInterval = interval as unknown as number;
+    this.analyserNode.port.onmessage = (event) => {
+      const data = event.data;
+      this.loudnessPeakLevel = data.peak;
+      this.loudnessLevel = data.rms;
+    };
 
     this.limiterNode.disconnect(this.noiseGate);
     this.limiterNode.connect(this.analyserNode);
@@ -213,9 +212,6 @@ export class LocalSourceManager {
   }
 
   disableAnalyzer() {
-    if (this.loudnessInterval) {
-      clearInterval(this.loudnessInterval);
-    }
     this.analyserNode.disconnect();
     this.limiterNode.connect(this.noiseGate);
   }

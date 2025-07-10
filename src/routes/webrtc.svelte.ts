@@ -1,8 +1,5 @@
 import type { Gateway } from "./gateway.svelte";
-import {
-  createLoudnessMeter,
-  type LocalSourceManager,
-} from "./localAudioManager.svelte";
+import type { LocalSourceManager } from "./localAudioManager.svelte";
 
 const TURN_SERVER_IP = "45.143.95.55";
 const ICE_CONFIG = {
@@ -24,8 +21,8 @@ export interface PeerInfo {
   peerConnection?: RTCPeerConnection;
   volume?: number;
   gainNode?: GainNode;
-  analyzerNode?: AnalyserNode;
-  intervalId?: number;
+  analyzerNode?: AudioWorkletNode;
+  meter?: AudioWorkletNode;
   peak?: number;
   rms?: number;
 }
@@ -37,18 +34,23 @@ export class WebRTC {
   private localAudio: LocalSourceManager;
   private gateway: Gateway;
   private audioContext: AudioContext;
+  private createLoudnessMeter: () => AudioWorkletNode;
   peers: Record<string, PeerInfo> = $state({});
   users: Array<{ id: string; username?: string }> = $state([]);
 
   constructor(
     gateway: Gateway,
     localAudio: LocalSourceManager,
+    audioContext: AudioContext,
+    createLoudnessMeter: () => AudioWorkletNode,
     clientId?: string,
   ) {
     this.gateway = gateway;
     this.localAudio = localAudio;
+    this.audioContext = audioContext;
+    this.createLoudnessMeter = createLoudnessMeter;
     this.clientId = Math.floor(Math.random() * 1000).toString();
-    this.audioContext = new AudioContext();
+    this.audioContext = audioContext;
     this.gateway.onmessage = (data) => {
       console.log("Received message:", data);
       this.handleSignalingMessage(data);
@@ -114,7 +116,6 @@ export class WebRTC {
           peer.peerConnection?.close();
           peer.gainNode?.disconnect();
           peer.analyzerNode?.disconnect();
-          clearInterval(peer.intervalId);
           delete this.peers[data.userId];
         }
         break;
@@ -169,16 +170,15 @@ export class WebRTC {
       if (!gainNode) {
         gainNode = this.audioContext.createGain();
         peer.gainNode = gainNode;
-        const analyzerNode = this.audioContext.createAnalyser();
-        peer.analyzerNode = analyzerNode;
-        analyzerNode.fftSize = 128;
-        const interval = createLoudnessMeter(analyzerNode, 60, (rms, peak) => {
-          peer.peak = peak;
-          peer.rms = rms;
-        });
-        peer.intervalId = interval as unknown as number;
-        gainNode.connect(analyzerNode);
-        analyzerNode.connect(this.audioContext.destination);
+        const meter = this.createLoudnessMeter();
+        meter.port.onmessage = (event) => {
+          peer.peak = event.data.peak;
+          peer.rms = event.data.rms;
+        };
+        peer.analyzerNode = meter;
+
+        gainNode.connect(meter);
+        meter.connect(this.audioContext.destination);
       }
 
       this.audioContext
@@ -208,7 +208,6 @@ export class WebRTC {
         const peer = this.peers[targetId];
         peer?.gainNode?.disconnect();
         peer?.analyzerNode?.disconnect();
-        clearInterval(peer?.intervalId);
         delete this.peers[targetId];
         console.log(`Connection with ${targetId} failed`);
       }
@@ -224,8 +223,10 @@ export class WebRTC {
       }
     };
 
-    this.peers[targetId] = {};
-    this.peers[targetId].peerConnection = pc;
+    this.peers[targetId] = {
+      peerConnection: pc,
+      volume: 1.0,
+    };
     return pc;
   }
 
@@ -310,7 +311,6 @@ export class WebRTC {
       peer.peerConnection?.close();
       peer.gainNode?.disconnect();
       peer.analyzerNode?.disconnect();
-      clearInterval(peer.intervalId);
     }
     this.peers = {};
 
@@ -337,7 +337,6 @@ export class WebRTC {
       peer.peerConnection?.close();
       peer.gainNode?.disconnect();
       peer.analyzerNode?.disconnect();
-      clearInterval(peer.intervalId);
     }
     this.peers = {};
 

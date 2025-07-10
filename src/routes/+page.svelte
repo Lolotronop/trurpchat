@@ -1,44 +1,47 @@
 <script lang="ts">
-  import { LocalSourceManager } from "./localAudioManager.svelte";
-  import Analyzer from "./Analyzer.svelte";
   import { Gateway } from "./gateway.svelte";
-  import { WebRTC } from "./webrtc.svelte";
-  import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
-  const localSourceManager = new LocalSourceManager();
-  const gateway = new Gateway("ws://localhost:3000");
-  const promise = localSourceManager.getPermissions().then(() => {
-    localSourceManager.enableMic();
-  });
-  let rtc = new WebRTC(gateway, localSourceManager);
+  import { LocalSourceManager } from "./localAudioManager.svelte";
+  import Main from "./Main.svelte";
 
-  $inspect(rtc.users);
-  let metersEnabled = $state(true);
-
-  let room = $state("room1");
-  let user = $state("user" + Math.random().toFixed(3).substring(2));
+  async function setupContext() {
+    const context = new AudioContext();
+    await context.audioWorklet.addModule("noise-gate.js");
+    await context.audioWorklet.addModule("loudness.js");
+    const createGate = () => {
+      const gate = new AudioWorkletNode(context, "noise-gate");
+      return gate;
+    };
+    const createLoudnessMeter = () => {
+      const meter = new AudioWorkletNode(context, "loudness");
+      return meter;
+    };
+    return {
+      context,
+      createGate,
+      createLoudnessMeter,
+    };
+  }
+  const promise = setupContext().then(
+    ({ context, createGate, createLoudnessMeter }) => {
+      const localSourceManager = new LocalSourceManager(
+        context,
+        createGate,
+        createLoudnessMeter,
+      );
+      localSourceManager.getPermissions();
+      const gateway = new Gateway("ws://localhost:3000");
+      return {
+        localSourceManager,
+        gateway,
+        audioContext: context,
+        createLoudnessMeter,
+      };
+    },
+  );
 </script>
 
-{#if gateway.connected && localSourceManager.hasPermissions}
-  <div>
-    <button onclick={() => localSourceManager.enableMic()}> Enable mic </button>
-    <button onclick={() => localSourceManager.disableMic()}>
-      Disable mic
-    </button>
-    <button onclick={() => localSourceManager.getMics()}> Get mics </button>
-    <button onclick={() => (metersEnabled = !metersEnabled)}>
-      Enable meters
-    </button>
-    <input type="text" bind:value={room} />
-    <input type="text" bind:value={user} />
-    <button onclick={() => rtc.joinRoom(user, room)}> Join </button>
-    {#if metersEnabled}
-      <Analyzer localMediaManager={localSourceManager} />
-    {/if}
-    {#each Object.entries(rtc.peers) as [id, peer] (id)}
-      <p>{id}</p>
-      <AnalyzerDisplay rms={peer.rms} peak={peer.peak} />
-    {/each}
-  </div>
-{:else}
+{#await promise}
   <p>Loading...</p>
-{/if}
+{:then props}
+  <Main {...props} />
+{/await}
