@@ -1,0 +1,21 @@
+@import "tailwindcss";
+
+body {
+  background-color: var(--color-stone-900);
+  color: var(--color-stone-50);
+}
+
+button {
+  background-color: var(--color-stone-800);
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: none;
+}
+
+button:hover {
+  filter: brightness(1.2);
+}
+
+button:active {
+  filter: brightness(1.4);
+}
