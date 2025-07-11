@@ -50,7 +50,6 @@ export class WebRTC {
     this.audioContext = audioContext;
     this.createLoudnessMeter = createLoudnessMeter;
     this.clientId = Math.floor(Math.random() * 1000).toString();
-    this.audioContext = audioContext;
     this.gateway.onmessage = (data) => {
       console.log("Received message:", data);
       this.handleSignalingMessage(data);
@@ -69,7 +68,7 @@ export class WebRTC {
       console.error(`Gain node for ${userId} not found`);
       return;
     }
-    node.gain.setValueAtTime(volume, this.audioContext.currentTime);
+    node.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
   }
 
   async handleSignalingMessage(rawData: unknown) {
@@ -78,7 +77,6 @@ export class WebRTC {
     switch (data.type) {
       case "connected":
         this.clientId = data.id;
-        this.isConnected = true;
         console.log("Connected with ID:", this.clientId);
         break;
 
@@ -88,6 +86,7 @@ export class WebRTC {
         this.users = data.users;
         console.log("Joined room:", this.room, "with users:", this.users);
 
+        await this.localAudio.enableMic();
         // Initiate calls to existing users
         for (const user of this.users) {
           await this.initiateCall(user.id);
@@ -95,10 +94,7 @@ export class WebRTC {
         break;
 
       case "left-room":
-        this.room = "";
-        this.isConnected = false;
-        this.users = [];
-        console.log("Left room");
+        this.disconnect();
         break;
 
       case "user-joined":
@@ -348,8 +344,14 @@ export class WebRTC {
     this.room = "";
   }
 
-  joinRoom(username: string, room: string) {
+  async joinRoom(username: string, room: string) {
     console.log("Joining room:", room, "with username:", username);
+    if (this.isConnected) {
+      this.leaveRoom();
+      await (() => {
+        return new Promise((resolve) => setTimeout(resolve, 1000));
+      })();
+    }
     this.gateway.send({
       type: "join-room",
       room: room.trim(),

@@ -19,3 +19,19 @@ button:hover {
 button:active {
   filter: brightness(1.4);
 }
+
+input[type="text"] {
+  background-color: var(--color-stone-800);
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  border: none;
+}
+
+input[type="text"]:hover {
+  filter: brightness(1.2);
+}
+
+input[type="text"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px #90caf9; /* add a blue glow */
+}

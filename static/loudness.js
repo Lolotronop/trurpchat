@@ -3,15 +3,9 @@ class LoudnessProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     const {
-      processorOptions: {
-        smoothingAlpha = 0.8,
-        peakDecay = 0.9,
-        minDb = -60,
-        fps = 60,
-      } = {},
+      processorOptions: { peakDecay = 0.4, minDb = -60, fps = 30 } = {},
     } = options;
 
-    this._smoothingAlpha = smoothingAlpha;
     this._peakDecay = peakDecay;
     this._minDb = minDb;
 
@@ -36,65 +30,59 @@ class LoudnessProcessor extends AudioWorkletProcessor {
   process(inputs, outputs) {
     const inChannels = inputs[0];
     const outChannels = outputs[0];
+
     if (!inChannels || inChannels.length === 0) {
       return true;
     }
-    for (let ch = 0; ch < inChannels.length; ch++) {
-      const inputChannel = inChannels[ch];
-      const outputChannel = outChannels[ch];
-      outputChannel.set(inputChannel);
-    }
 
-    const channelData = inChannels[0];
+    const inputChannel = inChannels[0];
     let sumSquares = 0;
     let instantPeak = 0;
 
-    // compute this quantum's instant RMS & peak
-    for (let i = 0; i < channelData.length; i++) {
-      const x = channelData[i];
+    for (let i = 0; i < inputChannel.length; i++) {
+      const x = inputChannel[i];
       const ax = Math.abs(x);
       sumSquares += x * x;
       if (ax > instantPeak) instantPeak = ax;
     }
-    const instantRms = Math.sqrt(sumSquares / channelData.length);
+    const instantRms = Math.sqrt(sumSquares / inputChannel.length);
 
-    // accumulate into our window
-    this._windowPeak = Math.max(this._windowPeak, instantPeak);
-    this._windowRmsSum += instantRms;
-    this._windowRmsCount++;
+    if (instantRms > this._windowRmsMax) this._windowRmsMax = instantRms;
+    if (instantPeak > this._windowPeak) this._windowPeak = instantPeak;
+    this._sampleCounter += inputChannel.length;
 
-    this._sampleCounter += channelData.length;
+    for (let ch = 0; ch < inChannels.length; ch++) {
+      outChannels[ch].set(inChannels[ch]);
+    }
 
-    // if we've filled one window → report & reset
     if (this._sampleCounter >= this._samplesPerWindow) {
-      // average RMS over window
-      const windowRmsAvg = this._windowRmsSum / this._windowRmsCount;
+      let thing = this._smoothedRms * this._peakDecay;
+      if (isNaN(thing)) {
+        thing = 0;
+      }
+      this._smoothedRms = Math.max(this._windowRmsMax, thing);
 
-      // smooth window RMS
-      this._smoothedRms =
-        this._smoothingAlpha * this._smoothedRms +
-        (1 - this._smoothingAlpha) * windowRmsAvg;
-
-      // decay held peak once per window, then max with window peak
+      // Decay the previous peak, then compare with window's max
       this._heldPeak = Math.max(
         this._windowPeak,
         this._heldPeak * this._peakDecay,
       );
 
-      // convert to dB and normalize above minDb
-      const peakDb = LoudnessProcessor.toDb(this._heldPeak);
+      // Convert to dB
       const rmsDb = LoudnessProcessor.toDb(this._smoothedRms);
-      const peak = Math.max(0, -this._minDb + peakDb);
-      const rms = Math.max(0, -this._minDb + rmsDb);
+      const peakDb = LoudnessProcessor.toDb(this._heldPeak);
 
-      // post the windowed result
+      // Normalize above minDb
+      const rms = Math.min(0, rmsDb);
+      const peak = Math.min(0, peakDb);
+
+      // Send it to the main thread
       this.port.postMessage({ rms, peak });
 
-      // subtract overshoot, reset accumulators
+      // Reset window accumulators, carry over any extra samples
       this._sampleCounter -= this._samplesPerWindow;
+      this._windowRmsMax = 0;
       this._windowPeak = 0;
-      this._windowRmsSum = 0;
-      this._windowRmsCount = 0;
     }
 
     return true;

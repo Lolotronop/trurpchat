@@ -8,57 +8,6 @@ export function fromDb(value: number, minDb: number = -60) {
 
 export const MIN_DB = -60;
 
-export const createLoudnessMeterHEHE = (
-  analyserNode: AnalyserNode,
-  FPS: number,
-  callback: (rms: number, peak: number) => void,
-) => {
-  const PEAK_DECAY = 0.9;
-  let heldPeak = 0;
-  const SMOOTHING_ALPHA = 0.8;
-  let smoothedRms = 0;
-  const FRAMERATE = FPS;
-  let prevSize = 0;
-  let timeDomainData = new Float32Array(128);
-  let loudnessPeakLevel = $state(0);
-  let loudnessLevel = $state(0);
-  // @ts-ignore
-  const interval = setInterval(() => {
-    const bufferLength = analyserNode.fftSize;
-    if (bufferLength !== prevSize) {
-      prevSize = bufferLength;
-      timeDomainData = new Float32Array(bufferLength);
-    }
-    analyserNode.getFloatTimeDomainData(timeDomainData);
-
-    let instantPeak = 0;
-    for (let i = 0; i < bufferLength; i++) {
-      const absVal = Math.abs(timeDomainData[i]);
-      if (absVal > instantPeak) instantPeak = absVal;
-    }
-
-    let sumSquares = 0;
-    for (let i = 0; i < bufferLength; i++) {
-      sumSquares += timeDomainData[i] * timeDomainData[i];
-    }
-    const instantRms = Math.sqrt(sumSquares / bufferLength);
-
-    smoothedRms =
-      SMOOTHING_ALPHA * smoothedRms + (1 - SMOOTHING_ALPHA) * instantRms;
-
-    heldPeak = Math.max(instantPeak, heldPeak * PEAK_DECAY);
-    const heldPeakDb = toDb(heldPeak);
-    loudnessPeakLevel = Math.max(0, -MIN_DB + heldPeakDb);
-
-    loudnessLevel = Math.max(0, -MIN_DB + toDb(smoothedRms));
-    callback(loudnessLevel, loudnessPeakLevel);
-  }, 1000 / FRAMERATE);
-
-  return {
-    interval,
-  };
-};
-
 export class LocalSourceManager {
   hasPermissions: boolean = $state(false);
   private audioContext: AudioContext;
@@ -66,13 +15,15 @@ export class LocalSourceManager {
   private sourceNode: MediaStreamAudioSourceNode | null = null;
   private inputGainNode: GainNode;
   private limiterNode: DynamicsCompressorNode;
-  private analyserNode: AudioWorkletNode;
+  private analyzerNode: AudioWorkletNode;
   private noiseGate: AudioWorkletNode;
   private outputGainNode: GainNode;
   destination: MediaStreamAudioDestinationNode;
-  private preferredInputDeviceId: string | null = null;
+  preferredInputDeviceId: string | null = $state(null);
 
   isMuted: boolean = $state(false);
+  isMonitoring: boolean = $state(false);
+  speaking: boolean = $state(false);
 
   loudnessPeakLevel: number = $state(0);
   loudnessLevel: number = $state(0);
@@ -81,14 +32,14 @@ export class LocalSourceManager {
 
   controls = $state({
     inputGain: 1,
-    limiterthreshold: -24,
-    limiterKnee: 30,
-    limiterRatio: 12,
-    limiterAttack: 0.003,
+    limiterthreshold: -8,
+    limiterKnee: 0,
+    limiterRatio: 20,
+    limiterAttack: 0.03,
     limiterRelease: 0.25,
     noiseGateThreshold: -50,
-    noiseGateAttack: 0.3,
-    noiseGateRelease: 0.4,
+    noiseGateAttack: 0.01,
+    noiseGateRelease: 0.2,
     noiseSuppression: false,
     echoCancellation: false,
   });
@@ -102,12 +53,27 @@ export class LocalSourceManager {
     this.audioContext = audioContext;
     this.inputGainNode = this.audioContext.createGain();
     this.limiterNode = this.audioContext.createDynamicsCompressor();
-    this.analyserNode = createLoudnessMeter();
+    this.analyzerNode = createLoudnessMeter();
     this.noiseGate = createGate();
     this.destination = this.audioContext.createMediaStreamDestination();
     this.outputGainNode = this.audioContext.createGain();
 
-    this.inputGainNode.connect(this.limiterNode);
+    this.noiseGate.port.onmessage = (event) => {
+      this.speaking = event.data.isOpen;
+    };
+
+    this.analyzerNode.port.onmessage = (event) => {
+      const data = event.data;
+      this.loudnessPeakLevel = data.peak;
+      this.loudnessLevel = data.rms;
+    };
+
+    const eq = this.audioContext.createBiquadFilter();
+    eq.type = "highpass";
+    eq.frequency.setValueAtTime(20, this.audioContext.currentTime); // cutoff at 20 Hz
+    eq.Q.setValueAtTime(0.707, this.audioContext.currentTime); // Butterworth (≈0.707)
+    this.inputGainNode.connect(eq);
+    eq.connect(this.limiterNode);
     this.limiterNode.connect(this.noiseGate);
     this.noiseGate.connect(this.outputGainNode);
     this.outputGainNode.connect(this.destination);
@@ -126,13 +92,47 @@ export class LocalSourceManager {
           );
         }
       });
+
+      const merger = audioContext.createChannelMerger(2);
+
+      // connect the same mono source into input 0 (left)
+      this.outputGainNode.connect(merger, 0, 0);
+
+      // connect the same mono source into input 1 (right)
+      this.outputGainNode.connect(merger, 0, 1);
+
+      $effect(() => {
+        if (this.isMonitoring) {
+          merger.connect(this.audioContext.destination);
+        } else {
+          try {
+            merger.disconnect(this.audioContext.destination);
+          } catch (error) {
+            console.error("Error disconnecting from audio context:", error);
+          }
+        }
+      });
+
+      const gateThreshold = this.noiseGate.parameters.get("threshold");
+      if (!gateThreshold) {
+        console.error("Noise gate threshold not found");
+        return;
+      }
+      $effect(() => {
+        gateThreshold.setTargetAtTime(
+          this.controls.noiseGateThreshold,
+          this.audioContext.currentTime,
+          0.01,
+        );
+      });
     });
   }
 
   setGain(value: number) {
-    this.inputGainNode.gain.setValueAtTime(
+    this.inputGainNode.gain.setTargetAtTime(
       value,
       this.audioContext.currentTime,
+      0.01,
     );
     this.controls.inputGain = value;
   }
@@ -141,17 +141,22 @@ export class LocalSourceManager {
     this.disableMic();
     await this.audioContext.resume();
 
-    const settings: MediaStreamConstraints = {
-      audio: {
-        noiseSuppression: this.controls.noiseSuppression,
-        echoCancellation: this.controls.echoCancellation,
-        autoGainControl: false,
-      },
+    const settings: MediaTrackConstraints = {
+      noiseSuppression: this.controls.noiseSuppression,
+      echoCancellation: this.controls.echoCancellation,
+      autoGainControl: false,
+      channelCount: 1,
     };
+    if (this.preferredInputDeviceId) {
+      settings.deviceId = this.preferredInputDeviceId;
+    }
 
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia(settings);
-      console.log("set stream to something");
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: settings,
+      });
+      const deviceId = this.stream.getAudioTracks()[0].getSettings().deviceId;
+      this.preferredInputDeviceId = deviceId ?? null;
       this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);
       this.sourceNode.connect(this.inputGainNode);
     } catch (error) {
@@ -170,7 +175,6 @@ export class LocalSourceManager {
     });
 
     this.stream = null;
-    console.log("set stream to nothing");
   }
 
   async getMics() {
@@ -198,21 +202,14 @@ export class LocalSourceManager {
     this.getMics();
   }
 
-  // TODO: Move to a worklet
   enableAnalyzer() {
-    this.analyserNode.port.onmessage = (event) => {
-      const data = event.data;
-      this.loudnessPeakLevel = data.peak;
-      this.loudnessLevel = data.rms;
-    };
-
     this.limiterNode.disconnect(this.noiseGate);
-    this.limiterNode.connect(this.analyserNode);
-    this.analyserNode.connect(this.noiseGate);
+    this.limiterNode.connect(this.analyzerNode);
+    this.analyzerNode.connect(this.noiseGate);
   }
 
   disableAnalyzer() {
-    this.analyserNode.disconnect();
+    this.analyzerNode.disconnect();
     this.limiterNode.connect(this.noiseGate);
   }
 }
