@@ -29,7 +29,7 @@
         createLoudnessMeter,
       );
       localSourceManager.getPermissions();
-      const gateway = new Gateway("ws://localhost:3000");
+      const gateway = new Gateway();
       return {
         localSourceManager,
         gateway,
@@ -41,7 +41,7 @@
 </script>
 
 {#await promise}
-  <p>Loading...</p>
+  <p>Creating stuff...</p>
 {:then props}
   <Main {...props} />
 {/await}

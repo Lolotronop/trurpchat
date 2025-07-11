@@ -23,6 +23,8 @@
     audioContext: AudioContext;
     createLoudnessMeter: () => AudioWorkletNode;
   } = $props();
+  let WS_URL = "ws://localhost:3000";
+  gateway.connect(WS_URL);
 
   console.log("Hello world", createLoudnessMeter);
   let rtc = new WebRTC(
@@ -40,16 +42,21 @@
   let showMicSettings = $state(false);
   let showStream = $state(false);
 
+  let player: OvenPlayer.OvenPlayerInstance;
+  $effect(() => {
+    if (!showStream && player) {
+      player.remove();
+      console.log("Removing player");
+    }
+  });
   const setupOven: Action = (node) => {
-    const player = OvenPlayer.create(node.id, {
-      // controls: false,
+    player = OvenPlayer.create(node.id, {
+      controls: false,
       // disableSeekUI: true,
       sources: [
         {
           type: "webrtc",
           file: "ws://90.188.89.207:3333/app/test",
-          label: "WebRTC Stream", // optional
-          framerate: 60, // optional
         },
       ],
     });
@@ -67,6 +74,7 @@
       <button onclick={() => (showMicSettings = !showMicSettings)}>
         Mic settings
       </button>
+      <button onclick={() => (showStream = !showStream)}> Stream </button>
     </div>
 
     {#if showMicSettings}
@@ -133,5 +141,7 @@
     {/each}
   </main>
 {:else}
-  <p>Loading...</p>
+  <p>Wating on</p>
+  <p>Gateway: {gateway.connected}</p>
+  <p>Permissions {localSourceManager.hasPermissions}</p>
 {/if}
