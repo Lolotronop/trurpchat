@@ -66,6 +66,16 @@
 
   let room = $state("room1");
   let user = $state("user" + Math.random().toFixed(3).substring(2));
+
+  let buttonColor = $derived.by(() => {
+    if (localSourceManager.isMuted) {
+      return "red";
+    }
+    if (localSourceManager.speaking) {
+      return "green";
+    }
+    return "transparent";
+  });
 </script>
 
 {#if gateway.connected && localSourceManager.hasPermissions}
@@ -75,6 +85,11 @@
         Mic settings
       </button>
       <button onclick={() => (showStream = !showStream)}> Stream </button>
+      <button
+        onclick={() =>
+          (localSourceManager.isMuted = !localSourceManager.isMuted)}
+        >Mute {localSourceManager.isMuted ? "on" : "off"}</button
+      >
     </div>
 
     {#if showMicSettings}
@@ -113,9 +128,7 @@
     {/if}
     <div
       class="h-6 w-6 rounded-full border-2 border-green-800"
-      style="background-color: {localSourceManager.speaking
-        ? 'green'
-        : 'transparent'}"
+      style="background-color: {buttonColor}"
     ></div>
     {#each Object.entries(rtc.peers) as [id, peer] (id)}
       <div class="flex w-[800px] flex-col">

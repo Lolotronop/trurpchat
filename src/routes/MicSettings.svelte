@@ -18,7 +18,7 @@
   } = $props();
 
   const min = -15;
-  const max = 15;
+  const max = 30;
   const ticks: number[] = [];
   for (let i = min; i <= max; i += 10) {
     ticks.push(i);
