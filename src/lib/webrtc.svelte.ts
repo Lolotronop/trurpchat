@@ -1,5 +1,5 @@
 import type { Gateway } from "./gateway.svelte";
-import type { LocalSourceManager } from "./localAudioManager.svelte";
+import type { Mic } from "./mic.svelte";
 
 const TURN_SERVER_IP = "45.143.95.55";
 const ICE_CONFIG = {
@@ -31,7 +31,7 @@ export class WebRTC {
   isConnected: boolean = $state(false);
   room: string = $state("");
   clientId: string;
-  private localAudio: LocalSourceManager;
+  private localAudio: Mic;
   private gateway: Gateway;
   private audioContext: AudioContext;
   private createLoudnessMeter: () => AudioWorkletNode;
@@ -40,7 +40,7 @@ export class WebRTC {
 
   constructor(
     gateway: Gateway,
-    localAudio: LocalSourceManager,
+    localAudio: Mic,
     audioContext: AudioContext,
     createLoudnessMeter: () => AudioWorkletNode,
     clientId?: string,
