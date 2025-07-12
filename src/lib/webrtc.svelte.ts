@@ -31,7 +31,7 @@ export class WebRTC {
   isConnected: boolean = $state(false);
   room: string = $state("");
   clientId: string;
-  private localAudio: Mic;
+  private mic: Mic;
   private gateway: Gateway;
   private audioContext: AudioContext;
   private createLoudnessMeter: () => AudioWorkletNode;
@@ -40,13 +40,13 @@ export class WebRTC {
 
   constructor(
     gateway: Gateway,
-    localAudio: Mic,
+    mic: Mic,
     audioContext: AudioContext,
     createLoudnessMeter: () => AudioWorkletNode,
     clientId?: string,
   ) {
     this.gateway = gateway;
-    this.localAudio = localAudio;
+    this.mic = mic;
     this.audioContext = audioContext;
     this.createLoudnessMeter = createLoudnessMeter;
     this.clientId = Math.floor(Math.random() * 1000).toString();
@@ -86,7 +86,7 @@ export class WebRTC {
         this.users = data.users;
         console.log("Joined room:", this.room, "with users:", this.users);
 
-        await this.localAudio.enableMic();
+        await this.mic.connect();
         // Initiate calls to existing users
         for (const user of this.users) {
           await this.initiateCall(user.id);
@@ -139,14 +139,14 @@ export class WebRTC {
 
     const pc = new RTCPeerConnection(ICE_CONFIG);
 
-    console.log("and now its", this.localAudio.stream);
-    if (!this.localAudio.stream) {
+    console.log("and now its", this.mic.stream);
+    if (!this.mic.stream) {
       throw new Error("Local stream not available");
     }
 
     // Add local stream to peer connection
-    const [audioTrack] = this.localAudio.destination.stream.getAudioTracks();
-    pc.addTrack(audioTrack, this.localAudio.stream);
+    const [audioTrack] = this.mic.nodes.destination.stream.getAudioTracks();
+    pc.addTrack(audioTrack, this.mic.stream);
 
     /**
      * Attach a DOM audio element to a MediaStream
@@ -253,7 +253,7 @@ export class WebRTC {
   }
 
   async initiateCall(targetId: string) {
-    await this.localAudio.enableMic();
+    await this.mic.connect();
     console.log("Initiating call to:", targetId);
     const pc = await this.createPeerConnection(targetId);
 
@@ -336,7 +336,7 @@ export class WebRTC {
     }
     this.peers = {};
 
-    this.localAudio.disableMic();
+    this.mic.disconnect();
 
     this.isConnected = false;
 

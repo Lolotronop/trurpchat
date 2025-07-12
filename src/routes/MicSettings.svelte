@@ -1,21 +1,11 @@
 <script lang="ts">
   import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
-  import {
-    fromDb,
-    MIN_DB,
-    toDb,
-    type LocalSourceManager,
-  } from "./localAudioManager.svelte";
+  import { MIN_DB, type Mic } from "$lib/mic.svelte";
   import Ticks from "./Ticks.svelte";
-  import type { WebRTC } from "./webrtc.svelte";
+  import { gitGud } from "$lib/god.svelte";
 
-  const {
-    localMediaManager,
-    rtc,
-  }: {
-    localMediaManager: LocalSourceManager;
-    rtc: WebRTC;
-  } = $props();
+  const g = gitGud();
+  const { mic, rtc } = g;
 
   const min = -15;
   const max = 30;
@@ -34,15 +24,15 @@
   }
 
   $effect(() => {
-    localMediaManager.enableMic();
-    localMediaManager.enableAnalyzer();
+    mic.connect();
+    mic.enableAnalyzer();
     return () => {
       console.log("Disabling mic", rtc.isConnected);
       if (!rtc.isConnected) {
-        localMediaManager.disableMic();
-        localMediaManager.speaking = false;
+        mic.disconnect();
+        mic.speaking = false;
       }
-      localMediaManager.disableAnalyzer();
+      mic.disableAnalyzer();
     };
   });
 </script>
@@ -57,25 +47,14 @@
         {max}
         step="0.1"
         ondblclick={() => {
-          localMediaManager.controls.inputGain = 1;
+          mic.gain = 0;
         }}
-        bind:value={
-          () => {
-            const db = toDb(localMediaManager.controls.inputGain);
-            return db;
-          },
-          (v) => {
-            localMediaManager.setGain(fromDb(v));
-          }
-        }
+        bind:value={mic.gain}
       />
     </Ticks>
   </div>
-  <div style={localMediaManager.speaking ? "filter: brightness(2);" : ""}>
-    <AnalyzerDisplay
-      rms={localMediaManager.loudnessLevel}
-      peak={localMediaManager.loudnessPeakLevel}
-    />
+  <div style={mic.speaking ? "filter: brightness(2);" : ""}>
+    <AnalyzerDisplay rms={mic.loudnessLevel} peak={mic.loudnessPeakLevel} />
   </div>
   <input
     type="range"
@@ -83,7 +62,7 @@
     min={MIN_DB}
     max="0"
     step="0.1"
-    bind:value={localMediaManager.controls.noiseGateThreshold}
+    bind:value={mic.gateThreshold}
   />
 </div>
 

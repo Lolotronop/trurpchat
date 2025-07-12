@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MIN_DB } from "./localAudioManager.svelte";
+  import { MIN_DB } from "$lib/mic.svelte";
   import Ticks from "./Ticks.svelte";
 
   type Props = {
