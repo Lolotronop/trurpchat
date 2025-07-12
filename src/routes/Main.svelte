@@ -23,7 +23,7 @@
     audioContext: AudioContext;
     createLoudnessMeter: () => AudioWorkletNode;
   } = $props();
-  let WS_URL = "ws://localhost:3000";
+  let WS_URL = "ws://lolotronop.ru:3000";
   gateway.connect(WS_URL);
 
   console.log("Hello world", createLoudnessMeter);
@@ -78,7 +78,7 @@
   });
 </script>
 
-{#if gateway.connected && localSourceManager.hasPermissions}
+{#if gateway.connected && localSourceManager.hasPermissions && wakelock}
   <main class="flex flex-col gap-4 p-8">
     <div>
       <button onclick={() => (showMicSettings = !showMicSettings)}>
@@ -157,4 +157,5 @@
   <p>Wating on</p>
   <p>Gateway: {gateway.connected}</p>
   <p>Permissions {localSourceManager.hasPermissions}</p>
+  <p>Wakelock: {wakelock}</p>
 {/if}

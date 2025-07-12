@@ -4,7 +4,7 @@ export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
   connected: boolean = $state(false);
   private callbacks: Array<(data: unknown) => void> = $state([]);
-  constructor(url: string) {
+  constructor() {
     super();
   }
 
