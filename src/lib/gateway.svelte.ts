@@ -20,6 +20,18 @@ export class Gateway extends EventTarget {
     socket.addEventListener("open", () => {
       console.log("Connected to Gateway");
       this.connected = true;
+      for (const callback of this.callbacks) {
+        socket.addEventListener("message", (event) => {
+          let data: string;
+          try {
+            data = JSON.parse(event.data);
+          } catch (error) {
+            console.error("Error parsing", event.data, "message:", error);
+            return;
+          }
+          callback(data);
+        });
+      }
     });
 
     socket.addEventListener("close", () => {
@@ -27,18 +39,9 @@ export class Gateway extends EventTarget {
       this.connected = false;
     });
 
-    for (const callback of this.callbacks) {
-      socket.addEventListener("message", (event) => {
-        let data: string;
-        try {
-          data = JSON.parse(event.data);
-        } catch (error) {
-          console.error("Error parsing", event.data, "message:", error);
-          return;
-        }
-        callback(data);
-      });
-    }
+    socket.addEventListener("error", (error) => {
+      console.error("Error connecting to Gateway:", error);
+    });
 
     this.socket = socket;
   }
@@ -61,7 +64,7 @@ export class Gateway extends EventTarget {
     try {
       this.socket?.send(JSON.stringify(data));
     } catch (error) {
-      console.error("Error sending message:", error);
+      console.error("Error sending message to Gateway:", error);
     }
   }
 }
