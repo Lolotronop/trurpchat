@@ -4,13 +4,12 @@
   import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
   import MicSettings from "./MicSettings.svelte";
   import { gitGud } from "$lib/god.svelte";
-  import { MIN_DB } from "$lib/mic.svelte";
-  import { fromDb, toDb } from "$lib/utils.svelte";
   import GainSlider from "./GainSlider.svelte";
 
   const g = gitGud();
 
-  let WS_URL = "ws://lolotronop.ru:3000";
+  let WS_URL = "ws://lolo-desktop:3000";
+  // let WS_URL = "ws://lolotronop.ru:3000";
   g.ws.connect(WS_URL);
 
   let showMicSettings = $state(false);
@@ -50,12 +49,30 @@
     }
     return "transparent";
   });
-
-  $inspect(g.rtc.peers);
 </script>
 
 {#if g.ready}
   <main class="flex flex-col gap-4 p-8">
+    <div>
+      {#each g.keys.bindings.entries() as [action, shortcut] (action)}
+        <div>
+          {action}:
+          <button
+            onclick={() => {
+              if (g.keys.detectingFor === action) {
+                g.keys.stopDetect();
+              } else {
+                g.keys.detect(action);
+              }
+            }}
+          >
+            {g.keys.detectingFor === action ? "Cancel" : (shortcut ?? "None")}
+          </button>
+          <button onclick={() => g.keys.unset(action)}> Clear </button>
+        </div>
+      {/each}
+    </div>
+
     <div>
       <button onclick={() => (showMicSettings = !showMicSettings)}>
         Mic settings
@@ -96,7 +113,17 @@
     {/if}
     <input type="text" bind:value={room} />
     <input type="text" bind:value={user} />
-    <button onclick={() => g.rtc.joinRoom(user, room)}> Join </button>
+    <button
+      onclick={() => {
+        if (g.rtc.isConnected) {
+          g.rtc.leaveRoom();
+        } else {
+          g.rtc.joinRoom(user, room);
+        }
+      }}
+    >
+      {g.rtc.isConnected ? `Leave ${g.rtc.room}` : `Join ${room}`}
+    </button>
     {#if showStream}
       <!-- svelte-ignore a11y_media_has_caption -->
       <video id="stream" autoplay use:setupOven></video>

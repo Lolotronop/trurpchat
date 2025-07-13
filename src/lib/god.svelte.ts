@@ -2,6 +2,7 @@ import { getContext, setContext } from "svelte";
 import { Gateway } from "./gateway.svelte";
 import { Mic } from "./mic.svelte";
 import { WebRTC } from "./webrtc.svelte";
+import { Shortcuts } from "./shortcuts.svelte";
 
 class WakeLockContainer {
   wakeLock: WakeLockSentinel | null = $state(null);
@@ -26,6 +27,7 @@ export class God {
   rtc: WebRTC;
   ws: Gateway;
   lock: WakeLockContainer;
+  keys: Shortcuts = new Shortcuts();
   ready: boolean = $state(false);
 
   constructor(context: AudioContext) {
@@ -45,6 +47,12 @@ export class God {
     this.rtc = new WebRTC(this.ws, this.mic, context, createLoudnessMeter);
     this.lock = new WakeLockContainer();
     this.lock.lock();
+
+    this.keys.on("mute", (state) => {
+      if (state === "Released") {
+        this.mic.muted = !this.mic.muted;
+      }
+    });
 
     $effect.root(() => {
       $effect(() => {
