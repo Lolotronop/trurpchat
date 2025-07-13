@@ -3,6 +3,7 @@
   import { MIN_DB, type Mic } from "$lib/mic.svelte";
   import Ticks from "./Ticks.svelte";
   import { gitGud } from "$lib/god.svelte";
+  import { toDb } from "$lib/utils.svelte";
 
   const g = gitGud();
   const { mic, rtc } = g;
@@ -13,15 +14,21 @@
   for (let i = min; i <= max; i += 10) {
     ticks.push(i);
   }
-  if (min % 10 !== 0) {
+  if (!ticks.includes(min)) {
     ticks.push(min);
   }
-  if (max % 10 !== 0) {
+  if (!ticks.includes(max)) {
     ticks.push(max);
   }
   if (!ticks.includes(0)) {
     ticks.push(0);
   }
+
+  let reduction = $state(0);
+  setInterval(() => {
+    const r = mic.nodes.limiter.reduction;
+    reduction = toDb(1 - r);
+  }, 33.33);
 
   $effect(() => {
     mic.connect();
@@ -30,6 +37,8 @@
       console.log("Disabling mic", rtc.isConnected);
       if (!rtc.isConnected) {
         mic.disconnect();
+        // FIXME: this doesn't update back up if the gate is currently open
+        // but that doesn't matter that much
         mic.speaking = false;
       }
       mic.disableAnalyzer();
@@ -53,7 +62,13 @@
       />
     </Ticks>
   </div>
-  <div style={mic.speaking ? "filter: brightness(2);" : ""}>
+  <div class="relative h-4 w-full bg-amber-50">
+    <div
+      class="absolute top-0 right-0 bottom-0 left-0 max-w-full bg-amber-500"
+      style={`width: ${(1 - reduction / -MIN_DB) * 100}%`}
+    ></div>
+  </div>
+  <div style={mic.speaking ? "filter: brightness(2);" : ""} class="mb-4">
     <AnalyzerDisplay rms={mic.loudnessLevel} peak={mic.loudnessPeakLevel} />
   </div>
   <input

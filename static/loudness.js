@@ -3,7 +3,7 @@ class LoudnessProcessor extends AudioWorkletProcessor {
   constructor(options) {
     super();
     const {
-      processorOptions: { peakDecay = 0.4, minDb = -60, fps = 30 } = {},
+      processorOptions: { peakDecay = 0.8, minDb = -60, fps = 30 } = {},
     } = options;
 
     this._peakDecay = peakDecay;
@@ -15,8 +15,7 @@ class LoudnessProcessor extends AudioWorkletProcessor {
 
     // window accumulators
     this._windowPeak = 0;
-    this._windowRmsSum = 0;
-    this._windowRmsCount = 0;
+    this._windowRmsMax = 0;
 
     // smoothed state
     this._smoothedRms = 0;
@@ -24,7 +23,7 @@ class LoudnessProcessor extends AudioWorkletProcessor {
   }
 
   static toDb(v) {
-    return 20 * Math.log10(Math.max(v, 1e-20));
+    return 20 * Math.log10(Math.max(v, 1e-8));
   }
 
   process(inputs, outputs) {
@@ -48,7 +47,9 @@ class LoudnessProcessor extends AudioWorkletProcessor {
     const instantRms = Math.sqrt(sumSquares / inputChannel.length);
 
     if (instantRms > this._windowRmsMax) this._windowRmsMax = instantRms;
-    if (instantPeak > this._windowPeak) this._windowPeak = instantPeak;
+    if (instantPeak > this._windowPeak) {
+      this._windowPeak = instantPeak;
+    }
     this._sampleCounter += inputChannel.length;
 
     for (let ch = 0; ch < inChannels.length; ch++) {
@@ -57,9 +58,6 @@ class LoudnessProcessor extends AudioWorkletProcessor {
 
     if (this._sampleCounter >= this._samplesPerWindow) {
       let thing = this._smoothedRms * this._peakDecay;
-      if (isNaN(thing)) {
-        thing = 0;
-      }
       this._smoothedRms = Math.max(this._windowRmsMax, thing);
 
       // Decay the previous peak, then compare with window's max

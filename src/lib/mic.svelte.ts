@@ -1,3 +1,4 @@
+import type { SHA512_256 } from "bun";
 import { fromDb, toDb } from "./utils.svelte";
 
 export const MIN_DB = -60;
@@ -37,11 +38,12 @@ export class Mic {
   }
   set monitoring(value) {
     this.#monitoring = value;
+    const node = this.nodes.merger;
     if (value) {
-      this.nodes.merger.connect(this.c.destination);
+      node.connect(this.c.destination);
     } else {
       try {
-        this.nodes.merger.disconnect(this.c.destination);
+        node.disconnect(this.c.destination);
       } catch (error) {
         console.error("Error disconnecting from audio context:", error);
       }
@@ -56,12 +58,13 @@ export class Mic {
       return;
     }
     gateThreshold.setTargetAtTime(value, this.c.currentTime, 0.01);
+    this.#gateThreshold = value;
   }
   get gateThreshold() {
     return this.#gateThreshold;
   }
 
-  #gain: number = $state(0);
+  #gain: number = $state(1);
   /** in db */
   set gain(value) {
     const p = fromDb(value);
@@ -87,7 +90,7 @@ export class Mic {
     limiterRelease: 0.25,
     noiseGateAttack: 0.01,
     noiseGateRelease: 0.2,
-    noiseSuppression: true,
+    noiseSuppression: false,
     echoCancellation: false,
   });
 
@@ -109,6 +112,12 @@ export class Mic {
       merger: this.c.createChannelMerger(2),
     };
 
+    this.nodes.limiter.threshold.setValueAtTime(-8, this.c.currentTime);
+    this.nodes.limiter.knee.setValueAtTime(0, this.c.currentTime);
+    this.nodes.limiter.ratio.setValueAtTime(20, this.c.currentTime);
+    this.nodes.limiter.attack.setValueAtTime(0.03, this.c.currentTime);
+    this.nodes.limiter.release.setValueAtTime(0.2, this.c.currentTime);
+
     this.nodes.noiseGate.port.onmessage = (event) => {
       this.speaking = event.data.isOpen;
     };
@@ -128,9 +137,10 @@ export class Mic {
     this.nodes.limiter.connect(this.nodes.noiseGate);
     this.nodes.noiseGate.connect(this.nodes.outputGain);
     this.nodes.outputGain.connect(this.nodes.destination);
+    this.nodes.outputGain.gain.setTargetAtTime(1, this.c.currentTime, 0.01);
 
-    this.nodes.outputGain.connect(this.nodes.merger, 0, 0);
-    this.nodes.outputGain.connect(this.nodes.merger, 0, 1);
+    this.nodes.noiseGate.connect(this.nodes.merger, 0, 0);
+    this.nodes.noiseGate.connect(this.nodes.merger, 0, 1);
   }
 
   async init() {
@@ -198,13 +208,10 @@ export class Mic {
   }
 
   enableAnalyzer() {
-    this.nodes.limiter.disconnect(this.nodes.noiseGate);
     this.nodes.limiter.connect(this.nodes.analyzer);
-    this.nodes.analyzer.connect(this.nodes.noiseGate);
   }
 
   disableAnalyzer() {
     this.nodes.analyzer.disconnect();
-    this.nodes.limiter.connect(this.nodes.noiseGate);
   }
 }

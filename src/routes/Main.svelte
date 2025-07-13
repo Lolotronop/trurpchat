@@ -9,7 +9,7 @@
 
   const g = gitGud();
 
-  let WS_URL = "ws://localhost:3000";
+  let WS_URL = "ws://lolo-desktop:3000";
   g.ws.connect(WS_URL);
 
   let showMicSettings = $state(false);
