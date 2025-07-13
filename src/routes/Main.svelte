@@ -6,10 +6,11 @@
   import { gitGud } from "$lib/god.svelte";
   import { MIN_DB } from "$lib/mic.svelte";
   import { fromDb, toDb } from "$lib/utils.svelte";
+  import GainSlider from "./GainSlider.svelte";
 
   const g = gitGud();
 
-  let WS_URL = "ws://lolo-desktop:3000";
+  let WS_URL = "ws://lolotronop.ru:3000";
   g.ws.connect(WS_URL);
 
   let showMicSettings = $state(false);
@@ -49,6 +50,8 @@
     }
     return "transparent";
   });
+
+  $inspect(g.rtc.peers);
 </script>
 
 {#if g.ready}
@@ -102,26 +105,23 @@
       class="h-6 w-6 rounded-full border-2 border-green-800"
       style="background-color: {buttonColor}"
     ></div>
-    {#each Object.entries(g.rtc.peers) as [id, peer] (id)}
-      <div class="flex w-[800px] flex-col">
+    {#each g.rtc.peers.entries() as [id, peer] (id)}
+      <div class="flex flex-col">
         <p>{g.rtc.users.find((u) => u.id === id)?.username ?? id}</p>
-        <input
-          type="range"
-          class="w-full"
-          min={MIN_DB}
-          max="16"
-          step="0.1"
-          bind:value={
-            () => {
-              const db = toDb(peer.volume!);
-              return db;
-            },
-            (v) => {
-              g.rtc.setVolume(id, fromDb(v));
-            }
-          }
-        />
-        <AnalyzerDisplay rms={peer.rms ?? 0} peak={peer.peak ?? 0} />
+        <div class="flex flex-row">
+          <div class="flex w-full flex-col">
+            <GainSlider bind:value={peer.volume} />
+            <AnalyzerDisplay rms={peer.rms ?? 0} peak={peer.peak ?? 0} />
+          </div>
+          <div class="flex flex-col">
+            <button
+              style={peer.mute ? "background-color: red" : ""}
+              onclick={() => (peer.mute = !peer.mute)}
+            >
+              M
+            </button>
+          </div>
+        </div>
       </div>
     {/each}
   </main>

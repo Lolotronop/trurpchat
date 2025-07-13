@@ -1,5 +1,135 @@
+import { SvelteMap } from "svelte/reactivity";
 import type { Gateway } from "./gateway.svelte";
 import type { Mic } from "./mic.svelte";
+
+export class Peer {
+  mic: Mic;
+  pc: RTCPeerConnection;
+  analyzer: AudioWorkletNode;
+
+  gainNode: GainNode;
+  muteNode: GainNode;
+  #volume: number = 1;
+  get volume(): number {
+    return this.#volume;
+  }
+  set volume(value: number) {
+    this.#volume = value;
+    this.gainNode.gain.setTargetAtTime(value, this.mic.c.currentTime, 0.01);
+  }
+
+  #mute = $state(false);
+  get mute(): boolean {
+    return this.#mute;
+  }
+  set mute(value: boolean) {
+    this.#mute = value;
+    this.muteNode.gain.setTargetAtTime(
+      value ? 0 : 1,
+      this.mic.c.currentTime,
+      0.01,
+    );
+  }
+
+  peak: number = $state(0);
+  rms: number = $state(0);
+
+  constructor(
+    targetId: string,
+    mic: Mic,
+    createLoudnessMeter: () => AudioWorkletNode,
+  ) {
+    this.mic = mic;
+    this.pc = new RTCPeerConnection(ICE_CONFIG);
+    this.gainNode = this.mic.c.createGain();
+    this.analyzer = createLoudnessMeter();
+    this.muteNode = this.mic.c.createGain();
+
+    this.gainNode.connect(this.muteNode);
+    this.muteNode.connect(this.analyzer);
+    this.analyzer.connect(this.mic.c.destination);
+
+    this.analyzer.port.onmessage = (event) => {
+      this.peak = event.data.peak;
+      this.rms = event.data.rms;
+    };
+
+    if (!this.mic.stream) {
+      throw new Error("Local stream not available");
+    }
+
+    // Add local stream to peer connection
+    const [audioTrack] = this.mic.nodes.destination.stream.getAudioTracks();
+    this.pc.addTrack(audioTrack, this.mic.stream);
+
+    /**
+     * Attach a DOM audio element to a MediaStream
+     * because chrome WOULD NOT behave without it
+     * (data from the stream just doesn't get sent to the sink without it)
+     */
+    function attachDomAudio(id: string, stream: MediaStream) {
+      let audio = document.getElementById(id) as HTMLAudioElement;
+
+      if (!audio) {
+        audio = document.createElement("audio");
+        audio.id = id;
+        audio.autoplay = true;
+        audio.muted = true;
+        audio.style.display = "none";
+        document.body.appendChild(audio);
+      }
+
+      audio.srcObject = stream;
+      return audio;
+    }
+
+    // Handle remote stream
+    this.pc.ontrack = (event) => {
+      console.log(
+        "Received remote stream from:",
+        targetId,
+        `with ${event.streams.length} streams`,
+      );
+      for (const stream of event.streams) {
+        console.log(`stream[${event.streams.indexOf(stream)}]:`, stream);
+        for (const track of stream.getTracks()) {
+          console.log(`    track[${track.id}]:`, track);
+        }
+      }
+
+      const audioTrack = event.streams[0].getAudioTracks()[0];
+      if (!audioTrack) {
+        throw new Error(`Audio track for ${targetId} not found`);
+      }
+
+      const stream = event.streams[0];
+      console.log("Received stream:", stream);
+      const source = this.mic.c.createMediaStreamSource(stream);
+      console.log("Source:", source);
+      source.connect(this.gainNode);
+      attachDomAudio("user-audio-" + targetId, stream);
+      this.mic.c.resume();
+    };
+
+    // this will probably be needed for enabling cam
+    // or bitrate changes?
+    this.pc.onnegotiationneeded = async () => {
+      console.log(`Negotiation needed for ${targetId}`);
+    };
+  }
+
+  /**
+   * After this the object should not be reused
+   */
+  cleanup() {
+    this.pc.close();
+    this.gainNode.disconnect();
+    this.analyzer.disconnect();
+
+    // @ts-expect-error
+    delete this.pc;
+  }
+}
 
 const TURN_SERVER_IP = "45.143.95.55";
 const ICE_CONFIG = {
@@ -17,16 +147,6 @@ const ICE_CONFIG = {
   ],
 };
 
-export interface PeerInfo {
-  peerConnection?: RTCPeerConnection;
-  volume?: number;
-  gainNode?: GainNode;
-  analyzerNode?: AudioWorkletNode;
-  meter?: AudioWorkletNode;
-  peak?: number;
-  rms?: number;
-}
-
 export class WebRTC {
   isConnected: boolean = $state(false);
   room: string = $state("");
@@ -35,7 +155,7 @@ export class WebRTC {
   private gateway: Gateway;
   private audioContext: AudioContext;
   private createLoudnessMeter: () => AudioWorkletNode;
-  peers: Record<string, PeerInfo> = $state({});
+  peers = new SvelteMap<string, Peer>();
   users: Array<{ id: string; username?: string }> = $state([]);
 
   constructor(
@@ -54,21 +174,6 @@ export class WebRTC {
       console.log("Received message:", data);
       this.handleSignalingMessage(data);
     };
-  }
-
-  setVolume(userId: string, volume: number) {
-    const peer = this.peers[userId];
-    if (!peer) {
-      console.error(`Peer for ${userId} not found`);
-      return;
-    }
-    peer.volume = volume;
-    const node = peer.gainNode;
-    if (!node) {
-      console.error(`Gain node for ${userId} not found`);
-      return;
-    }
-    node.gain.setTargetAtTime(volume, this.audioContext.currentTime, 0.01);
   }
 
   async handleSignalingMessage(rawData: unknown) {
@@ -94,7 +199,7 @@ export class WebRTC {
         break;
 
       case "left-room":
-        this.disconnect();
+        this.cleanup();
         break;
 
       case "user-joined":
@@ -107,17 +212,13 @@ export class WebRTC {
         this.users = this.users.filter((u) => u.id !== data.userId);
 
         // Close peer connection with this user
-        const peer = this.peers[data.userId];
-        if (peer) {
-          peer.peerConnection?.close();
-          peer.gainNode?.disconnect();
-          peer.analyzerNode?.disconnect();
-          delete this.peers[data.userId];
-        }
+        const peer = this.peers.get(data.targetId);
+        peer?.cleanup();
+        this.peers.delete(data.targetId);
         break;
 
       case "offer":
-        await this.handleOffer(data.offer, data.sender);
+        await this.acceptCall(data.offer, data.sender);
         break;
 
       case "answer":
@@ -130,139 +231,70 @@ export class WebRTC {
     }
   }
 
-  async createPeerConnection(targetId: string): Promise<RTCPeerConnection> {
-    const peer = this.peers[targetId]!;
+  createPeer(targetId: string): Peer {
+    let peer = this.peers.get(targetId);
     if (peer) {
       console.log(`Peer connection with ${targetId} already exists`);
-      return peer.peerConnection!;
+      return peer;
     }
+    peer = new Peer(targetId, this.mic, this.createLoudnessMeter);
+    this.peers.set(targetId, peer);
 
-    const pc = new RTCPeerConnection(ICE_CONFIG);
-
-    console.log("and now its", this.mic.stream);
     if (!this.mic.stream) {
       throw new Error("Local stream not available");
     }
 
-    // Add local stream to peer connection
-    const [audioTrack] = this.mic.nodes.destination.stream.getAudioTracks();
-    pc.addTrack(audioTrack, this.mic.stream);
-
-    /**
-     * Attach a DOM audio element to a MediaStream
-     * because chrome WOULD NOT behave without it
-     * (data from the stream just doesn't get sent to the sink without it)
-     */
-    function attachDomAudio(id: string, stream: MediaStream) {
-      // Try to find an existing element
-      let audio = document.getElementById(id) as HTMLAudioElement;
-
-      if (!audio) {
-        audio = document.createElement("audio");
-        audio.id = id;
-        audio.autoplay = true;
-        audio.muted = true; // so you don't get loud feedback
-        audio.style.display = "none";
-        document.body.appendChild(audio);
-      }
-
-      audio.srcObject = stream;
-      return audio;
-    }
-
-    // Handle remote stream
-    pc.ontrack = (event) => {
-      console.log("Received remote stream from:", targetId);
-      console.log(`Recieving ${event.streams.length} streams`);
-      const audioTrack = event.streams[0].getAudioTracks()[0];
-
-      if (!audioTrack) {
-        throw new Error(`Audio track for ${targetId} not found`);
-      }
-      const peer = this.peers[targetId];
-      if (!peer) {
-        throw new Error(`Peer for ${targetId} not found`);
-      }
-
-      let gainNode = peer.gainNode;
-      if (!gainNode) {
-        gainNode = this.audioContext.createGain();
-        peer.gainNode = gainNode;
-        const meter = this.createLoudnessMeter();
-        meter.port.onmessage = (event) => {
-          peer.peak = event.data.peak;
-          peer.rms = event.data.rms;
-        };
-        peer.analyzerNode = meter;
-
-        gainNode.connect(meter);
-        meter.connect(this.audioContext.destination);
-      }
-
-      const stream = event.streams[0];
-      console.log("Received stream:", stream);
-      const source = this.audioContext.createMediaStreamSource(stream);
-      console.log("Source:", source);
-      source.connect(gainNode);
-      attachDomAudio("user-audio-" + targetId, stream);
-      this.audioContext.resume();
-    };
-
     // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        this.gateway.send({
-          type: "ice-candidate",
-          candidate: event.candidate,
-          target: targetId,
-          senderId: this.clientId,
-        });
+    peer.pc.onicecandidate = (event) => {
+      if (!event.candidate) {
+        console.error("No ice candidate");
+        return;
       }
+      this.gateway.send({
+        type: "ice-candidate",
+        candidate: event.candidate,
+        target: targetId,
+        senderId: this.clientId,
+      });
     };
 
     // Handle connection state changes
-    pc.onconnectionstatechange = () => {
-      console.log(`Connection state with ${targetId}:`, pc.connectionState);
+    peer.pc.onconnectionstatechange = () => {
+      console.log(
+        `Connection state with ${targetId}:`,
+        peer.pc.connectionState,
+      );
       if (
-        pc.connectionState === "disconnected" ||
-        pc.connectionState === "failed"
+        peer.pc.connectionState === "disconnected" ||
+        peer.pc.connectionState === "failed"
       ) {
-        const peer = this.peers[targetId];
-        peer?.gainNode?.disconnect();
-        peer?.analyzerNode?.disconnect();
-        delete this.peers[targetId];
-        console.log(`Connection with ${targetId} failed`);
+        peer.cleanup();
+        this.peers.delete(targetId);
       }
+    };
+    peer.pc.onicecandidateerror = (event) => {
+      console.error("ICE candidate error:", event.errorText);
     };
 
-    pc.onnegotiationneeded = async () => {
-      console.log(`Negotiation needed for ${targetId}`);
-      if (!pc.localDescription) {
-        return;
-      }
-      for (let user of this.users) {
-        await this.initiateCall(user.id);
-      }
-    };
-
-    this.peers[targetId] = {
-      peerConnection: pc,
-      volume: 1.0,
-    };
-    return pc;
+    return peer;
   }
 
   async initiateCall(targetId: string) {
-    await this.mic.connect();
-    console.log("Initiating call to:", targetId);
-    const pc = await this.createPeerConnection(targetId);
+    if (!this.users.find((user) => user.id === targetId)) {
+      console.error(`User ${targetId} not found`);
+      return;
+    }
+    if (this.peers.has(targetId)) {
+      console.error(`Already connected to ${targetId}`);
+      return;
+    }
+    const peer = this.createPeer(targetId);
 
-    let offer = await pc.createOffer();
+    let offer = await peer.pc.createOffer();
     // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
     // offer = { ...offer, sdp };
-    await pc.setLocalDescription(offer);
+    await peer.pc.setLocalDescription(offer);
 
-    // Send offer
     this.gateway.send({
       type: "offer",
       offer: offer,
@@ -271,17 +303,16 @@ export class WebRTC {
     });
   }
 
-  async handleOffer(offer: RTCSessionDescriptionInit, senderId: string) {
-    console.log("Received offer from:", senderId);
-    // this.peerConnections.delete(senderId);
-    const pc = await this.createPeerConnection(senderId);
+  async acceptCall(offer: RTCSessionDescriptionInit, senderId: string) {
+    console.log("Received call from:", senderId);
+    const peer = this.createPeer(senderId);
 
-    await pc.setRemoteDescription(offer);
+    await peer.pc.setRemoteDescription(offer);
 
-    let answer = await pc.createAnswer();
+    let answer = await peer.pc.createAnswer();
     // const sdp = setAudioMaxInSDP(answer.sdp, BITRATE, CHANNELS);
     // answer = { ...answer, sdp };
-    await pc.setLocalDescription(answer);
+    await peer.pc.setLocalDescription(answer);
 
     // Send answer
     this.gateway.send({
@@ -295,51 +326,30 @@ export class WebRTC {
   async handleAnswer(answer: RTCSessionDescriptionInit, senderId: string) {
     console.log("Received answer from:", senderId);
 
-    const peer = this.peers[senderId];
+    const peer = this.peers.get(senderId);
     if (!peer) {
       console.error(`Peer for ${senderId} not found`);
       return;
     }
-    const pc = peer.peerConnection;
-    if (!pc) {
-      console.error(`Peer connection with ${senderId} not found`);
-      return;
-    }
-
-    await pc.setRemoteDescription(answer);
+    await peer.pc.setRemoteDescription(answer);
   }
 
   async handleIceCandidate(candidate: RTCIceCandidateInit, senderId: string) {
-    const peer = this.peers[senderId];
+    const peer = this.peers.get(senderId);
     if (!peer) {
       console.error(`Peer for ${senderId} not found`);
       return;
     }
-    const pc = peer.peerConnection;
-    if (!pc) {
-      console.error(`Peer connection with ${senderId} not found`);
-      return;
-    }
-
-    await pc.addIceCandidate(candidate);
+    await peer.pc.addIceCandidate(candidate);
   }
 
-  disconnect() {
-    if (this.isConnected) {
-      this.leaveRoom();
+  cleanup() {
+    for (const peer of this.peers.values()) {
+      peer.cleanup();
     }
-
-    for (const peer of Object.values(this.peers)) {
-      peer.peerConnection?.close();
-      peer.gainNode?.disconnect();
-      peer.analyzerNode?.disconnect();
-    }
-    this.peers = {};
-
+    this.peers.clear();
     this.mic.disconnect();
-
     this.isConnected = false;
-
     this.users = [];
     this.room = "";
   }
@@ -361,13 +371,6 @@ export class WebRTC {
   }
 
   leaveRoom() {
-    for (const peer of Object.values(this.peers)) {
-      peer.peerConnection?.close();
-      peer.gainNode?.disconnect();
-      peer.analyzerNode?.disconnect();
-    }
-    this.peers = {};
-
     this.gateway.send({
       type: "leave-room",
       senderId: this.clientId,

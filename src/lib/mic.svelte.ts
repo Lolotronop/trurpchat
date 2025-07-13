@@ -65,14 +65,12 @@ export class Mic {
   }
 
   #gain: number = $state(1);
-  /** in db */
   set gain(value) {
-    const p = fromDb(value);
-    this.#gain = p;
-    this.nodes.inputGain.gain.setTargetAtTime(p, this.c.currentTime, 0.01);
+    this.#gain = value;
+    this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
   }
   get gain() {
-    return toDb(this.#gain);
+    return this.#gain;
   }
 
   speaking: boolean = $state(false);

@@ -3,12 +3,14 @@
 
   type Props = {
     ticks: number[];
+    min?: number;
+    max?: number;
     children: Snippet;
   };
-  const { ticks: t, children }: Props = $props();
+  let { ticks: t, children, min, max }: Props = $props();
   const ticks = t.toSorted((a, b) => a - b);
-  const min = ticks[0];
-  const max = ticks[ticks.length - 1];
+  min ??= ticks[0];
+  max ??= ticks[ticks.length - 1];
   const pct = (v: number) => `${((v - min) / (max - min)) * 100}%`;
 </script>
 

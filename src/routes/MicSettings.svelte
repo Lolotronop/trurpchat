@@ -4,6 +4,7 @@
   import Ticks from "./Ticks.svelte";
   import { gitGud } from "$lib/god.svelte";
   import { toDb } from "$lib/utils.svelte";
+  import GainSlider from "./GainSlider.svelte";
 
   const g = gitGud();
   const { mic, rtc } = g;
@@ -47,21 +48,7 @@
 </script>
 
 <div class="flex w-full flex-col gap-4">
-  <div class="">
-    <Ticks {ticks}>
-      <input
-        type="range"
-        class="w-full"
-        {min}
-        {max}
-        step="0.1"
-        ondblclick={() => {
-          mic.gain = 0;
-        }}
-        bind:value={mic.gain}
-      />
-    </Ticks>
-  </div>
+  <GainSlider bind:value={mic.gain} />
   <div class="relative h-4 w-full bg-amber-50">
     <div
       class="absolute top-0 right-0 bottom-0 left-0 max-w-full bg-amber-500"
