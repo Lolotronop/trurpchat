@@ -132,9 +132,9 @@ export class Peer {
 }
 
 const TURN_SERVER_IP = "45.143.95.55";
-const ICE_CONFIG = {
+export const ICE_CONFIG = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
+    { urls: ["stun:stun.l.google.com:19302"] },
     {
       urls: [
         `stun:${TURN_SERVER_IP}:3478`,

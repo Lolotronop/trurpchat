@@ -49,16 +49,21 @@ export class Shortcuts extends EventTarget {
     let key = "";
 
     if (Object.keys(keymap).includes(e.code)) {
-      // @ts-expect-error
-      key = keymap[e.code];
+      this.stopDetect();
+      console.log("Can't set that sorry bud");
+      return;
     } else {
       if (e.ctrlKey) key = "Ctrl+";
       if (e.altKey) key += "Alt+";
       if (e.shiftKey) key += "Shift+";
-      key += e.code;
+      key += e.key;
     }
 
-    this.set(this.detectingFor, key);
+    try {
+      this.set(this.detectingFor, key);
+    } catch (error) {
+      console.error("Cannot set shortcut:", error);
+    }
 
     this.stopDetect();
   };

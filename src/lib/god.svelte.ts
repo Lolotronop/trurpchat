@@ -30,21 +30,24 @@ export class God {
   keys: Shortcuts = new Shortcuts();
   ready: boolean = $state(false);
 
+  createGate: () => AudioWorkletNode;
+  createLoudnessMeter: () => AudioWorkletNode;
+
   constructor(context: AudioContext) {
-    const createGate = () => {
+    this.createGate = () => {
       const gate = new AudioWorkletNode(context, "noise-gate");
       return gate;
     };
-    const createLoudnessMeter = () => {
+    this.createLoudnessMeter = () => {
       const meter = new AudioWorkletNode(context, "loudness");
       return meter;
     };
 
     this.c = context;
-    this.mic = new Mic(context, createGate, createLoudnessMeter);
+    this.mic = new Mic(context, this.createGate, this.createLoudnessMeter);
     this.mic.init();
     this.ws = new Gateway();
-    this.rtc = new WebRTC(this.ws, this.mic, context, createLoudnessMeter);
+    this.rtc = new WebRTC(this.ws, this.mic, context, this.createLoudnessMeter);
     this.lock = new WakeLockContainer();
     this.lock.lock();
 
