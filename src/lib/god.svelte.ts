@@ -3,6 +3,7 @@ import { Gateway } from "./gateway.svelte";
 import { Mic } from "./mic.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { Shortcuts } from "./shortcuts.svelte";
+import { Settings } from "./settings.svelte";
 
 class WakeLockContainer {
   wakeLock: WakeLockSentinel | null = $state(null);
@@ -22,6 +23,7 @@ class WakeLockContainer {
 }
 
 export class God {
+  tauri: boolean;
   c: AudioContext;
   mic: Mic;
   rtc: WebRTC;
@@ -29,11 +31,13 @@ export class God {
   lock: WakeLockContainer;
   keys: Shortcuts = new Shortcuts();
   ready: boolean = $state(false);
+  settings: Settings;
 
   createGate: () => AudioWorkletNode;
   createLoudnessMeter: () => AudioWorkletNode;
 
-  constructor(context: AudioContext) {
+  constructor(context: AudioContext, tauri: boolean) {
+    this.tauri = tauri;
     this.createGate = () => {
       const gate = new AudioWorkletNode(context, "noise-gate");
       return gate;
@@ -43,13 +47,21 @@ export class God {
       return meter;
     };
 
+    this.settings = new Settings(this.tauri);
     this.c = context;
     this.mic = new Mic(context, this.createGate, this.createLoudnessMeter);
     this.mic.init();
     this.ws = new Gateway();
-    this.rtc = new WebRTC(this.ws, this.mic, context, this.createLoudnessMeter);
     this.lock = new WakeLockContainer();
     this.lock.lock();
+
+    this.rtc = new WebRTC(
+      this.ws,
+      this.mic,
+      context,
+      this.createLoudnessMeter,
+      this.settings,
+    );
 
     this.keys.on("mute", (state) => {
       if (state === "Released") {
@@ -59,22 +71,30 @@ export class God {
 
     $effect.root(() => {
       $effect(() => {
+        if (this.settings.ready) {
+          this.ws.connect(`ws://${this.settings.settings.gatewayServer}`);
+        }
+      });
+      $effect(() => {
         this.ready =
-          this.mic.hasPermissions && this.ws.connected && !!this.lock.wakeLock;
+          this.mic.hasPermissions &&
+          this.ws.connected &&
+          !!this.lock.wakeLock &&
+          this.settings.ready;
       });
     });
   }
 }
 
 let instance: God | null = null;
-export function gitGud(audioContext?: AudioContext): God {
+export function gitGud(audioContext?: AudioContext, tauri?: boolean): God {
   if (!instance) {
-    if (!audioContext) {
+    if (!audioContext || tauri === undefined) {
       throw new Error(
         "You have to provide and AudioContext with all the plugins loaded at first initialization",
       );
     }
-    instance = new God(audioContext);
+    instance = new God(audioContext, tauri);
   }
   return instance;
 }

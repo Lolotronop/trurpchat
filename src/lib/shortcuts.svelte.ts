@@ -24,7 +24,7 @@ export class Shortcuts extends EventTarget {
   constructor() {
     super();
     unregisterAll();
-    this.store = new LazyStore("kektor.json");
+    this.store = new LazyStore("shortcuts.json");
     for (const action of actions) {
       this.bindings.set(action, null);
     }

@@ -7,6 +7,8 @@ interface Client {
 
 const clients = new Map<string, Client>();
 const rooms = new Map<string, Set<string>>(); // room -> set of client IDs
+rooms.set("Альфа", new Set());
+rooms.set("Бета", new Set());
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -64,7 +66,7 @@ function removeClientFromRoom(clientId: string) {
 
   roomClients.delete(clientId);
   if (roomClients.size === 0) {
-    rooms.delete(client.room);
+    // rooms.delete(client.room);
     console.log(`Room ${client.room} deleted (empty)`);
   } else {
     broadcastToRoom(client.room, {
@@ -75,9 +77,32 @@ function removeClientFromRoom(clientId: string) {
   }
 }
 
+function serializeRooms() {
+  const r = {};
+  for (const room of rooms.keys()) {
+    const users = getRoomUsers(room);
+    r[room] = users;
+  }
+
+  return r;
+}
+
 Bun.serve({
   port: 3000,
   fetch(req, server) {
+    const thing = req.url.split("/")[3];
+    console.log(thing);
+    if (thing == "rooms") {
+      const r = serializeRooms();
+      console.log("Returning to http", r);
+      const res = new Response(JSON.stringify(r), { status: 200 });
+      res.headers.set("Access-Control-Allow-Origin", "*");
+      res.headers.set(
+        "Access-Control-Allow-Methods",
+        "GET, POST, PUT, DELETE, OPTIONS",
+      );
+      return res;
+    }
     if (server.upgrade(req)) {
       return;
     }
@@ -94,12 +119,25 @@ Bun.serve({
 
       console.log(`Client ${clientId} connected, ${clients.size} total`);
 
+      ws.subscribe("all");
+
       ws.send(
         JSON.stringify({
           type: "connected",
           id: clientId,
         }),
       );
+
+      const r = serializeRooms();
+      console.log(r);
+      setTimeout(() => {
+        ws.send(
+          JSON.stringify({
+            type: "rooms",
+            rooms: r,
+          }),
+        );
+      }, 1000);
     },
 
     message(ws, message) {
@@ -113,6 +151,7 @@ Bun.serve({
           return;
         }
 
+        let r;
         switch (data.type) {
           case "join-room":
             const roomName = data.room;
@@ -159,6 +198,16 @@ Bun.serve({
                 users: existingUsers,
               }),
             );
+
+            r = serializeRooms();
+            for (const client of clients.values()) {
+              client.ws.send(
+                JSON.stringify({
+                  type: "rooms",
+                  rooms: r,
+                }),
+              );
+            }
 
             console.log(
               `Client ${senderId} (${username}) joined room ${roomName}`,
@@ -220,6 +269,17 @@ Bun.serve({
                 type: "left-room",
               }),
             );
+
+            r = serializeRooms();
+            for (const client of clients.values()) {
+              client.ws.send(
+                JSON.stringify({
+                  type: "rooms",
+                  rooms: r,
+                }),
+              );
+            }
+
             break;
 
           default:

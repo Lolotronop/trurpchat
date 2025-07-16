@@ -6,6 +6,7 @@
     min?: number;
     max?: number;
     toInfinite?: boolean;
+    ticks?: boolean | number[];
   };
 
   let {
@@ -13,18 +14,25 @@
     min = -42,
     max = 18,
     toInfinite = true,
+    ticks = true,
   }: Props = $props();
 
   const steps: number[] = [];
-  for (let i = -6; i >= min; i -= 6) {
-    steps.push(i);
-  }
-  for (let i = 0; i <= max; i += 6) {
-    steps.push(i);
+  if (!Array.isArray(ticks)) {
+    if (ticks) {
+      for (let i = -6; i >= min; i -= 6) {
+        steps.push(i);
+      }
+      for (let i = 0; i <= max; i += 6) {
+        steps.push(i);
+      }
+    }
+  } else {
+    steps.push(...ticks);
   }
 </script>
 
-<Ticks {max} {min} ticks={steps}>
+{#snippet slider()}
   <input
     class="w-full"
     type="range"
@@ -45,4 +53,12 @@
       }
     }
   />
-</Ticks>
+{/snippet}
+
+{#if steps.length > 0}
+  <Ticks {max} {min} ticks={steps}>
+    {@render slider()}
+  </Ticks>
+{:else}
+  {@render slider()}
+{/if}

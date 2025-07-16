@@ -1,139 +1,20 @@
 <script lang="ts">
-  import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
-  import MicSettings from "./MicSettings.svelte";
   import { gitGud } from "$lib/god.svelte";
-  import GainSlider from "./GainSlider.svelte";
-  import Stream from "./Stream.svelte";
-
+  import BottomControls from "./BottomControls.svelte";
+  import RoomList from "./RoomList.svelte";
   const g = gitGud();
-
-  // let WS_URL = "ws://lolo-desktop:3000";
-  let WS_URL = "ws://lolotronop.ru:3000";
-  g.ws.connect(WS_URL);
-
-  let showMicSettings = $state(false);
-  let showStream = $state(false);
-
-  let room = $state("room1");
-  let user = $state("user" + Math.random().toFixed(3).substring(2));
-
-  let buttonColor = $derived.by(() => {
-    if (g.mic.muted) {
-      return "red";
-    }
-    if (g.mic.speaking) {
-      return "green";
-    }
-    return "transparent";
-  });
+  // TODO: this needs to be removed with proper
+  // "speaking" sending
+  g.mic.enableAnalyzer();
 </script>
 
-{#if g.ready}
-  <main class="flex flex-col gap-4 p-8">
-    <div>
-      {#each g.keys.bindings.entries() as [action, shortcut] (action)}
-        <div>
-          {action}:
-          <button
-            onclick={() => {
-              if (g.keys.detectingFor === action) {
-                g.keys.stopDetect();
-              } else {
-                g.keys.detect(action);
-              }
-            }}
-          >
-            {g.keys.detectingFor === action ? "Cancel" : (shortcut ?? "None")}
-          </button>
-          <button onclick={() => g.keys.unset(action)}> Clear </button>
-        </div>
-      {/each}
+<main class="flex h-screen w-screen">
+  <div class="flex h-full min-w-[300px] flex-col border-r">
+    <div class="flex w-full p-2 px-6 text-xl">ТРУРПЧР</div>
+    <RoomList />
+    <div class="w-full p-0.5">
+      <BottomControls />
     </div>
-
-    <div>
-      <button onclick={() => (showMicSettings = !showMicSettings)}>
-        Mic settings
-      </button>
-      <button onclick={() => (showStream = !showStream)}> Stream </button>
-      <button onclick={() => (g.mic.muted = !g.mic.muted)}
-        >Mute {g.mic.muted ? "on" : "off"}</button
-      >
-    </div>
-
-    {#if showMicSettings}
-      <div class="flex flex-col gap-4">
-        <button
-          onclick={() => {
-            g.mic.monitoring = !g.mic.monitoring;
-          }}
-        >
-          Monitoring {g.mic.monitoring ? "on" : "off"}
-        </button>
-        <MicSettings />
-        <div class="flex flex-row gap-4">
-          {#each g.mic.devices as mic}
-            <button
-              onclick={() => {
-                g.mic.preferredInputDeviceId = mic.deviceId;
-                g.mic.connect();
-              }}
-              style="background-color: {g.mic.preferredInputDeviceId ===
-              mic.deviceId
-                ? 'green'
-                : 'red'}"
-            >
-              {mic.label}
-            </button>
-          {/each}
-        </div>
-      </div>
-    {/if}
-    <input type="text" bind:value={room} />
-    <input type="text" bind:value={user} />
-    <button
-      onclick={() => {
-        if (g.rtc.isConnected) {
-          g.rtc.leaveRoom();
-        } else {
-          g.rtc.joinRoom(user, room);
-        }
-      }}
-    >
-      {g.rtc.isConnected ? `Leave ${g.rtc.room}` : `Join ${room}`}
-    </button>
-    {#if showStream}
-      <Stream />
-    {/if}
-    <div
-      class="h-6 w-6 rounded-full border-2 border-green-800"
-      style="background-color: {buttonColor}"
-    ></div>
-    {#each g.rtc.peers.entries() as [id, peer] (id)}
-      <div class="flex flex-col">
-        <p>
-          {g.rtc.users.find((u) => u.id === id)?.username ?? id}
-          {peer.ping.toFixed(0)}ms
-        </p>
-        <div class="flex flex-row">
-          <div class="flex w-full flex-col">
-            <GainSlider bind:value={peer.volume} />
-            <AnalyzerDisplay rms={peer.rms ?? 0} peak={peer.peak ?? 0} />
-          </div>
-          <div class="flex flex-col">
-            <button
-              style={peer.mute ? "background-color: red" : ""}
-              onclick={() => (peer.mute = !peer.mute)}
-            >
-              M
-            </button>
-          </div>
-        </div>
-      </div>
-    {/each}
-  </main>
-{:else}
-  <p>Wating on</p>
-  <p>Gateway: {g.ws.connected}</p>
-  <p>Permissions {g.mic.hasPermissions}</p>
-  <p>Wakelock: {!!g.lock}</p>
-{/if}
+  </div>
+  <div class="flex h-full w-full items-center justify-center">:)</div>
+</main>

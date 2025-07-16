@@ -9,6 +9,11 @@ export class Gateway extends EventTarget {
   }
 
   connect(url: string) {
+    this.connected = false;
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
     const socket = new ReconnectingWebSocket(url, undefined, {
       maxReconnectionDelay: 10000,
       minReconnectionDelay: 100,
@@ -19,7 +24,6 @@ export class Gateway extends EventTarget {
 
     socket.addEventListener("open", () => {
       console.log("Connected to Gateway");
-      this.connected = true;
       for (const callback of this.callbacks) {
         socket.addEventListener("message", (event) => {
           let data: string;
@@ -32,6 +36,7 @@ export class Gateway extends EventTarget {
           callback(data);
         });
       }
+      this.connected = true;
     });
 
     socket.addEventListener("close", () => {

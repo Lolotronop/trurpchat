@@ -56,7 +56,7 @@
     ></div>
   </div>
   <div style={mic.speaking ? "filter: brightness(2);" : ""} class="mb-4">
-    <AnalyzerDisplay rms={mic.loudnessLevel} peak={mic.loudnessPeakLevel} />
+    <AnalyzerDisplay rms={mic.rms} peak={mic.peak} />
   </div>
   <input
     type="range"

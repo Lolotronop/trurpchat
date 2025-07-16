@@ -14,7 +14,7 @@
   const pct = (v: number) => `${((v - min) / (max - min)) * 100}%`;
 </script>
 
-<div class="relative w-full">
+<div class="relative w-full pb-3">
   <div class="pointer-events-none absolute inset-0 z-10">
     {#each ticks as t}
       <div

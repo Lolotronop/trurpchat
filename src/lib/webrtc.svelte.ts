@@ -1,6 +1,7 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { Gateway } from "./gateway.svelte";
 import type { Mic } from "./mic.svelte";
+import type { Settings } from "./settings.svelte";
 
 export class Peer {
   mic: Mic;
@@ -31,6 +32,8 @@ export class Peer {
     );
   }
 
+  speaking = $state(false);
+
   peak: number = $state(0);
   rms: number = $state(0);
   /** in ms */
@@ -40,6 +43,7 @@ export class Peer {
     targetId: string,
     mic: Mic,
     createLoudnessMeter: () => AudioWorkletNode,
+    output: GainNode,
   ) {
     this.mic = mic;
     this.pc = new RTCPeerConnection(ICE_CONFIG);
@@ -49,7 +53,7 @@ export class Peer {
 
     this.gainNode.connect(this.muteNode);
     this.muteNode.connect(this.analyzer);
-    this.analyzer.connect(this.mic.c.destination);
+    this.analyzer.connect(output);
 
     setInterval(() => {
       this.pc.getStats().then((stats) => {
@@ -60,7 +64,6 @@ export class Peer {
             report.nominated === true
           ) {
             this.ping = report.currentRoundTripTime * 1000;
-            console.log(this.ping, report.currentRoundTripTime);
           }
         });
       });
@@ -69,6 +72,14 @@ export class Peer {
     this.analyzer.port.onmessage = (event) => {
       this.peak = event.data.peak;
       this.rms = event.data.rms;
+      // TODO: remove smoothing inside loudness.js
+      // or send this data over a data channel with webrtc
+      // based on gate state/ptt
+      if (this.peak > -60) {
+        this.speaking = true;
+      } else {
+        this.speaking = false;
+      }
     };
 
     if (!this.mic.stream) {
@@ -172,20 +183,47 @@ export class WebRTC {
   private gateway: Gateway;
   private audioContext: AudioContext;
   private createLoudnessMeter: () => AudioWorkletNode;
+  private muteNode: GainNode;
+  private settings: Settings;
   peers = new SvelteMap<string, Peer>();
   users: Array<{ id: string; username?: string }> = $state([]);
+
+  #muted: boolean = $state(false);
+  get muted() {
+    return this.#muted;
+  }
+  set muted(value: boolean) {
+    this.#muted = value;
+    if (value) {
+      this.muteNode.gain.setTargetAtTime(
+        0,
+        this.audioContext.currentTime,
+        0.01,
+      );
+    } else {
+      this.muteNode.gain.setTargetAtTime(
+        1,
+        this.audioContext.currentTime,
+        0.01,
+      );
+    }
+  }
 
   constructor(
     gateway: Gateway,
     mic: Mic,
     audioContext: AudioContext,
     createLoudnessMeter: () => AudioWorkletNode,
+    settings: Settings,
     clientId?: string,
   ) {
     this.gateway = gateway;
+    this.settings = settings;
     this.mic = mic;
     this.audioContext = audioContext;
     this.createLoudnessMeter = createLoudnessMeter;
+    this.muteNode = this.audioContext.createGain();
+    this.muteNode.connect(this.audioContext.destination);
     this.clientId = Math.floor(Math.random() * 1000).toString();
     this.gateway.onmessage = (data) => {
       console.log("Received message:", data);
@@ -254,7 +292,12 @@ export class WebRTC {
       console.log(`Peer connection with ${targetId} already exists`);
       return peer;
     }
-    peer = new Peer(targetId, this.mic, this.createLoudnessMeter);
+    peer = new Peer(
+      targetId,
+      this.mic,
+      this.createLoudnessMeter,
+      this.muteNode,
+    );
     this.peers.set(targetId, peer);
 
     if (!this.mic.stream) {
@@ -371,7 +414,8 @@ export class WebRTC {
     this.room = "";
   }
 
-  async joinRoom(username: string, room: string) {
+  async joinRoom(room: string) {
+    const username = this.settings.settings.username;
     console.log("Joining room:", room, "with username:", username);
     if (this.isConnected) {
       this.leaveRoom();

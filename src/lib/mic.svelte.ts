@@ -7,7 +7,7 @@ export class Mic {
   c: AudioContext;
   hasPermissions: boolean = $state(false);
   stream: MediaStream | null = null;
-  preferredInputDeviceId: string | null = $state(null);
+  deviceId: string | null = $state(null);
   nodes: {
     source: MediaStreamAudioSourceNode | null;
     inputGain: GainNode;
@@ -75,8 +75,8 @@ export class Mic {
 
   speaking: boolean = $state(false);
 
-  loudnessPeakLevel: number = $state(0);
-  loudnessLevel: number = $state(0);
+  peak: number = $state(0);
+  rms: number = $state(0);
 
   devices: MediaDeviceInfo[] = $state([]);
 
@@ -122,8 +122,8 @@ export class Mic {
 
     this.nodes.analyzer.port.onmessage = (event) => {
       const data = event.data;
-      this.loudnessPeakLevel = data.peak;
-      this.loudnessLevel = data.rms;
+      this.peak = data.peak;
+      this.rms = data.rms;
     };
 
     const eq = this.c.createBiquadFilter();
@@ -170,8 +170,8 @@ export class Mic {
       autoGainControl: false,
       channelCount: 1,
     };
-    if (this.preferredInputDeviceId) {
-      settings.deviceId = this.preferredInputDeviceId;
+    if (this.deviceId) {
+      settings.deviceId = this.deviceId;
     }
 
     try {
@@ -179,7 +179,7 @@ export class Mic {
         audio: settings,
       });
       const deviceId = this.stream.getAudioTracks()[0].getSettings().deviceId;
-      this.preferredInputDeviceId = deviceId ?? null;
+      this.deviceId = deviceId ?? null;
       this.nodes.source = this.c.createMediaStreamSource(this.stream);
       this.nodes.source.connect(this.nodes.inputGain);
     } catch (error) {

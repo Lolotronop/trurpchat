@@ -18,12 +18,12 @@
 <Ticks {ticks}>
   <div class="relative h-[20px] w-full bg-[#f0f0f0]">
     <div
-      class="absolute top-0 left-0 h-full max-w-full bg-red-900"
+      class="absolute top-0 left-0 h-full max-w-full bg-red-700"
       style={`width: ${(1 - peak / MIN_DB) * 100}%`}
     ></div>
 
     <div
-      class="absolute top-0 left-0 h-full max-w-full bg-green-900"
+      class="absolute top-0 left-0 h-full max-w-full bg-green-700"
       style={`width: ${(1 - rms / MIN_DB) * 100}%`}
     ></div>
   </div>
