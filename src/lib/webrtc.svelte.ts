@@ -2,6 +2,7 @@ import { SvelteMap } from "svelte/reactivity";
 import type { Gateway } from "./gateway.svelte";
 import type { Mic } from "./mic.svelte";
 import type { Settings } from "./settings.svelte";
+import type { Message, User, Room } from "../../src-backend/types";
 
 export class Peer {
   mic: Mic;
@@ -39,6 +40,8 @@ export class Peer {
   /** in ms */
   ping: number = $state(0);
 
+  interval: NodeJS.Timeout | number | null = null;
+
   constructor(
     targetId: string,
     mic: Mic,
@@ -55,7 +58,7 @@ export class Peer {
     this.muteNode.connect(this.analyzer);
     this.analyzer.connect(output);
 
-    setInterval(() => {
+    this.interval = setInterval(() => {
       this.pc.getStats().then((stats) => {
         stats.forEach((report) => {
           if (
@@ -153,6 +156,7 @@ export class Peer {
     this.pc.close();
     this.gainNode.disconnect();
     this.analyzer.disconnect();
+    clearInterval(this.interval as number);
 
     // @ts-expect-error
     delete this.pc;
@@ -177,7 +181,8 @@ export const ICE_CONFIG = {
 
 export class WebRTC {
   isConnected: boolean = $state(false);
-  room: string = $state("");
+  rooms: Room[] = $state([]);
+  room: Room | null = $state(null);
   clientId: string;
   private mic: Mic;
   private gateway: Gateway;
@@ -186,14 +191,17 @@ export class WebRTC {
   private muteNode: GainNode;
   private settings: Settings;
   peers = new SvelteMap<string, Peer>();
-  users: Array<{ id: string; username?: string }> = $state([]);
 
-  #muted: boolean = $state(false);
-  get muted() {
-    return this.#muted;
+  #deafened: boolean = $state(false);
+  get deafened() {
+    return this.#deafened;
   }
-  set muted(value: boolean) {
-    this.#muted = value;
+  set deafened(value: boolean) {
+    this.#deafened = value;
+    this.gateway.send({
+      type: "deafened",
+      deafened: value,
+    });
     if (value) {
       this.muteNode.gain.setTargetAtTime(
         0,
@@ -232,7 +240,7 @@ export class WebRTC {
   }
 
   async handleSignalingMessage(rawData: unknown) {
-    const data = rawData as any;
+    const data = rawData as Message;
 
     switch (data.type) {
       case "connected":
@@ -240,50 +248,57 @@ export class WebRTC {
         console.log("Connected with ID:", this.clientId);
         break;
 
-      case "room-joined":
-        this.room = data.room;
+      case "rooms":
+        this.rooms = data.rooms;
+        console.log("Received rooms:", data.rooms);
+        break;
+
+      case "joined":
+        if (data.user.id !== this.clientId) {
+          console.log(`User ${data.user.name} joined room`, data.room);
+          return;
+        }
+        const room = this.rooms.find((room) => room.name === data.room);
+        if (!room) {
+          console.error("Room not found");
+          return;
+        }
+        this.room = room;
         this.isConnected = true;
-        this.users = data.users;
-        console.log("Joined room:", this.room, "with users:", this.users);
+        console.log("Joined room:", this.room);
 
         await this.mic.connect();
         // Initiate calls to existing users
-        for (const user of this.users) {
+        for (const user of this.room.users) {
+          if (user.id === this.clientId) continue;
           await this.initiateCall(user.id);
         }
         break;
 
-      case "left-room":
-        this.cleanup();
+      case "left":
+        if (data.user.id === this.clientId) {
+          this.cleanup();
+          return;
+        } else {
+          this.peers.get(data.user.id)?.cleanup();
+          this.peers.delete(data.user.id);
+        }
         break;
 
-      case "user-joined":
-        console.log("User joined:", data.userId, data.username);
-        this.users.push({ id: data.userId, username: data.username });
+      case "rtc.offer":
+        await this.acceptCall(data.offer, data.sender!);
         break;
 
-      case "user-left":
-        console.log("User left:", data.userId);
-        this.users = this.users.filter((u) => u.id !== data.userId);
-
-        // Close peer connection with this user
-        const peer = this.peers.get(data.targetId);
-        peer?.cleanup();
-        this.peers.delete(data.targetId);
+      case "rtc.answer":
+        await this.handleAnswer(data.answer, data.sender!);
         break;
 
-      case "offer":
-        await this.acceptCall(data.offer, data.sender);
-        break;
-
-      case "answer":
-        await this.handleAnswer(data.answer, data.sender);
-        break;
-
-      case "ice-candidate":
-        await this.handleIceCandidate(data.candidate, data.sender);
+      case "rtc.ice":
+        await this.handleIceCandidate(data.candidate, data.sender!);
         break;
     }
+
+    console.log("Peer connections:", this.peers.size, this.peers);
   }
 
   createPeer(targetId: string): Peer {
@@ -311,10 +326,10 @@ export class WebRTC {
         return;
       }
       this.gateway.send({
-        type: "ice-candidate",
+        type: "rtc.ice",
         candidate: event.candidate,
         target: targetId,
-        senderId: this.clientId,
+        sender: this.clientId,
       });
     };
 
@@ -340,7 +355,7 @@ export class WebRTC {
   }
 
   async initiateCall(targetId: string) {
-    if (!this.users.find((user) => user.id === targetId)) {
+    if (!this.room?.users.find((user) => user.id === targetId)) {
       console.error(`User ${targetId} not found`);
       return;
     }
@@ -356,10 +371,10 @@ export class WebRTC {
     await peer.pc.setLocalDescription(offer);
 
     this.gateway.send({
-      type: "offer",
+      type: "rtc.offer",
       offer: offer,
       target: targetId,
-      senderId: this.clientId,
+      sender: this.clientId,
     });
   }
 
@@ -376,10 +391,10 @@ export class WebRTC {
 
     // Send answer
     this.gateway.send({
-      type: "answer",
+      type: "rtc.answer",
       answer: answer,
       target: senderId,
-      senderId: this.clientId,
+      sender: this.clientId,
     });
   }
 
@@ -410,8 +425,7 @@ export class WebRTC {
     this.peers.clear();
     this.mic.disconnect();
     this.isConnected = false;
-    this.users = [];
-    this.room = "";
+    this.room = null;
   }
 
   async joinRoom(room: string) {
@@ -424,17 +438,16 @@ export class WebRTC {
       })();
     }
     this.gateway.send({
-      type: "join-room",
+      type: "join",
       room: room.trim(),
-      username: username.trim(),
-      senderId: this.clientId,
     });
   }
 
   leaveRoom() {
+    if (!this.room) return;
     this.gateway.send({
-      type: "leave-room",
-      senderId: this.clientId,
+      type: "leave",
+      room: this.room.name,
     });
   }
 }

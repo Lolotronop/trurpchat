@@ -1,99 +1,112 @@
-interface Client {
-  ws: any;
-  id: string;
-  room?: string;
-  username?: string;
+import type { ServerWebSocket } from "bun";
+import { Message, User } from "./types";
+
+type Client = ServerWebSocket<User>;
+
+class Room {
+  clients = new Set<Client>();
+  constructor(public name: string) {}
+
+  toJson() {
+    const users = this.users.sort((a, b) => a.id.localeCompare(b.id));
+    return {
+      name: this.name,
+      users,
+    };
+  }
+
+  send(message: Message) {
+    try {
+      const json = JSON.stringify(message);
+      this.clients.forEach((ws) => ws.send(json));
+    } catch (error) {
+      console.error(`Error sending message to room ${this.name}:`, error);
+    }
+  }
+
+  get users() {
+    return Array.from(this.clients).map((ws) => ws.data);
+  }
+
+  add(client: Client) {
+    this.clients.add(client);
+    this.send({
+      type: "joined",
+      room: this.name,
+      user: client.data,
+    });
+  }
+
+  remove(client: Client) {
+    if (this.clients.has(client)) {
+      this.send({
+        type: "left",
+        room: this.name,
+        user: client.data,
+      });
+      this.clients.delete(client);
+    } else {
+      console.log(`Client ${client.data.id} is not in room ${this.name}`);
+    }
+  }
 }
 
+class Hotel {
+  rooms: Room[] = [];
+
+  find(roomName: string): Room | undefined {
+    return this.rooms.find((room) => room.name === roomName);
+  }
+
+  toJson() {
+    return this.rooms.map((room) => room.toJson());
+  }
+
+  connect(roomName: string, client: Client) {
+    const room = this.rooms.find((room) => room.name === roomName);
+    if (!room) {
+      console.log(`Room ${roomName} does not exist`);
+      return;
+    }
+    this.rooms.forEach(() => room.remove(client));
+    room.add(client);
+  }
+
+  remove(client: Client) {
+    const room = this.rooms.find((room) => room.clients.has(client));
+    if (!room) {
+      console.log(`Client ${client.data.id} is not in a room`);
+      return;
+    }
+    room.remove(client);
+  }
+}
+
+const hotel = new Hotel();
+hotel.rooms.push(new Room("Альфа"));
+hotel.rooms.push(new Room("Бета"));
+
 const clients = new Map<string, Client>();
-const rooms = new Map<string, Set<string>>(); // room -> set of client IDs
-rooms.set("Альфа", new Set());
-rooms.set("Бета", new Set());
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-function broadcastToRoom(room: string, message: any, excludeId?: string) {
-  const messageStr = JSON.stringify(message);
-  const roomClients = rooms.get(room);
-
-  if (roomClients === undefined) {
-    console.warn(`Room ${room} does not exist`);
-    return;
-  }
-
-  for (const clientId of roomClients) {
-    if (clientId === excludeId) {
-      continue;
-    }
-
-    const client = clients.get(clientId);
-    if (client) {
-      client.ws.send(messageStr);
-    }
+function j(data: Message) {
+  try {
+    return JSON.stringify(data);
+  } catch (error) {
+    console.error("Error stringifying data:", data, error);
+    return "";
   }
 }
 
-function getRoomUsers(room: string): Array<{ id: string; username?: string }> {
-  const roomClients = rooms.get(room);
-  if (!roomClients) return [];
-
-  return Array.from(roomClients)
-    .map((clientId) => {
-      const client = clients.get(clientId);
-      return client ? { id: client.id, username: client.username } : null;
-    })
-    .filter((user) => user !== null);
-}
-
-function removeClientFromRoom(clientId: string) {
-  const client = clients.get(clientId);
-  if (!client) {
-    console.warn(`Client ${clientId} not found`);
-    return;
-  }
-  if (!client.room) {
-    console.warn(`Client ${clientId} is not in a room`);
-    return;
-  }
-
-  const roomClients = rooms.get(client.room);
-  if (!roomClients) {
-    console.warn(`Room ${client.room} not found`);
-    return;
-  }
-
-  roomClients.delete(clientId);
-  if (roomClients.size === 0) {
-    // rooms.delete(client.room);
-    console.log(`Room ${client.room} deleted (empty)`);
-  } else {
-    broadcastToRoom(client.room, {
-      type: "user-left",
-      userId: clientId,
-      username: client.username,
-    });
-  }
-}
-
-function serializeRooms() {
-  const r = {};
-  for (const room of rooms.keys()) {
-    const users = getRoomUsers(room);
-    r[room] = users;
-  }
-
-  return r;
-}
-
-Bun.serve({
+Bun.serve<User, void>({
   port: 3000,
   fetch(req, server) {
-    const thing = req.url.split("/")[3];
-    console.log(thing);
-    if (thing == "rooms") {
-      const r = serializeRooms();
+    const url = new URL(req.url);
+    if (url.pathname == "/rooms") {
+      const r = hotel.toJson();
       console.log("Returning to http", r);
       const res = new Response(JSON.stringify(r), { status: 200 });
       res.headers.set("Access-Control-Allow-Origin", "*");
@@ -103,208 +116,130 @@ Bun.serve({
       );
       return res;
     }
-    if (server.upgrade(req)) {
+    const name = url.searchParams.get("name");
+    if (!name) {
+      console.log("Missing name parameter");
+      return new Response("Missing name parameter", { status: 400 });
+    }
+    const options = {
+      data: { name },
+    };
+    if (server.upgrade(req, options)) {
       return;
     }
+
     return new Response("Upgrade failed", { status: 500 });
   },
   websocket: {
     open(ws) {
-      const clientId = generateId();
-      const client: Client = {
-        ws,
-        id: clientId,
-      };
-      clients.set(clientId, client);
-
-      console.log(`Client ${clientId} connected, ${clients.size} total`);
-
-      ws.subscribe("all");
+      ws.data.id = generateId();
+      clients.set(ws.data.id, ws);
+      ws.data.muted = false;
+      ws.data.streaming = false;
+      ws.data.deafened = false;
 
       ws.send(
-        JSON.stringify({
+        j({
           type: "connected",
-          id: clientId,
+          id: ws.data.id,
         }),
       );
-
-      const r = serializeRooms();
-      console.log(r);
-      setTimeout(() => {
-        ws.send(
-          JSON.stringify({
-            type: "rooms",
-            rooms: r,
-          }),
-        );
-      }, 1000);
+      ws.send(
+        j({
+          type: "rooms",
+          rooms: hotel.toJson(),
+        }),
+      );
     },
 
-    message(ws, message) {
+    message(ws, raw) {
+      let msg: Message;
       try {
-        const data = JSON.parse(message.toString());
-        const senderId = data.senderId;
-        const client = clients.get(senderId);
+        msg = JSON.parse(raw.toString());
+      } catch (error) {
+        console.error("Invalid message:", raw, error);
+        return;
+      }
 
-        if (!client) {
-          console.log("Client not found:", senderId);
+      if (msg.type === "join") {
+        const room = hotel.find(msg.room);
+        if (!room) {
+          console.error(`Room ${msg.room} not found`);
           return;
         }
-
-        let r;
-        switch (data.type) {
-          case "join-room":
-            const roomName = data.room;
-            const username = data.username || `User-${senderId}`;
-
-            // Remove client from previous room if any
-            if (client.room) {
-              removeClientFromRoom(senderId);
-            }
-
-            // Update client info
-            client.room = roomName;
-            client.username = username;
-            clients.set(senderId, client);
-
-            // Add to room
-            if (!rooms.has(roomName)) {
-              rooms.set(roomName, new Set());
-              console.log(`Room ${roomName} created`);
-            }
-            rooms.get(roomName)!.add(senderId);
-
-            // Get existing users in room (before adding current user)
-            const existingUsers = getRoomUsers(roomName).filter(
-              (u) => u.id !== senderId,
-            );
-
-            // Notify existing users about new user
-            broadcastToRoom(
-              roomName,
-              {
-                type: "user-joined",
-                userId: senderId,
-                username: username,
-              },
-              senderId,
-            );
-
-            // Send room info to new user
-            ws.send(
-              JSON.stringify({
-                type: "room-joined",
-                room: roomName,
-                users: existingUsers,
-              }),
-            );
-
-            r = serializeRooms();
-            for (const client of clients.values()) {
-              client.ws.send(
-                JSON.stringify({
-                  type: "rooms",
-                  rooms: r,
-                }),
-              );
-            }
-
-            console.log(
-              `Client ${senderId} (${username}) joined room ${roomName}`,
-            );
-            console.log(
-              `Room ${roomName} now has ${rooms.get(roomName)?.size} users`,
-            );
-            break;
-
-          case "offer":
-            const offerTarget = clients.get(data.target);
-            if (offerTarget) {
-              offerTarget.ws.send(
-                JSON.stringify({
-                  type: "offer",
-                  offer: data.offer,
-                  sender: senderId,
-                }),
-              );
-              console.log(`Offer sent from ${senderId} to ${data.target}`);
-            }
-            break;
-
-          case "answer":
-            const answerTarget = clients.get(data.target);
-            if (answerTarget) {
-              answerTarget.ws.send(
-                JSON.stringify({
-                  type: "answer",
-                  answer: data.answer,
-                  sender: senderId,
-                }),
-              );
-              console.log(`Answer sent from ${senderId} to ${data.target}`);
-            }
-            break;
-
-          case "ice-candidate":
-            const candidateTarget = clients.get(data.target);
-            if (candidateTarget) {
-              candidateTarget.ws.send(
-                JSON.stringify({
-                  type: "ice-candidate",
-                  candidate: data.candidate,
-                  sender: senderId,
-                }),
-              );
-            }
-            break;
-
-          case "leave-room":
-            removeClientFromRoom(senderId);
-            client.room = undefined;
-            client.username = undefined;
-            clients.set(senderId, client);
-
-            ws.send(
-              JSON.stringify({
-                type: "left-room",
-              }),
-            );
-
-            r = serializeRooms();
-            for (const client of clients.values()) {
-              client.ws.send(
-                JSON.stringify({
-                  type: "rooms",
-                  rooms: r,
-                }),
-              );
-            }
-
-            break;
-
-          default:
-            console.log("Unknown message type:", data.type);
+        room.add(ws);
+      } else if (msg.type === "leave") {
+        const room = hotel.find(msg.room);
+        if (!room) {
+          console.error(`Room ${msg.room} not found`);
+          return;
         }
-      } catch (error) {
-        console.error("Error parsing message:", error);
+        room.remove(ws);
+      } else if (msg.type === "muted") {
+        ws.data.muted = msg.muted;
+      } else if (msg.type === "streaming") {
+        ws.data.streaming = msg.streaming;
+      } else if (msg.type === "deafened") {
+        ws.data.deafened = msg.deafened;
+      } else if (msg.type === "rtc.ice" && msg.target) {
+        const target = clients.get(msg.target);
+        if (!target) {
+          console.error(`Client ${msg.target} not found`);
+          return;
+        }
+        target.send(
+          j({
+            type: "rtc.ice",
+            candidate: msg.candidate,
+            sender: ws.data.id,
+          }),
+        );
+      } else if (msg.type === "rtc.offer" && msg.target) {
+        const target = clients.get(msg.target);
+        if (!target) {
+          console.error(`Client ${msg.target} not found`);
+          return;
+        }
+        target.send(
+          j({
+            type: "rtc.offer",
+            offer: msg.offer,
+            sender: ws.data.id,
+          }),
+        );
+      } else if (msg.type === "rtc.answer" && msg.target) {
+        const target = clients.get(msg.target);
+        if (!target) {
+          console.error(`Client ${msg.target} not found`);
+          return;
+        }
+        target.send(
+          j({
+            type: "rtc.answer",
+            answer: msg.answer,
+            sender: ws.data.id,
+          }),
+        );
       }
+
+      // TODO: probably this can be done in a more efficient way
+      if (msg.type.startsWith("rtc")) {
+        return;
+      }
+      for (const client of clients.values()) {
+        client.send(
+          j({
+            type: "rooms",
+            rooms: Array.from(hotel.toJson()),
+          }),
+        );
+      }
+      console.log("Hotel status:", hotel.toJson());
     },
 
     close(ws) {
-      // Find and remove the client
-      let clientToRemove: Client | undefined;
-      for (const [id, client] of clients.entries()) {
-        if (client.ws === ws) {
-          clientToRemove = client;
-          removeClientFromRoom(id);
-          clients.delete(id);
-          break;
-        }
-      }
-
-      if (clientToRemove) {
-        console.log(`Client ${clientToRemove.id} disconnected`);
-      }
+      clients.delete(ws.data.id);
+      hotel.remove(ws);
     },
   },
 });

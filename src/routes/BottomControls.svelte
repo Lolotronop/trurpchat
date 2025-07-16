@@ -23,7 +23,7 @@
           <Tooltip.Root delayDuration={100}>
             <Tooltip.Trigger>
               <div class="flex flex-row items-center gap-2">
-                Подключен к {g.rtc.room}
+                Подключен к {g.rtc.room?.name}
                 <Info size={16} />
               </div>
             </Tooltip.Trigger>
@@ -32,11 +32,11 @@
               arrowClasses="bg-neutral-800"
             >
               <div>
-                {#each g.rtc.users as user}
+                {#each g.rtc.room?.users ?? [] as user}
                   {@const peer = g.rtc.peers.get(user.id)}
                   <div class="flex w-30 flex-row justify-between">
                     <p>
-                      {user.username}
+                      {user.name}
                     </p>
                     <p>
                       {peer?.ping ?? "N/A"}ms
@@ -95,7 +95,7 @@
         class="size-8"
         onclick={() => {
           g.mic.muted = !g.mic.muted;
-          g.rtc.muted = false;
+          g.rtc.deafened = false;
         }}
       >
         {#if !g.mic.muted}
@@ -106,16 +106,16 @@
       </Button>
 
       <Button
-        variant={g.rtc.muted ? "destructive" : "ghost"}
+        variant={g.rtc.deafened ? "destructive" : "ghost"}
         class="size-8"
         onclick={() => {
-          g.rtc.muted = !g.rtc.muted;
-          if (g.rtc.muted == true) {
+          g.rtc.deafened = !g.rtc.deafened;
+          if (g.rtc.deafened == true) {
             g.mic.muted = true;
           }
         }}
       >
-        {#if !g.rtc.muted}
+        {#if !g.rtc.deafened}
           <Headphones />
         {:else}
           <HeadphoneOff />

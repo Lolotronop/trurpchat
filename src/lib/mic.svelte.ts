@@ -1,5 +1,4 @@
-import type { SHA512_256 } from "bun";
-import { fromDb, toDb } from "./utils.svelte";
+import type { God } from "./god.svelte";
 
 export const MIN_DB = -60;
 
@@ -30,6 +29,7 @@ export class Mic {
       this.c.currentTime,
       0.01,
     );
+    this.g.ws.send({ type: "muted", muted: value });
   }
 
   #monitoring: boolean = $state(false);
@@ -96,6 +96,7 @@ export class Mic {
     audioContext: AudioContext,
     createGate: () => AudioWorkletNode,
     createLoudnessMeter: () => AudioWorkletNode,
+    private g: God,
   ) {
     console.log("Creating audio context");
     this.c = audioContext;

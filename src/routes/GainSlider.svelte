@@ -36,7 +36,6 @@
   };
 
   let hovering = $state(false);
-  $inspect(value);
 </script>
 
 {#snippet slider()}

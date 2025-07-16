@@ -1,4 +1,5 @@
 import ReconnectingWebSocket from "reconnecting-websocket";
+import type { Message } from "../../src-backend/types";
 
 export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
@@ -65,7 +66,7 @@ export class Gateway extends EventTarget {
     });
   }
 
-  send(data: any) {
+  send(data: Message) {
     try {
       this.socket?.send(JSON.stringify(data));
     } catch (error) {

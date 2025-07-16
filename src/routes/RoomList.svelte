@@ -5,50 +5,26 @@
   // "speaking" sending
   g.mic.enableAnalyzer();
 
-  import { MicOff, Volume2 } from "@lucide/svelte";
+  import { HeadphoneOff, MicOff, Volume2 } from "@lucide/svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Avatar from "$lib/components/ui/avatar";
   import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
   import GainSlider from "./GainSlider.svelte";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { toDb } from "$lib/utils.svelte";
-
-  function setRooms(d: Rooms) {
-    for (const [_, users] of Object.entries(d)) {
-      users.sort((a, b) => a.username.localeCompare(b.username));
-    }
-    rooms = d;
-  }
-  g.ws.onmessage = (data) => {
-    const d = data as {
-      type: "rooms";
-      rooms: Record<string, { id: string; username: string }[]>;
-    };
-    if (d.type === "rooms") {
-      console.log("Got a message!", d);
-      setRooms(d.rooms);
-    }
-  };
-  fetch(`http://${g.settings.settings.gatewayServer}/rooms`)
-    .then((res) => res.json())
-    .then(setRooms);
-
-  type User = { id: string; username: string };
-  type Rooms = Record<string, User[]>;
-  let rooms: Rooms = $state({});
 </script>
 
 <div class="h-full w-full p-2">
-  {#each Object.entries(rooms) as [roomName, users] (roomName)}
+  {#each g.rtc.rooms as room (room.name)}
     <div>
       <Button
         variant="ghost"
         class="flex w-full flex-row items-center justify-start text-base font-normal"
-        onclick={() => g.rtc.joinRoom(roomName)}
+        onclick={() => g.rtc.joinRoom(room.name)}
       >
         <div class="flex flex-row items-center gap-2">
           <Volume2 size={16} strokeWidth={3} />
-          <p>{roomName}</p>
+          <p>{room.name}</p>
         </div>
       </Button>
       <div class="flex flex-col pl-8">
@@ -57,6 +33,7 @@
           speaking: boolean,
           mutedSelf: boolean,
           mutedByMe: boolean,
+          deafened: boolean,
         )}
           <div
             class="flex flex-row items-center justify-between gap-2 rounded p-1 select-none hover:bg-neutral-800"
@@ -76,12 +53,15 @@
             </div>
             <div class="flex flex-row items-center gap-2 pr-2">
               {#if mutedSelf || mutedByMe}
-                <MicOff size={16} class={mutedSelf ? "" : "text-yellow-600"} />
+                <MicOff size={16} class={mutedByMe ? "text-yellow-600" : ""} />
+              {/if}
+              {#if deafened}
+                <HeadphoneOff size={16} />
               {/if}
             </div>
           </div>
         {/snippet}
-        {#each users as user (user.id)}
+        {#each room.users as user (user.id)}
           {@const peer = g.rtc.peers.get(user.id)}
           {#if user.id === g.rtc.clientId}
             {@render u(
@@ -89,15 +69,17 @@
               !g.mic.muted && g.mic.speaking,
               g.mic.muted,
               false,
+              g.rtc.deafened,
             )}
           {:else}
             <ContextMenu.Root>
               <ContextMenu.Trigger>
                 {@render u(
-                  user.username ?? "Error",
+                  user.name ?? "Error",
                   peer?.speaking ?? false,
-                  false,
+                  user.muted,
                   peer?.mute ?? false,
+                  user.deafened,
                 )}
               </ContextMenu.Trigger>
               <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">

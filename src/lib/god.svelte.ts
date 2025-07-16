@@ -49,7 +49,12 @@ export class God {
 
     this.settings = new Settings(this.tauri);
     this.c = context;
-    this.mic = new Mic(context, this.createGate, this.createLoudnessMeter);
+    this.mic = new Mic(
+      context,
+      this.createGate,
+      this.createLoudnessMeter,
+      this,
+    );
     this.mic.init();
     this.ws = new Gateway();
     this.lock = new WakeLockContainer();
@@ -72,7 +77,9 @@ export class God {
     $effect.root(() => {
       $effect(() => {
         if (this.settings.ready) {
-          this.ws.connect(`ws://${this.settings.settings.gatewayServer}`);
+          this.ws.connect(
+            `ws://${this.settings.settings.gatewayServer}?name=${this.settings.settings.username}`,
+          );
         }
       });
       $effect(() => {
