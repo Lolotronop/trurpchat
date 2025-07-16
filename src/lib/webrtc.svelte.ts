@@ -10,7 +10,7 @@ export class Peer {
 
   gainNode: GainNode;
   muteNode: GainNode;
-  #volume: number = 1;
+  #volume: number = $state(1);
   get volume(): number {
     return this.#volume;
   }

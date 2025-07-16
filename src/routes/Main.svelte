@@ -1,6 +1,7 @@
 <script lang="ts">
   import { gitGud } from "$lib/god.svelte";
   import BottomControls from "./BottomControls.svelte";
+  import GainSlider from "./GainSlider.svelte";
   import RoomList from "./RoomList.svelte";
   const g = gitGud();
   // TODO: this needs to be removed with proper

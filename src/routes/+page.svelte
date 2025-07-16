@@ -44,15 +44,20 @@
       transition:fade={{ duration: 200 }}
     >
       {#if g.settings.ready && g.settings.settings.username === "default"}
-        <Input
-          type="text"
-          placeholder="Имя пользователя"
-          class="mb-2 max-w-80"
-          bind:value={username}
-        />
-        <Button onclick={() => (g.settings.settings.username = username)}>
-          Войти
-        </Button>
+        <form class="contents">
+          <Input
+            type="text"
+            placeholder="Имя пользователя"
+            class="mb-2 max-w-80"
+            bind:value={username}
+          />
+          <Button
+            type="submit"
+            onclick={() => (g.settings.settings.username = username)}
+          >
+            Войти
+          </Button>
+        </form>
       {:else}
         <Loader2Icon class="animate-spin" />
         <div class="flex flex-row items-center justify-center gap-2">

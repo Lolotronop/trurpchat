@@ -11,6 +11,7 @@
   import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
   import GainSlider from "./GainSlider.svelte";
   import { Checkbox } from "$lib/components/ui/checkbox";
+  import { toDb } from "$lib/utils.svelte";
 
   function setRooms(d: Rooms) {
     for (const [_, users] of Object.entries(d)) {
@@ -51,7 +52,12 @@
         </div>
       </Button>
       <div class="flex flex-col pl-8">
-        {#snippet u(username: string, speaking: boolean, muted: boolean)}
+        {#snippet u(
+          username: string,
+          speaking: boolean,
+          mutedSelf: boolean,
+          mutedByMe: boolean,
+        )}
           <div
             class="flex flex-row items-center justify-between gap-2 rounded p-1 select-none hover:bg-neutral-800"
           >
@@ -69,8 +75,8 @@
               </p>
             </div>
             <div class="flex flex-row items-center gap-2 pr-2">
-              {#if muted}
-                <MicOff size={16} />
+              {#if mutedSelf || mutedByMe}
+                <MicOff size={16} class={mutedSelf ? "" : "text-yellow-600"} />
               {/if}
             </div>
           </div>
@@ -82,6 +88,7 @@
               g.settings.settings.username,
               !g.mic.muted && g.mic.speaking,
               g.mic.muted,
+              false,
             )}
           {:else}
             <ContextMenu.Root>
@@ -89,10 +96,11 @@
                 {@render u(
                   user.username ?? "Error",
                   peer?.speaking ?? false,
+                  false,
                   peer?.mute ?? false,
                 )}
               </ContextMenu.Trigger>
-              <ContextMenu.Content class="min-h-12 min-w-64">
+              <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">
                 {#if peer}
                   <Button
                     variant="ghost"
@@ -109,7 +117,8 @@
                     <p class="pl-2 text-sm font-normal">Громкость</p>
                     <GainSlider
                       bind:value={peer.volume}
-                      min={-24}
+                      min={-32}
+                      max={toDb(2)}
                       ticks={[0]}
                     />
                   </div>
