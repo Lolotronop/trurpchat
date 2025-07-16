@@ -1,90 +1,18 @@
 <script lang="ts">
-  import type { Action } from "svelte/action";
-  import OvenPlayer from "ovenplayer";
   import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
   import MicSettings from "./MicSettings.svelte";
   import { gitGud } from "$lib/god.svelte";
   import GainSlider from "./GainSlider.svelte";
+  import Stream from "./Stream.svelte";
 
   const g = gitGud();
 
-  let WS_URL = "ws://lolo-desktop:3000";
-  // let WS_URL = "ws://lolotronop.ru:3000";
+  // let WS_URL = "ws://lolo-desktop:3000";
+  let WS_URL = "ws://lolotronop.ru:3000";
   g.ws.connect(WS_URL);
 
   let showMicSettings = $state(false);
   let showStream = $state(false);
-
-  let player: OvenPlayer.OvenPlayerInstance;
-  $effect(() => {
-    if (!showStream && player) {
-      player.remove();
-      console.log("Removing player");
-    }
-  });
-
-  let streamVolume = $state(1);
-  const gainNode = g.c.createGain();
-  gainNode.connect(g.c.destination);
-  let sourceNode: MediaStreamAudioSourceNode | null = null;
-  $effect(() => {
-    gainNode.gain.setTargetAtTime(streamVolume, g.c.currentTime, 0.01);
-  });
-
-  const setupOven: Action<HTMLVideoElement> = (node) => {
-    player = OvenPlayer.create(node.id, {
-      controls: false,
-      autoStart: true,
-      showBigPlayButton: false,
-      expandFullScreenUI: true,
-      sources: [
-        {
-          type: "webrtc",
-          file: "ws://90.188.89.207:3333/app/test",
-        },
-      ],
-    });
-    g.c.resume();
-
-    let interval: any = null;
-    player.on("stateChanged", (state) => {
-      const el = player.getMediaElement();
-      el.muted = true;
-      el.addEventListener("canplay", () => {
-        const stream: MediaStream =
-          // @ts-ignore
-          el.captureStream?.() ||
-          // @ts-ignore
-          el.mozCaptureStream?.() ||
-          // @ts-ignore
-          el.webkitCaptureStream?.();
-
-        sourceNode = g.c.createMediaStreamSource(stream);
-        sourceNode.connect(gainNode);
-
-        let lastDrop = 0;
-        interval = setInterval(() => {
-          const q = el.getVideoPlaybackQuality();
-          const p = (q.droppedVideoFrames / q.totalVideoFrames) * 100;
-          if (q.droppedVideoFrames > lastDrop) {
-            console.log(
-              "Dropping frames!",
-              q.totalVideoFrames,
-              q.droppedVideoFrames,
-              p.toFixed(2),
-            );
-            lastDrop = q.droppedVideoFrames;
-          }
-        }, 1000);
-      });
-      if (state.newstate !== "playing") {
-        clearInterval(interval);
-        interval = null;
-        sourceNode?.disconnect();
-        sourceNode = null;
-      }
-    });
-  };
 
   let room = $state("room1");
   let user = $state("user" + Math.random().toFixed(3).substring(2));
@@ -174,12 +102,7 @@
       {g.rtc.isConnected ? `Leave ${g.rtc.room}` : `Join ${room}`}
     </button>
     {#if showStream}
-      <!-- svelte-ignore a11y_media_has_caption -->
-      <video id="stream" autoplay use:setupOven></video>
-      <button onclick={() => console.log(streamVolume, player.getVolume())}>
-        Hmm
-      </button>
-      <GainSlider bind:value={streamVolume} />
+      <Stream />
     {/if}
     <div
       class="h-6 w-6 rounded-full border-2 border-green-800"
@@ -187,7 +110,10 @@
     ></div>
     {#each g.rtc.peers.entries() as [id, peer] (id)}
       <div class="flex flex-col">
-        <p>{g.rtc.users.find((u) => u.id === id)?.username ?? id}</p>
+        <p>
+          {g.rtc.users.find((u) => u.id === id)?.username ?? id}
+          {peer.ping.toFixed(0)}ms
+        </p>
         <div class="flex flex-row">
           <div class="flex w-full flex-col">
             <GainSlider bind:value={peer.volume} />

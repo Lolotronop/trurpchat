@@ -33,6 +33,8 @@ export class Peer {
 
   peak: number = $state(0);
   rms: number = $state(0);
+  /** in ms */
+  ping: number = $state(0);
 
   constructor(
     targetId: string,
@@ -48,6 +50,21 @@ export class Peer {
     this.gainNode.connect(this.muteNode);
     this.muteNode.connect(this.analyzer);
     this.analyzer.connect(this.mic.c.destination);
+
+    setInterval(() => {
+      this.pc.getStats().then((stats) => {
+        stats.forEach((report) => {
+          if (
+            report.type === "candidate-pair" &&
+            report.state === "succeeded" &&
+            report.nominated === true
+          ) {
+            this.ping = report.currentRoundTripTime * 1000;
+            console.log(this.ping, report.currentRoundTripTime);
+          }
+        });
+      });
+    }, 1000);
 
     this.analyzer.port.onmessage = (event) => {
       this.peak = event.data.peak;
