@@ -12,15 +12,11 @@
   import GainSlider from "./GainSlider.svelte";
   import { Checkbox } from "$lib/components/ui/checkbox";
 
-  function setRooms(d: any) {
-    console.log(d);
-    const r = d;
-    for (const roomName in r) {
-      let users = r[roomName];
-      users = users.filter((user) => user.id !== g.rtc.clientId);
-      r[roomName] = users;
+  function setRooms(d: Rooms) {
+    for (const [_, users] of Object.entries(d)) {
+      users.sort((a, b) => a.username.localeCompare(b.username));
     }
-    rooms = r;
+    rooms = d;
   }
   g.ws.onmessage = (data) => {
     const d = data as {
@@ -36,7 +32,9 @@
     .then((res) => res.json())
     .then(setRooms);
 
-  let rooms: Record<string, { id: string; username: string }[]> = $state({});
+  type User = { id: string; username: string };
+  type Rooms = Record<string, User[]>;
+  let rooms: Rooms = $state({});
 </script>
 
 <div class="h-full w-full p-2">
@@ -77,45 +75,50 @@
             </div>
           </div>
         {/snippet}
-        {#if g.rtc.room === roomName}
-          {@render u(
-            g.settings.settings.username,
-            !g.mic.muted && g.mic.speaking,
-            g.mic.muted,
-          )}
-        {/if}
-        {#each users as user}
+        {#each users as user (user.id)}
           {@const peer = g.rtc.peers.get(user.id)}
-          <ContextMenu.Root>
-            <ContextMenu.Trigger>
-              {@render u(
-                user.username ?? "Error",
-                peer?.speaking ?? false,
-                peer?.mute ?? false,
-              )}
-            </ContextMenu.Trigger>
-            <ContextMenu.Content class="min-h-12 min-w-64">
-              {#if peer}
-                <Button
-                  variant="ghost"
-                  class="flex w-full flex-row justify-between"
-                  onclick={() => {
-                    peer.mute = !peer.mute;
-                  }}
-                >
-                  <p>Замутить</p>
-                  <Checkbox checked={peer.mute} />
-                </Button>
+          {#if user.id === g.rtc.clientId}
+            {@render u(
+              g.settings.settings.username,
+              !g.mic.muted && g.mic.speaking,
+              g.mic.muted,
+            )}
+          {:else}
+            <ContextMenu.Root>
+              <ContextMenu.Trigger>
+                {@render u(
+                  user.username ?? "Error",
+                  peer?.speaking ?? false,
+                  peer?.mute ?? false,
+                )}
+              </ContextMenu.Trigger>
+              <ContextMenu.Content class="min-h-12 min-w-64">
+                {#if peer}
+                  <Button
+                    variant="ghost"
+                    class="flex w-full flex-row justify-between"
+                    onclick={() => {
+                      peer.mute = !peer.mute;
+                    }}
+                  >
+                    <p>Замутить</p>
+                    <Checkbox checked={peer.mute} />
+                  </Button>
 
-                <div class="w-full px-2">
-                  <p class="pl-2 text-sm font-normal">Громкость</p>
-                  <GainSlider bind:value={peer.volume} min={-24} ticks={[0]} />
-                </div>
-              {:else}
-                <p>:(</p>
-              {/if}
-            </ContextMenu.Content>
-          </ContextMenu.Root>
+                  <div class="w-full px-2">
+                    <p class="pl-2 text-sm font-normal">Громкость</p>
+                    <GainSlider
+                      bind:value={peer.volume}
+                      min={-24}
+                      ticks={[0]}
+                    />
+                  </div>
+                {:else}
+                  <p>:(</p>
+                {/if}
+              </ContextMenu.Content>
+            </ContextMenu.Root>
+          {/if}
         {/each}
       </div>
     </div>

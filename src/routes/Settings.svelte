@@ -42,7 +42,9 @@
         <h1>Усиление микрофона</h1>
         <GainSlider min={-12} bind:value={g.mic.gain} />
         <h1>Чувствительность</h1>
-        <div class={`${g.mic.speaking ? "" : "sepia-100"}`}>
+        <div
+          class={`transition-[filter] duration-50 ${g.mic.speaking ? "" : "sepia-100"}`}
+        >
           <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
         </div>
         <input
