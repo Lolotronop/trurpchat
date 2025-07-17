@@ -23,6 +23,7 @@ export class Mic {
     return this.#muted;
   }
   set muted(value) {
+    this.g.settings.settings.muted = value;
     this.#muted = value;
     this.nodes.outputGain.gain.setTargetAtTime(
       value ? 0 : 1,
@@ -58,6 +59,7 @@ export class Mic {
       return;
     }
     gateThreshold.setTargetAtTime(value, this.c.currentTime, 0.01);
+    this.g.settings.settings.gateThreshold = value;
     this.#gateThreshold = value;
   }
   get gateThreshold() {
@@ -67,7 +69,9 @@ export class Mic {
   #gain: number = $state(1);
   set gain(value) {
     this.#gain = value;
+
     this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
+    this.g.settings.settings.gain = value;
   }
   get gain() {
     return this.#gain;
@@ -92,20 +96,15 @@ export class Mic {
     echoCancellation: false,
   });
 
-  constructor(
-    audioContext: AudioContext,
-    createGate: () => AudioWorkletNode,
-    createLoudnessMeter: () => AudioWorkletNode,
-    private g: God,
-  ) {
+  constructor(private g: God) {
     console.log("Creating audio context");
-    this.c = audioContext;
+    this.c = g.c;
     this.nodes = {
       source: null,
       inputGain: this.c.createGain(),
       limiter: this.c.createDynamicsCompressor(),
-      analyzer: createLoudnessMeter(),
-      noiseGate: createGate(),
+      analyzer: g.createLoudnessMeter(),
+      noiseGate: g.createGate(),
       outputGain: this.c.createGain(),
       destination: this.c.createMediaStreamDestination(),
       merger: this.c.createChannelMerger(2),
@@ -143,6 +142,10 @@ export class Mic {
   }
 
   async init() {
+    this.deviceId = this.g.settings.settings.deviceId;
+    this.muted = this.g.settings.settings.muted;
+    this.gain = this.g.settings.settings.gain;
+    this.gateThreshold = this.g.settings.settings.gateThreshold;
     try {
       let media = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -157,6 +160,7 @@ export class Mic {
       console.error("Error getting permissions:", error);
       this.hasPermissions = false;
     }
+
     this.hasPermissions = true;
     this.updateDevices();
   }
@@ -173,6 +177,7 @@ export class Mic {
     };
     if (this.deviceId) {
       settings.deviceId = this.deviceId;
+      this.g.settings.settings.deviceId = this.deviceId;
     }
 
     try {

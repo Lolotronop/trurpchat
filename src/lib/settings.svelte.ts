@@ -6,6 +6,10 @@ interface SettingsKeys {
   ovenServer: string;
   username: string | "default";
   bgColor: string;
+  muted: boolean;
+  deviceId: string | null;
+  gain: number;
+  gateThreshold: number;
 }
 
 const defaultSettings: SettingsKeys = {
@@ -15,6 +19,10 @@ const defaultSettings: SettingsKeys = {
   ovenServer: "90.188.89.207",
   username: "default",
   bgColor: "#070709",
+  muted: false,
+  deviceId: null,
+  gain: 1,
+  gateThreshold: -30,
 };
 
 export class Settings {

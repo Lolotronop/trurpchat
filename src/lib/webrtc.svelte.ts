@@ -264,6 +264,12 @@ export class WebRTC {
 
       case "rooms":
         this.rooms = msg.rooms;
+        if (this.room) {
+          const r = this.rooms.find((room) => room.name === this.room?.name);
+          if (r) {
+            this.room = r;
+          }
+        }
         console.log("Received rooms:", msg.rooms);
         break;
 

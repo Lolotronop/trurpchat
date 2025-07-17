@@ -1,4 +1,4 @@
-import { getContext, setContext } from "svelte";
+import { getContext, setContext, untrack } from "svelte";
 import { Gateway } from "./gateway.svelte";
 import { Mic } from "./mic.svelte";
 import { WebRTC } from "./webrtc.svelte";
@@ -49,13 +49,7 @@ export class God {
 
     this.settings = new Settings(this.tauri);
     this.c = context;
-    this.mic = new Mic(
-      context,
-      this.createGate,
-      this.createLoudnessMeter,
-      this,
-    );
-    this.mic.init();
+    this.mic = new Mic(this);
     this.ws = new Gateway();
     this.lock = new WakeLockContainer();
     this.lock.lock();
@@ -83,10 +77,15 @@ export class God {
         }
       });
       $effect(() => {
+        if (this.settings.ready) {
+          untrack(() => this.mic.init());
+        }
+      });
+      $effect(() => {
         this.ready =
           this.mic.hasPermissions &&
           this.ws.connected &&
-          !!this.lock.wakeLock &&
+          // !!this.lock.wakeLock &&
           this.settings.ready;
       });
     });

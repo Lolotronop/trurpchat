@@ -14,6 +14,7 @@
   } from "@lucide/svelte";
   import Settings from "./Settings.svelte";
   const g = gitGud();
+  $inspect(g.rtc.room?.users);
 </script>
 
 <div class="rounded border px-2">

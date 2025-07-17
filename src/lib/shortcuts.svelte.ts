@@ -56,7 +56,7 @@ export class Shortcuts extends EventTarget {
       if (e.ctrlKey) key = "Ctrl+";
       if (e.altKey) key += "Alt+";
       if (e.shiftKey) key += "Shift+";
-      key += e.key;
+      key += e.code;
     }
 
     try {
