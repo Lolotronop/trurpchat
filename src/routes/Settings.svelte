@@ -51,6 +51,7 @@
               variant={g.mic.monitoring ? "secondary" : "outline"}
               onclick={() => {
                 g.mic.monitoring = !g.mic.monitoring;
+                g.mic.connect();
               }}
             >
               Прослушать
