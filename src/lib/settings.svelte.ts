@@ -12,7 +12,7 @@ const defaultSettings: SettingsKeys = {
   version: "1",
   // gatewayServer: "lolotronop.ru:3000",
   gatewayServer: "lolo-desktop:3000",
-  ovenServer: "90.188.89.207:3333",
+  ovenServer: "90.188.89.207",
   username: "default",
   bgColor: "#070709",
 };

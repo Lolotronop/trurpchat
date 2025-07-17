@@ -1,15 +1,28 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
+  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import { gitGud } from "$lib/god.svelte";
-  import { Settings } from "@lucide/svelte";
+  import { Copy, Settings } from "@lucide/svelte";
   import GainSlider from "./GainSlider.svelte";
   import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
   import { Input } from "$lib/components/ui/input";
+  import { onMount } from "svelte";
   const g = gitGud();
   g.mic.connect();
 
   let gatewayUrl = $state(g.settings.settings.gatewayServer);
+  let streamUrl = $derived(
+    `srt://${g.settings.settings.ovenServer}:9999?streamid=srt%3A%2F%2F${g.settings.settings.ovenServer}%3A9999%2Fapp%2F${g.settings.settings.username}&latency=200000`,
+  );
+  let copied = $state(false);
+  $effect(() => {
+    if (copied) {
+      setTimeout(() => {
+        copied = false;
+      }, 2000);
+    }
+  });
 </script>
 
 <Dialog.Root
@@ -80,6 +93,34 @@
               g.ws.connect(`ws://${gatewayUrl}`);
             }}>Подключиться</Button
           >
+        </div>
+        <h1 class="text-foreground text-lg">Стрим</h1>
+        <div>
+          <h1>Ссылка для OBS</h1>
+          <div class="flex flex-row justify-between">
+            <Input disabled={true} value={streamUrl}></Input>
+
+            <Tooltip.Provider>
+              <Tooltip.Root delayDuration={100}>
+                <Tooltip.Trigger>
+                  <Button
+                    variant="secondary"
+                    class={`transitil-colors ${copied ? "bg-green-500 text-white hover:bg-green-500 hover:text-white" : ""}`}
+                    onclick={() => {
+                      navigator.clipboard.writeText(streamUrl);
+                      copied = true;
+                    }}><Copy /></Button
+                  >
+                </Tooltip.Trigger>
+                <Tooltip.Content
+                  class="text-foreground bg-neutral-800"
+                  arrowClasses="bg-neutral-800"
+                >
+                  <div>{copied ? "Скопировано" : "Скопировать ссылку"}</div>
+                </Tooltip.Content>
+              </Tooltip.Root>
+            </Tooltip.Provider>
+          </div>
         </div>
       </Dialog.Description>
     </Dialog.Header>

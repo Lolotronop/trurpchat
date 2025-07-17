@@ -9,6 +9,7 @@
     Info,
     Mic,
     MicOff,
+    MonitorUp,
     PhoneOff,
   } from "@lucide/svelte";
   import Settings from "./Settings.svelte";
@@ -32,7 +33,7 @@
               arrowClasses="bg-neutral-800"
             >
               <div>
-                {#each g.rtc.room?.users ?? [] as user}
+                {#each g.rtc.room?.users! as user}
                   {@const peer = g.rtc.peers.get(user.id)}
                   <div class="flex w-30 flex-row justify-between">
                     <p>
@@ -49,6 +50,15 @@
         </Tooltip.Provider>
       </p>
 
+      <Button
+        variant={g.rtc.streaming ? "default" : "ghost"}
+        class="size-8"
+        onclick={() => {
+          g.rtc.streaming = !g.rtc.streaming;
+        }}
+      >
+        <MonitorUp />
+      </Button>
       <Button
         variant="ghost"
         class="size-8"

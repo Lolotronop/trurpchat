@@ -8,10 +8,14 @@ class Room {
   constructor(public name: string) {}
 
   toJson() {
-    const users = this.users.sort((a, b) => a.id.localeCompare(b.id));
+    const allUsers = this.users;
+    const streaming = allUsers.filter((u) => u.streaming);
+    streaming.sort((a, b) => a.id.localeCompare(b.id));
+    const rest = allUsers.filter((u) => !u.streaming);
+    rest.sort((a, b) => a.id.localeCompare(b.id));
     return {
       name: this.name,
-      users,
+      users: [...streaming, ...rest],
     };
   }
 
@@ -238,8 +242,16 @@ Bun.serve<User, void>({
     },
 
     close(ws) {
-      clients.delete(ws.data.id);
       hotel.remove(ws);
+      clients.delete(ws.data.id);
+      clients.forEach((client) => {
+        client.send(
+          j({
+            type: "rooms",
+            rooms: Array.from(hotel.toJson()),
+          }),
+        );
+      });
     },
   },
 });

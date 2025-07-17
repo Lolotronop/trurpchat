@@ -5,10 +5,11 @@
   // "speaking" sending
   g.mic.enableAnalyzer();
 
-  import { HeadphoneOff, MicOff, Volume2 } from "@lucide/svelte";
+  import { HeadphoneOff, MicOff, TvMinimalPlay, Volume2 } from "@lucide/svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Avatar from "$lib/components/ui/avatar";
   import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import GainSlider from "./GainSlider.svelte";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { toDb } from "$lib/utils.svelte";
@@ -34,6 +35,7 @@
           mutedSelf: boolean,
           mutedByMe: boolean,
           deafened: boolean,
+          streaming: boolean,
         )}
           <div
             class="flex flex-row items-center justify-between gap-2 rounded p-1 select-none hover:bg-neutral-800"
@@ -58,6 +60,29 @@
               {#if deafened}
                 <HeadphoneOff size={16} />
               {/if}
+              {#if streaming}
+                <Tooltip.Provider>
+                  <Tooltip.Root delayDuration={100}>
+                    <Tooltip.Trigger>
+                      <Button
+                        variant="ghost"
+                        class="h-full p-0 hover:bg-red-600 hover:text-red-600"
+                        onclick={() => {
+                          g.rtc.watching = username;
+                        }}
+                      >
+                        <TvMinimalPlay size={16} />
+                      </Button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Content
+                      class="text-foreground bg-neutral-800"
+                      arrowClasses="bg-neutral-800"
+                    >
+                      Смотреть
+                    </Tooltip.Content>
+                  </Tooltip.Root>
+                </Tooltip.Provider>
+              {/if}
             </div>
           </div>
         {/snippet}
@@ -70,6 +95,7 @@
               g.mic.muted,
               false,
               g.rtc.deafened,
+              user.streaming,
             )}
           {:else}
             <ContextMenu.Root>
@@ -80,6 +106,7 @@
                   user.muted,
                   peer?.mute ?? false,
                   user.deafened,
+                  user.streaming,
                 )}
               </ContextMenu.Trigger>
               <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">

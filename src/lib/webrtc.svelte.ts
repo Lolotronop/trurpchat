@@ -217,6 +217,20 @@ export class WebRTC {
     }
   }
 
+  #streaming: boolean = false;
+  get streaming() {
+    return this.#streaming;
+  }
+  set streaming(value: boolean) {
+    this.#streaming = value;
+    this.gateway.send({
+      type: "streaming",
+      streaming: value,
+    });
+  }
+
+  watching: string | null = $state(null);
+
   constructor(
     gateway: Gateway,
     mic: Mic,
@@ -240,25 +254,25 @@ export class WebRTC {
   }
 
   async handleSignalingMessage(rawData: unknown) {
-    const data = rawData as Message;
+    const msg = rawData as Message;
 
-    switch (data.type) {
+    switch (msg.type) {
       case "connected":
-        this.clientId = data.id;
+        this.clientId = msg.id;
         console.log("Connected with ID:", this.clientId);
         break;
 
       case "rooms":
-        this.rooms = data.rooms;
-        console.log("Received rooms:", data.rooms);
+        this.rooms = msg.rooms;
+        console.log("Received rooms:", msg.rooms);
         break;
 
       case "joined":
-        if (data.user.id !== this.clientId) {
-          console.log(`User ${data.user.name} joined room`, data.room);
+        if (msg.user.id !== this.clientId) {
+          console.log(`User ${msg.user.name} joined room`, msg.room);
           return;
         }
-        const room = this.rooms.find((room) => room.name === data.room);
+        const room = this.rooms.find((room) => room.name === msg.room);
         if (!room) {
           console.error("Room not found");
           return;
@@ -276,28 +290,31 @@ export class WebRTC {
         break;
 
       case "left":
-        if (data.user.id === this.clientId) {
+        if (msg.user.id === this.clientId) {
           this.cleanup();
           return;
         } else {
-          this.peers.get(data.user.id)?.cleanup();
-          this.peers.delete(data.user.id);
+          this.peers.get(msg.user.id)?.cleanup();
+          this.peers.delete(msg.user.id);
         }
         break;
 
       case "rtc.offer":
-        await this.acceptCall(data.offer, data.sender!);
+        await this.acceptCall(msg.offer, msg.sender!);
         break;
 
       case "rtc.answer":
-        await this.handleAnswer(data.answer, data.sender!);
+        await this.handleAnswer(msg.answer, msg.sender!);
         break;
 
       case "rtc.ice":
-        await this.handleIceCandidate(data.candidate, data.sender!);
+        await this.handleIceCandidate(msg.candidate, msg.sender!);
         break;
     }
 
+    if (msg.type.startsWith("rtc")) {
+      return;
+    }
     console.log("Peer connections:", this.peers.size, this.peers);
   }
 
@@ -322,7 +339,7 @@ export class WebRTC {
     // Handle ICE candidates
     peer.pc.onicecandidate = (event) => {
       if (!event.candidate) {
-        console.error("No ice candidate");
+        console.warn("No ice candidate");
         return;
       }
       this.gateway.send({
@@ -348,7 +365,7 @@ export class WebRTC {
       }
     };
     peer.pc.onicecandidateerror = (event) => {
-      console.error("ICE candidate error:", event.errorText);
+      console.warn("ICE candidate error:", event.errorText);
     };
 
     return peer;
@@ -433,9 +450,9 @@ export class WebRTC {
     console.log("Joining room:", room, "with username:", username);
     if (this.isConnected) {
       this.leaveRoom();
-      await (() => {
-        return new Promise((resolve) => setTimeout(resolve, 1000));
-      })();
+      // await (() => {
+      //   return new Promise((resolve) => setTimeout(resolve, 1000));
+      // })();
     }
     this.gateway.send({
       type: "join",
