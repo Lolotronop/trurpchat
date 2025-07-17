@@ -24,6 +24,8 @@
       }, 2000);
     }
   });
+
+  let username = $state(g.settings.settings.username);
 </script>
 
 <Dialog.Root
@@ -172,16 +174,31 @@
             </div>
           {/each}
         </div>
-        <h1 class="text-foreground text-lg">Сервер</h1>
-        <div class="flex flex-row justify-between gap-4">
-          <Input bind:value={gatewayUrl} />
-          <Button
-            variant="secondary"
-            onclick={() => {
-              g.settings.settings.gatewayServer = gatewayUrl;
-              g.ws.connect(`ws://${gatewayUrl}`);
-            }}>Подключиться</Button
-          >
+        <div>
+          <h1 class="text-foreground text-lg">Никнейм</h1>
+          <div class="flex flex-row justify-between gap-4">
+            <Input bind:value={username} />
+            <Button
+              variant="secondary"
+              onclick={() => {
+                g.settings.settings.username = username;
+                window.location.reload();
+              }}>Сохранить</Button
+            >
+          </div>
+        </div>
+        <div>
+          <h1 class="text-foreground text-lg">Сервер</h1>
+          <div class="flex flex-row justify-between gap-4">
+            <Input bind:value={gatewayUrl} />
+            <Button
+              variant="secondary"
+              onclick={() => {
+                g.settings.settings.gatewayServer = gatewayUrl;
+                g.ws.connect(`ws://${gatewayUrl}`);
+              }}>Подключиться</Button
+            >
+          </div>
         </div>
       </Dialog.Description>
     </Dialog.Header>
