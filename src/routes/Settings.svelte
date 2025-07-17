@@ -79,7 +79,12 @@
               g.mic.connect();
             }}
           >
-            <Select.Trigger class="w-full">
+            <Select.Trigger
+              class="w-full"
+              onclick={() => {
+                g.mic.updateDevices();
+              }}
+            >
               {g.mic.devices.find(
                 (device) => device.deviceId === g.mic.deviceId,
               )?.label ?? "Не выбрано"}
