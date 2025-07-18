@@ -9,6 +9,7 @@
   import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
   import { Input } from "$lib/components/ui/input";
   import { onMount } from "svelte";
+  import { actions } from "$lib/shortcuts.svelte";
   const g = gitGud();
   g.mic.connect();
 
@@ -130,10 +131,10 @@
         </div>
 
         <div>
-          <h1 class="text-foreground text-lg">Шорткаты</h1>
+          <h1 class="text-foreground text-lg">Горячие клавиши</h1>
           {#each g.keys.bindings.entries() as [action, key] (action)}
-            <div class="flex flex-row items-center justify-between">
-              <p class="text-foreground text-base">{action}</p>
+            <div class="mb-2 flex flex-row items-center justify-between">
+              <p class="text-base text-neutral-300">{actions[action]}</p>
               <div class="flex flex-row items-center justify-between gap-2">
                 <Tooltip.Provider>
                   <Tooltip.Root delayDuration={100}>
@@ -164,7 +165,7 @@
                       class="text-foreground bg-neutral-800"
                       arrowClasses="bg-neutral-800"
                     >
-                      Нажмите чтобы задать!
+                      Нажмите, чтобы задать
                     </Tooltip.Content>
                   </Tooltip.Root>
                 </Tooltip.Provider>

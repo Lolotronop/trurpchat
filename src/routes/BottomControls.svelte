@@ -106,7 +106,6 @@
         class="size-8"
         onclick={() => {
           g.mic.muted = !g.mic.muted;
-          g.rtc.deafened = false;
         }}
       >
         {#if !g.mic.muted}
@@ -121,9 +120,6 @@
         class="size-8"
         onclick={() => {
           g.rtc.deafened = !g.rtc.deafened;
-          if (g.rtc.deafened == true) {
-            g.mic.muted = true;
-          }
         }}
       >
         {#if !g.rtc.deafened}

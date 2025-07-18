@@ -6,8 +6,11 @@ import {
 } from "@tauri-apps/plugin-global-shortcut";
 import { SvelteMap } from "svelte/reactivity";
 
-const actions = ["mute"] as const;
-type KeyAction = (typeof actions)[number];
+export const actions = {
+  mute: "Выключить микрофон",
+  deafen: "Выключить звук",
+} as const;
+type KeyAction = keyof typeof actions;
 
 const keymap = {
   ControlLeft: "Ctrl",
@@ -25,7 +28,7 @@ export class Shortcuts extends EventTarget {
     super();
     unregisterAll();
     this.store = new LazyStore("shortcuts.json");
-    for (const action of actions) {
+    for (const action of Object.keys(actions) as KeyAction[]) {
       this.bindings.set(action, null);
     }
     this.store.entries().then(async (entries) => {
@@ -37,6 +40,12 @@ export class Shortcuts extends EventTarget {
 
   set(action: KeyAction, key: string) {
     console.log("setting", action, key);
+    if (this.bindings.has(action)) {
+      const oldKey = this.bindings.get(action);
+      if (oldKey) {
+        unregister(oldKey);
+      }
+    }
     this.bindings.set(action, key);
     this.store.set(action, key);
     register(key, (e) => {

@@ -67,6 +67,11 @@ export class God {
         this.mic.muted = !this.mic.muted;
       }
     });
+    this.keys.on("deafen", (state) => {
+      if (state === "Released") {
+        this.rtc.deafened = !this.rtc.deafened;
+      }
+    });
 
     $effect.root(() => {
       $effect(() => {

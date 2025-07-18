@@ -203,6 +203,7 @@ export class WebRTC {
       deafened: value,
     });
     if (value) {
+      this.mic.muted = true;
       this.muteNode.gain.setTargetAtTime(
         0,
         this.audioContext.currentTime,

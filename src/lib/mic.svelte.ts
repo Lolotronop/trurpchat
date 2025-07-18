@@ -25,6 +25,9 @@ export class Mic {
   set muted(value) {
     this.g.settings.settings.muted = value;
     this.#muted = value;
+    if (value == false) {
+      this.g.rtc.deafened = false;
+    }
     this.nodes.outputGain.gain.setTargetAtTime(
       value ? 0 : 1,
       this.c.currentTime,
