@@ -89,7 +89,6 @@ export class Peer {
       throw new Error("Local stream not available");
     }
 
-    // Add local stream to peer connection
     const [audioTrack] = this.mic.nodes.destination.stream.getAudioTracks();
     this.pc.addTrack(audioTrack, this.mic.stream);
 
@@ -114,7 +113,6 @@ export class Peer {
       return audio;
     }
 
-    // Handle remote stream
     this.pc.ontrack = (event) => {
       console.log(
         "Received remote stream from:",
@@ -218,7 +216,7 @@ export class WebRTC {
     }
   }
 
-  #streaming: boolean = false;
+  #streaming: boolean = $state(false);
   get streaming() {
     return this.#streaming;
   }
