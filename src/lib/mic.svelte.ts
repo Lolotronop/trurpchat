@@ -62,6 +62,27 @@ export class Mic {
     return this.#gain;
   }
 
+  #noiseSuppression: boolean = $state(true);
+  set noiseSuppression(value) {
+    this.#noiseSuppression = value;
+    this.g.settings.settings.noiseSuppression = value;
+    this.connect();
+  }
+  get noiseSuppression() {
+    return this.#noiseSuppression;
+  }
+
+  #echoCancellation: boolean = $state(false);
+  set echoCancellation(value) {
+    this.#echoCancellation = value;
+
+    this.g.settings.settings.echoCancellation = value;
+    this.connect();
+  }
+  get echoCancellation() {
+    return this.#echoCancellation;
+  }
+
   speaking: boolean = $state(false);
 
   peak: number = $state(0);
@@ -77,8 +98,6 @@ export class Mic {
     limiterRelease: 0.25,
     noiseGateAttack: 0.01,
     noiseGateRelease: 0.2,
-    noiseSuppression: false,
-    echoCancellation: false,
   });
 
   constructor(private g: God) {
@@ -154,8 +173,8 @@ export class Mic {
     await this.c.resume();
 
     const settings: MediaTrackConstraints = {
-      noiseSuppression: this.controls.noiseSuppression,
-      echoCancellation: this.controls.echoCancellation,
+      noiseSuppression: this.g.settings.settings.noiseSuppression,
+      echoCancellation: this.g.settings.settings.echoCancellation,
       autoGainControl: false,
       channelCount: 1,
     };

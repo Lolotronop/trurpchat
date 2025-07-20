@@ -10,6 +10,8 @@ interface SettingsKeys {
   deviceId: string | null;
   gain: number;
   gateThreshold: number;
+  noiseSuppression: boolean;
+  echoCancellation: boolean;
 }
 
 const defaultSettings: SettingsKeys = {
@@ -23,6 +25,8 @@ const defaultSettings: SettingsKeys = {
   deviceId: null,
   gain: 1,
   gateThreshold: -30,
+  noiseSuppression: true,
+  echoCancellation: false,
 };
 
 export class Settings {

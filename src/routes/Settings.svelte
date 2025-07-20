@@ -10,6 +10,8 @@
   import { Input } from "$lib/components/ui/input";
   import { onMount } from "svelte";
   import { actions } from "$lib/shortcuts.svelte";
+  import { Switch } from "$lib/components/ui/switch";
+  import { Label } from "$lib/components/ui/label";
   const g = gitGud();
   g.mic.connect();
 
@@ -57,6 +59,23 @@
             >
               Прослушать
             </Button>
+          </div>
+
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center space-x-2">
+              <Switch
+                id="airplane-mode"
+                bind:checked={g.mic.noiseSuppression}
+              />
+              <Label for="airplane-mode">Шумоподавление</Label>
+            </div>
+            <div class="flex items-center space-x-2">
+              <Switch
+                id="airplane-mode"
+                bind:checked={g.mic.echoCancellation}
+              />
+              <Label for="airplane-mode">Эхоподавление</Label>
+            </div>
           </div>
           <h1>Усиление микрофона</h1>
           <GainSlider min={-12} bind:value={g.mic.gain} />
