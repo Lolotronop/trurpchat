@@ -1,4 +1,5 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
+import debounced from "./utils.svelte";
 
 interface SettingsKeys {
   version: string;
@@ -40,12 +41,14 @@ export class Settings {
     this.store = new LazyStore("settings.json");
     this.tauri = tauri;
 
+    const save = debounced(() => this.save(), 500);
+
     this.init().then(() => {
       this.ready = true;
       $effect.root(() => {
         $effect(() => {
           this.settings;
-          this.save();
+          save();
         });
       });
     });

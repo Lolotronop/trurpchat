@@ -29,10 +29,7 @@
                 <Info size={16} />
               </div>
             </Tooltip.Trigger>
-            <Tooltip.Content
-              class="text-foreground bg-neutral-800"
-              arrowClasses="bg-neutral-800"
-            >
+            <Tooltip.Content>
               <div>
                 {#each g.rtc.room?.users! as user}
                   {@const peer = g.rtc.peers.get(user.id)}
@@ -73,7 +70,7 @@
     <div class="border"></div>
   {/if}
   <div
-    class="bg-background:lighen flex h-16 w-full shrink flex-row items-center justify-between"
+    class="bg-background flex h-16 w-full shrink flex-row items-center justify-between"
   >
     <div class="flex shrink flex-row items-center gap-1">
       <Avatar.Root class="size-10">
@@ -89,10 +86,7 @@
               {g.settings.settings.username}
             </p>
           </Tooltip.Trigger>
-          <Tooltip.Content
-            class="text-foreground bg-neutral-800"
-            arrowClasses="bg-neutral-800"
-          >
+          <Tooltip.Content>
             {g.settings.settings.username}
           </Tooltip.Content>
         </Tooltip.Root>

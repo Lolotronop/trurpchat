@@ -15,14 +15,16 @@
 </script>
 
 <div class="relative w-full pb-3">
-  <div class="pointer-events-none absolute inset-0 z-10">
+  <div class="pointer-events-none absolute inset-0 z-10 select-none">
     {#each ticks as t}
       <div
         class="absolute flex -translate-x-1/2 flex-col items-center"
         style="left: {pct(t)};"
       >
-        <div class="h-3 w-[2px] bg-slate-300"></div>
-        <div class="text-s mt-1 text-slate-300">{t > 0 ? "+" : ""}{t}</div>
+        <div class="bg-muted h-3 w-[2px]"></div>
+        <div class="text-s text-muted-foreground mt-1">
+          {t > 0 ? "+" : ""}{t}
+        </div>
       </div>
     {/each}
   </div>

@@ -38,7 +38,7 @@
           streaming: boolean,
         )}
           <div
-            class="flex flex-row items-center justify-between gap-2 rounded p-1 select-none hover:bg-neutral-800"
+            class="hover:bg-accent/50 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
           >
             <div class="flex flex-row items-center gap-2">
               <Avatar.Root
@@ -66,7 +66,7 @@
                     <Tooltip.Trigger>
                       <Button
                         variant="ghost"
-                        class="h-full p-0 hover:bg-red-600 hover:text-red-600"
+                        class="hover:text-primary-foreground hover:bg-destructive! h-full px-1! py-0.5"
                         onclick={() => {
                           g.rtc.watching = username;
                         }}
@@ -74,12 +74,7 @@
                         <TvMinimalPlay size={16} />
                       </Button>
                     </Tooltip.Trigger>
-                    <Tooltip.Content
-                      class="text-foreground bg-neutral-800"
-                      arrowClasses="bg-neutral-800"
-                    >
-                      Смотреть
-                    </Tooltip.Content>
+                    <Tooltip.Content>Смотреть</Tooltip.Content>
                   </Tooltip.Root>
                 </Tooltip.Provider>
               {/if}

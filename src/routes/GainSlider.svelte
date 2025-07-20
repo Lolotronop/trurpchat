@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Slider } from "$lib/components/ui/slider";
   import { fromDb, toDb } from "$lib/utils.svelte";
+  import { fly, scale } from "svelte/transition";
   import Ticks from "./Ticks.svelte";
   type Props = {
     value: number;
@@ -37,15 +38,27 @@
   };
 
   let hovering = $state(false);
+  let active = $state(false);
+  let intervalId: NodeJS.Timeout | null = null;
+  function setActive() {
+    active = true;
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+    intervalId = setInterval(() => {
+      active = false;
+    }, 300);
+  }
 </script>
 
 {#snippet slider()}
   <div>
-    {#if hovering}
+    {#if hovering || active}
       {@const db = toDb(value)}
       <div
-        class="absolute top-[-36px] flex w-28 -translate-x-1/2 justify-center gap-1 rounded bg-neutral-800 text-center select-none"
+        class="bg-muted absolute top-[-36px] flex w-28 -translate-x-1/2 justify-center gap-1 rounded text-center select-none"
         style="left: {pct(value)}%"
+        transition:fly={{ duration: 200, y: 10 }}
       >
         <!-- left side: text-right + small right padding, no margin -->
         <span class="w-full text-right">
@@ -78,6 +91,7 @@
       bind:value={
         () => (value == 0 ? min : toDb(value)),
         (v) => {
+          setActive();
           if (v === min && toInfinite) {
             value = 0;
           } else {

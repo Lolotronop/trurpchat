@@ -52,14 +52,11 @@ export class Mic {
     return this.#gateThreshold;
   }
 
-  setGain = debounced((value) => {
-    this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
-  }, 16);
   #gain: number = $state(1);
   set gain(value) {
     this.#gain = value;
-    this.setGain(value);
-    this.g.settings.settings.gain = value;
+    this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
+    // this.g.settings.settings.gain = value;
   }
   get gain() {
     return this.#gain;
