@@ -1,4 +1,5 @@
 import type { God } from "./god.svelte";
+import debounced from "./utils.svelte";
 
 export const MIN_DB = -60;
 
@@ -51,11 +52,13 @@ export class Mic {
     return this.#gateThreshold;
   }
 
+  setGain = debounced((value) => {
+    this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
+  }, 16);
   #gain: number = $state(1);
   set gain(value) {
     this.#gain = value;
-
-    this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
+    this.setGain(value);
     this.g.settings.settings.gain = value;
   }
   get gain() {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Slider } from "$lib/components/ui/slider";
   import { fromDb, toDb } from "$lib/utils.svelte";
   import Ticks from "./Ticks.svelte";
   type Props = {
@@ -59,12 +60,12 @@
       </div>
     {/if}
 
-    <input
+    <Slider
+      type="single"
       class="w-full"
-      type="range"
+      step={0.1}
       {min}
       {max}
-      step="0.01"
       ondblclick={() => {
         value = 1;
       }}

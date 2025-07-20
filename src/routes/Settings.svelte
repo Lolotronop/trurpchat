@@ -12,6 +12,7 @@
   import { actions } from "$lib/shortcuts.svelte";
   import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
+  import { Slider } from "$lib/components/ui/slider";
   const g = gitGud();
   g.mic.connect();
 
@@ -85,8 +86,8 @@
           >
             <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
           </div>
-          <input
-            type="range"
+          <Slider
+            type="single"
             bind:value={g.mic.gateThreshold}
             min={-54}
             max={0}
