@@ -1,4 +1,4 @@
-import { getContext, setContext, untrack } from "svelte";
+import { untrack } from "svelte";
 import { Gateway } from "./gateway.svelte";
 import { Mic } from "./mic.svelte";
 import { WebRTC } from "./webrtc.svelte";
@@ -36,6 +36,44 @@ export class God {
   createGate: () => AudioWorkletNode;
   createLoudnessMeter: () => AudioWorkletNode;
 
+  #muted: boolean = $state(false);
+  get muted() {
+    return this.#muted;
+  }
+  set muted(value) {
+    this.settings.settings.muted = value;
+    this.#muted = value;
+    if (value == false) {
+      this.deafened = false;
+    }
+    this.mic.nodes.outputGain.gain.setTargetAtTime(
+      value ? 0 : 1,
+      this.c.currentTime,
+      0.01,
+    );
+    this.ws.send({ type: "muted", muted: value });
+  }
+
+  #deafened: boolean = $state(false);
+  get deafened() {
+    return this.#deafened;
+  }
+  set deafened(value: boolean) {
+    this.#deafened = value;
+    this.ws.send({
+      type: "deafened",
+      deafened: value,
+    });
+    if (value) {
+      this.muted = true;
+    }
+    this.rtc.deafenNode.gain.setTargetAtTime(
+      value ? 0 : 1,
+      this.c.currentTime,
+      0.01,
+    );
+  }
+
   constructor(context: AudioContext, tauri: boolean) {
     this.tauri = tauri;
     this.createGate = () => {
@@ -64,12 +102,12 @@ export class God {
 
     this.keys.on("mute", (state) => {
       if (state === "Released") {
-        this.mic.muted = !this.mic.muted;
+        this.muted = !this.muted;
       }
     });
     this.keys.on("deafen", (state) => {
       if (state === "Released") {
-        this.rtc.deafened = !this.rtc.deafened;
+        this.deafened = !this.deafened;
       }
     });
 

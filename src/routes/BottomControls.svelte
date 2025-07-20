@@ -102,13 +102,13 @@
       class="flex w-full max-w-28 flex-row items-center justify-around gap-2"
     >
       <Button
-        variant={g.mic.muted ? "destructive" : "ghost"}
+        variant={g.muted ? "destructive" : "ghost"}
         class="size-8"
         onclick={() => {
-          g.mic.muted = !g.mic.muted;
+          g.muted = !g.muted;
         }}
       >
-        {#if !g.mic.muted}
+        {#if !g.muted}
           <Mic />
         {:else}
           <MicOff />
@@ -116,13 +116,13 @@
       </Button>
 
       <Button
-        variant={g.rtc.deafened ? "destructive" : "ghost"}
+        variant={g.deafened ? "destructive" : "ghost"}
         class="size-8"
         onclick={() => {
-          g.rtc.deafened = !g.rtc.deafened;
+          g.deafened = !g.deafened;
         }}
       >
-        {#if !g.rtc.deafened}
+        {#if !g.deafened}
           <Headphones />
         {:else}
           <HeadphoneOff />

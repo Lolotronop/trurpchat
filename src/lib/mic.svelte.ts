@@ -18,24 +18,6 @@ export class Mic {
     merger: ChannelMergerNode;
   };
 
-  #muted: boolean = $state(false);
-  get muted() {
-    return this.#muted;
-  }
-  set muted(value) {
-    this.g.settings.settings.muted = value;
-    this.#muted = value;
-    if (value == false) {
-      this.g.rtc.deafened = false;
-    }
-    this.nodes.outputGain.gain.setTargetAtTime(
-      value ? 0 : 1,
-      this.c.currentTime,
-      0.01,
-    );
-    this.g.ws.send({ type: "muted", muted: value });
-  }
-
   #monitoring: boolean = $state(false);
   get monitoring() {
     return this.#monitoring;
@@ -146,7 +128,6 @@ export class Mic {
 
   async init() {
     this.deviceId = this.g.settings.settings.deviceId;
-    this.muted = this.g.settings.settings.muted;
     this.gain = this.g.settings.settings.gain;
     this.gateThreshold = this.g.settings.settings.gateThreshold;
     try {

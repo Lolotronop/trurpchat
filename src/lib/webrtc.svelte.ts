@@ -183,38 +183,12 @@ export class WebRTC {
   room: Room | null = $state(null);
   clientId: string;
   private mic: Mic;
-  private gateway: Gateway;
+  private ws: Gateway;
   private audioContext: AudioContext;
   private createLoudnessMeter: () => AudioWorkletNode;
-  private muteNode: GainNode;
+  deafenNode: GainNode;
   private settings: Settings;
   peers = new SvelteMap<string, Peer>();
-
-  #deafened: boolean = $state(false);
-  get deafened() {
-    return this.#deafened;
-  }
-  set deafened(value: boolean) {
-    this.#deafened = value;
-    this.gateway.send({
-      type: "deafened",
-      deafened: value,
-    });
-    if (value) {
-      this.mic.muted = true;
-      this.muteNode.gain.setTargetAtTime(
-        0,
-        this.audioContext.currentTime,
-        0.01,
-      );
-    } else {
-      this.muteNode.gain.setTargetAtTime(
-        1,
-        this.audioContext.currentTime,
-        0.01,
-      );
-    }
-  }
 
   #streaming: boolean = $state(false);
   get streaming() {
@@ -222,7 +196,7 @@ export class WebRTC {
   }
   set streaming(value: boolean) {
     this.#streaming = value;
-    this.gateway.send({
+    this.ws.send({
       type: "streaming",
       streaming: value,
     });
@@ -238,15 +212,15 @@ export class WebRTC {
     settings: Settings,
     clientId?: string,
   ) {
-    this.gateway = gateway;
+    this.ws = gateway;
     this.settings = settings;
     this.mic = mic;
     this.audioContext = audioContext;
     this.createLoudnessMeter = createLoudnessMeter;
-    this.muteNode = this.audioContext.createGain();
-    this.muteNode.connect(this.audioContext.destination);
+    this.deafenNode = this.audioContext.createGain();
+    this.deafenNode.connect(this.audioContext.destination);
     this.clientId = Math.floor(Math.random() * 1000).toString();
-    this.gateway.onmessage = (data) => {
+    this.ws.onmessage = (data) => {
       console.log("Received message:", data);
       this.handleSignalingMessage(data);
     };
@@ -333,7 +307,7 @@ export class WebRTC {
       targetId,
       this.mic,
       this.createLoudnessMeter,
-      this.muteNode,
+      this.deafenNode,
     );
     this.peers.set(targetId, peer);
 
@@ -347,7 +321,7 @@ export class WebRTC {
         console.warn("No ice candidate");
         return;
       }
-      this.gateway.send({
+      this.ws.send({
         type: "rtc.ice",
         candidate: event.candidate,
         target: targetId,
@@ -392,7 +366,7 @@ export class WebRTC {
     // offer = { ...offer, sdp };
     await peer.pc.setLocalDescription(offer);
 
-    this.gateway.send({
+    this.ws.send({
       type: "rtc.offer",
       offer: offer,
       target: targetId,
@@ -412,7 +386,7 @@ export class WebRTC {
     await peer.pc.setLocalDescription(answer);
 
     // Send answer
-    this.gateway.send({
+    this.ws.send({
       type: "rtc.answer",
       answer: answer,
       target: senderId,
@@ -459,7 +433,7 @@ export class WebRTC {
       //   return new Promise((resolve) => setTimeout(resolve, 1000));
       // })();
     }
-    this.gateway.send({
+    this.ws.send({
       type: "join",
       room: room.trim(),
     });
@@ -467,7 +441,7 @@ export class WebRTC {
 
   leaveRoom() {
     if (!this.room) return;
-    this.gateway.send({
+    this.ws.send({
       type: "leave",
       room: this.room.name,
     });

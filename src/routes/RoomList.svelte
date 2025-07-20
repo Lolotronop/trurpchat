@@ -91,10 +91,10 @@
           {#if user.id === g.rtc.clientId}
             {@render u(
               g.settings.settings.username,
-              !g.mic.muted && g.mic.speaking,
-              g.mic.muted,
+              !g.muted && g.mic.speaking,
+              g.muted,
               false,
-              g.rtc.deafened,
+              g.deafened,
               user.streaming,
             )}
           {:else}
