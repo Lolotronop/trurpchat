@@ -1,8 +1,7 @@
 import { SvelteMap } from "svelte/reactivity";
-import type { Gateway } from "./gateway.svelte";
 import type { Mic } from "./mic.svelte";
-import type { Settings } from "./settings.svelte";
-import type { Message, User, Room } from "../../src-backend/types";
+import type { Message, Room } from "../../src-backend/types";
+import type { God } from "./god.svelte";
 
 export class Peer {
   mic: Mic;
@@ -182,12 +181,7 @@ export class WebRTC {
   rooms: Room[] = $state([]);
   room: Room | null = $state(null);
   clientId: string;
-  private mic: Mic;
-  private ws: Gateway;
-  private audioContext: AudioContext;
-  private createLoudnessMeter: () => AudioWorkletNode;
   deafenNode: GainNode;
-  private settings: Settings;
   peers = new SvelteMap<string, Peer>();
 
   #streaming: boolean = $state(false);
@@ -196,7 +190,7 @@ export class WebRTC {
   }
   set streaming(value: boolean) {
     this.#streaming = value;
-    this.ws.send({
+    this.g.ws.send({
       type: "streaming",
       streaming: value,
     });
@@ -204,23 +198,11 @@ export class WebRTC {
 
   watching: string | null = $state(null);
 
-  constructor(
-    gateway: Gateway,
-    mic: Mic,
-    audioContext: AudioContext,
-    createLoudnessMeter: () => AudioWorkletNode,
-    settings: Settings,
-    clientId?: string,
-  ) {
-    this.ws = gateway;
-    this.settings = settings;
-    this.mic = mic;
-    this.audioContext = audioContext;
-    this.createLoudnessMeter = createLoudnessMeter;
-    this.deafenNode = this.audioContext.createGain();
-    this.deafenNode.connect(this.audioContext.destination);
+  constructor(private g: God) {
+    this.deafenNode = this.g.c.createGain();
+    this.deafenNode.connect(this.g.c.destination);
     this.clientId = Math.floor(Math.random() * 1000).toString();
-    this.ws.onmessage = (data) => {
+    this.g.ws.onmessage = (data) => {
       console.log("Received message:", data);
       this.handleSignalingMessage(data);
     };
@@ -260,7 +242,7 @@ export class WebRTC {
         this.isConnected = true;
         console.log("Joined room:", this.room);
 
-        await this.mic.connect();
+        await this.g.mic.connect();
         // Initiate calls to existing users
         for (const user of this.room.users) {
           if (user.id === this.clientId) continue;
@@ -305,13 +287,13 @@ export class WebRTC {
     }
     peer = new Peer(
       targetId,
-      this.mic,
-      this.createLoudnessMeter,
+      this.g.mic,
+      this.g.createLoudnessMeter,
       this.deafenNode,
     );
     this.peers.set(targetId, peer);
 
-    if (!this.mic.stream) {
+    if (!this.g.mic.stream) {
       throw new Error("Local stream not available");
     }
 
@@ -321,7 +303,7 @@ export class WebRTC {
         console.warn("No ice candidate");
         return;
       }
-      this.ws.send({
+      this.g.ws.send({
         type: "rtc.ice",
         candidate: event.candidate,
         target: targetId,
@@ -366,7 +348,7 @@ export class WebRTC {
     // offer = { ...offer, sdp };
     await peer.pc.setLocalDescription(offer);
 
-    this.ws.send({
+    this.g.ws.send({
       type: "rtc.offer",
       offer: offer,
       target: targetId,
@@ -386,7 +368,7 @@ export class WebRTC {
     await peer.pc.setLocalDescription(answer);
 
     // Send answer
-    this.ws.send({
+    this.g.ws.send({
       type: "rtc.answer",
       answer: answer,
       target: senderId,
@@ -419,13 +401,13 @@ export class WebRTC {
       peer.cleanup();
     }
     this.peers.clear();
-    this.mic.disconnect();
+    this.g.mic.disconnect();
     this.isConnected = false;
     this.room = null;
   }
 
   async joinRoom(room: string) {
-    const username = this.settings.settings.username;
+    const username = this.g.settings.settings.username;
     console.log("Joining room:", room, "with username:", username);
     if (this.isConnected) {
       this.leaveRoom();
@@ -433,7 +415,7 @@ export class WebRTC {
       //   return new Promise((resolve) => setTimeout(resolve, 1000));
       // })();
     }
-    this.ws.send({
+    this.g.ws.send({
       type: "join",
       room: room.trim(),
     });
@@ -441,7 +423,7 @@ export class WebRTC {
 
   leaveRoom() {
     if (!this.room) return;
-    this.ws.send({
+    this.g.ws.send({
       type: "leave",
       room: this.room.name,
     });

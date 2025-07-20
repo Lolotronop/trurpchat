@@ -92,13 +92,7 @@ export class God {
     this.lock = new WakeLockContainer();
     this.lock.lock();
 
-    this.rtc = new WebRTC(
-      this.ws,
-      this.mic,
-      context,
-      this.createLoudnessMeter,
-      this.settings,
-    );
+    this.rtc = new WebRTC(this);
 
     this.keys.on("mute", (state) => {
       if (state === "Released") {
