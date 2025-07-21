@@ -1,5 +1,6 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
 import debounced from "./utils.svelte";
+import type { Themes } from "./theme.svelte";
 
 interface SettingsKeys {
   version: string;
@@ -13,6 +14,8 @@ interface SettingsKeys {
   gateThreshold: number;
   noiseSuppression: boolean;
   echoCancellation: boolean;
+  theme: Themes;
+  customCss: string;
 }
 
 const defaultSettings: SettingsKeys = {
@@ -28,6 +31,8 @@ const defaultSettings: SettingsKeys = {
   gateThreshold: -30,
   noiseSuppression: true,
   echoCancellation: false,
+  theme: "default",
+  customCss: "",
 };
 
 export class Settings {

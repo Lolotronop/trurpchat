@@ -15,6 +15,7 @@
   import { Slider } from "$lib/components/ui/slider";
   import { toggleMode } from "mode-watcher";
   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+  import Textarea from "$lib/components/ui/textarea/textarea.svelte";
   const g = gitGud();
   g.mic.connect();
 
@@ -53,23 +54,50 @@
           class="flex flex-row justify-between px-6 pt-6 pr-12 text-xl"
         >
           <p>Настройки</p>
-          <Button
-            class="relative"
-            onclick={toggleMode}
-            variant="outline"
-            size="icon"
-          >
-            <SunIcon
-              class="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 !transition-all dark:scale-0 dark:-rotate-90"
-            />
-            <MoonIcon
-              class="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 !transition-all dark:scale-100 dark:rotate-0"
-            />
-            <span class="sr-only">Toggle theme</span>
-          </Button>
         </Dialog.Title>
         <Dialog.Description class="flex flex-col gap-4 p-6">
           <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-2">
+              <div class="flex w-full flex-row items-center gap-2">
+                <h1 class="text-foreground text-lg">Тема</h1>
+                <Button
+                  onclick={toggleMode}
+                  class="relative"
+                  variant="outline"
+                  size="icon"
+                >
+                  <SunIcon
+                    class="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 !transition-all dark:scale-0 dark:-rotate-90"
+                  />
+                  <MoonIcon
+                    class="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 !transition-all dark:scale-100 dark:rotate-0"
+                  />
+                </Button>
+              </div>
+
+              <div class="flex flex-row gap-6">
+                <Button
+                  variant={g.theme.selected === "default"
+                    ? "secondary"
+                    : "outline"}
+                  onclick={() => (g.theme.selected = "default")}
+                >
+                  Стандартная
+                </Button>
+                <Button
+                  variant={g.theme.selected === "custom"
+                    ? "secondary"
+                    : "outline"}
+                  onclick={() => (g.theme.selected = "custom")}
+                >
+                  Кастомная
+                </Button>
+              </div>
+              {#if g.theme.selected === "custom"}
+                <Textarea class="max-h-48" bind:value={g.theme.customCss} />
+              {/if}
+            </div>
+
             <div class="flex flex-row justify-between">
               <h1 class="text-foreground text-lg">Микрофон</h1>
               <Button

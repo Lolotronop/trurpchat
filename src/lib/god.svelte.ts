@@ -4,6 +4,7 @@ import { Mic } from "./mic.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { Shortcuts } from "./shortcuts.svelte";
 import { Settings } from "./settings.svelte";
+import { Theme } from "./theme.svelte";
 
 class WakeLockContainer {
   wakeLock: WakeLockSentinel | null = $state(null);
@@ -32,6 +33,7 @@ export class God {
   keys: Shortcuts = new Shortcuts();
   ready: boolean = $state(false);
   settings: Settings;
+  theme: Theme;
 
   createGate: () => AudioWorkletNode;
   createLoudnessMeter: () => AudioWorkletNode;
@@ -91,6 +93,7 @@ export class God {
     this.ws = new Gateway();
     this.lock = new WakeLockContainer();
     this.lock.lock();
+    this.theme = new Theme(this);
 
     this.rtc = new WebRTC(this);
 
@@ -116,6 +119,10 @@ export class God {
       $effect(() => {
         if (this.settings.ready) {
           untrack(() => this.mic.init());
+          untrack(() => {
+            this.theme.selected = this.settings.settings.theme;
+            this.theme.customCss = this.settings.settings.customCss;
+          });
         }
       });
       $effect(() => {
