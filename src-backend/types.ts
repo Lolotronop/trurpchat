@@ -4,6 +4,7 @@ export type User = {
   muted: boolean;
   deafened: boolean;
   streaming: boolean;
+  watching: string | null;
 };
 
 export type Room = {
@@ -67,4 +68,11 @@ export type Message =
   | {
       type: "deafened";
       deafened: boolean;
+    }
+  | {
+      type: "watching";
+      watching: string | null;
+    }
+  | {
+      type: "pause";
     };

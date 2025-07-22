@@ -5,6 +5,7 @@ import { WebRTC } from "./webrtc.svelte";
 import { Shortcuts } from "./shortcuts.svelte";
 import { Settings } from "./settings.svelte";
 import { Theme } from "./theme.svelte";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 class WakeLockContainer {
   wakeLock: WakeLockSentinel | null = $state(null);
@@ -108,6 +109,12 @@ export class God {
       }
     });
 
+    this.ws.onmessage = (msg) => {
+      if (msg.type === "pause") {
+        isTauri() && invoke("pause");
+      }
+    };
+
     $effect.root(() => {
       $effect(() => {
         if (this.settings.ready) {
@@ -132,6 +139,8 @@ export class God {
           // !!this.lock.wakeLock &&
           this.settings.ready;
       });
+
+      $inspect(this.ws.connected);
     });
   }
 }

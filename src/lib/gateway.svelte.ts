@@ -4,13 +4,12 @@ import type { Message } from "../../src-backend/types";
 export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
   connected: boolean = $state(false);
-  private callbacks: Array<(data: unknown) => void> = $state([]);
+  private callbacks: Array<(data: Message) => void> = $state([]);
   constructor() {
     super();
   }
 
   connect(url: string) {
-    this.connected = false;
     if (this.socket) {
       this.socket.close();
       this.socket = null;
@@ -25,9 +24,15 @@ export class Gateway extends EventTarget {
 
     socket.addEventListener("open", () => {
       console.log("Connected to Gateway");
+      this.connected = true;
+      // because race conditions, yay!
+      // it connects faster than it disconnects
+      // sooo it sets to false after a reconnect
+      // oh well
+      setTimeout(() => (this.connected = true), 500);
       for (const callback of this.callbacks) {
         socket.addEventListener("message", (event) => {
-          let data: string;
+          let data: Message;
           try {
             data = JSON.parse(event.data);
           } catch (error) {
@@ -37,7 +42,6 @@ export class Gateway extends EventTarget {
           callback(data);
         });
       }
-      this.connected = true;
     });
 
     socket.addEventListener("close", () => {
@@ -47,15 +51,16 @@ export class Gateway extends EventTarget {
 
     socket.addEventListener("error", (error) => {
       console.error("Error connecting to Gateway:", error);
+      this.connected = false;
     });
 
     this.socket = socket;
   }
 
-  set onmessage(callback: (data: unknown) => void) {
+  set onmessage(callback: (data: Message) => void) {
     this.callbacks.push(callback);
     this.socket?.addEventListener("message", (event) => {
-      let data: string;
+      let data: Message;
       try {
         data = JSON.parse(event.data);
       } catch (error) {

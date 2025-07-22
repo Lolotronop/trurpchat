@@ -198,7 +198,17 @@ export class WebRTC {
     });
   }
 
-  watching: string | null = $state(null);
+  #watching: string | null = $state(null);
+  get watching() {
+    return this.#watching;
+  }
+  set watching(value: string | null) {
+    this.#watching = value;
+    this.g.ws.send({
+      type: "watching",
+      watching: value,
+    });
+  }
 
   constructor(private g: God) {
     this.deafenNode = this.g.c.createGain();

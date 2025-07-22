@@ -15,7 +15,6 @@
   } from "@lucide/svelte";
   import Settings from "./Settings.svelte";
   const g = gitGud();
-  $inspect(g.rtc.room?.users);
 
   function formatTime(timeMS: number): string {
     const hours = Math.floor(timeMS / 3600000);

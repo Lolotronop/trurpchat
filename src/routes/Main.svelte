@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import BottomControls from "./BottomControls.svelte";
   import RoomList from "./RoomList.svelte";
   import Stream from "./Stream.svelte";
@@ -22,7 +23,7 @@
   <div class="flex h-full w-full flex-col items-center justify-center">
     {#if g.rtc.watching}
       <Stream name={g.rtc.watching} />
-      <Button onclick={() => (g.rtc.watching = null)}>Выйти</Button>
+      <div class="flex w-full flex-row justify-between px-16"></div>
     {:else}
       <p>¯\_(ツ)_/¯</p>
     {/if}

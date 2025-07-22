@@ -288,7 +288,9 @@
                 variant="secondary"
                 onclick={() => {
                   g.settings.settings.gatewayServer = gatewayUrl;
-                  g.ws.connect(`ws://${gatewayUrl}`);
+                  g.ws.connect(
+                    `ws://${g.settings.settings.gatewayServer}?name=${g.settings.settings.username}`,
+                  );
                 }}>Подключиться</Button
               >
             </div>

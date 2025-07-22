@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Button } from "$lib/components/ui/button";
+  import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
   import OvenPlayer from "ovenplayer";
   import { onMount } from "svelte";
@@ -15,12 +17,25 @@
   let g = gitGud();
   const server = g.settings.settings.ovenServer;
 
+  let isFullscreen = false;
+
+  const keyboardCallback = (event: KeyboardEvent) => {
+    console.log(event.key);
+    if (event.key === " " && isFullscreen) {
+      g.ws.send({ type: "pause" });
+    }
+  };
+  window.addEventListener("keydown", keyboardCallback);
+
   let player: OvenPlayer.OvenPlayerInstance;
   onMount(() => {
     return () => {
       player?.remove();
+      window.removeEventListener("keydown", keyboardCallback);
     };
   });
+
+  let bottomControls: any;
 
   let streamVolume = $state(1);
   const gainNode = g.c.createGain();
@@ -68,6 +83,13 @@
         settings.style.display = "none";
       }
 
+      const leftcontrol = container.querySelector(
+        ".op-left-controls",
+      ) as HTMLDivElement;
+      leftcontrol.style.display = "flex";
+      leftcontrol.style.flexDirection = "row";
+      leftcontrol.prepend(bottomControls);
+
       let interval: any = null;
       player.on("stateChanged", (state) => {
         const el = player.getMediaElement();
@@ -106,6 +128,11 @@
             }
           }, 1000);
         });
+
+        player.on("fullscreenChanged", (v) => {
+          isFullscreen = v;
+        });
+
         if (state.newstate !== "playing") {
           clearInterval(interval);
           interval = null;
@@ -115,45 +142,27 @@
       });
     });
   };
-
-  let hovering = $state(false);
-
-  const setupUi: Action = (node) => {
-    const c = player.getContainerElement().querySelector(".op-player");
-    if (!c) {
-      console.error("Player UI container not found");
-      return;
-    }
-    c.prepend(node);
-  };
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
-  class="relative flex h-fit w-full items-center justify-center"
-  onmouseenter={() => (hovering = true)}
-  onmouseleave={() => (hovering = false)}
+  class="mr-4 flex h-full items-center justify-center gap-4"
+  bind:this={bottomControls}
 >
+  <Button variant="destructive" onclick={() => (g.rtc.watching = null)}>
+    Выйти
+  </Button>
+
+  <Tooltip.Provider>
+    <Tooltip.Root>
+      <Tooltip.Trigger>
+        <Button onclick={() => g.ws.send({ type: "pause" })}>Пауза</Button>
+      </Tooltip.Trigger>
+      <Tooltip.Content>Пробел в полном экране</Tooltip.Content>
+    </Tooltip.Root>
+  </Tooltip.Provider>
+</div>
+
+<div class="relative flex h-fit w-full items-center justify-center">
   <!-- svelte-ignore a11y_media_has_caption -->
   <video id="stream" use:setupOven></video>
-  <!-- <div
-    class="absolute bottom-0 left-0 z-20 flex w-full flex-row bg-neutral-900/90 {hovering
-      ? ''
-      : 'hidden'}"
-    use:setupUi
-  >
-    <div class="w-full px-8">
-      <GainSlider bind:value={streamVolume} />
-    </div>
-    <div>
-      <Button
-        variant="ghost"
-        onclick={() => {
-          player.toggleFullScreen();
-        }}
-      >
-        <Maximize />
-      </Button>
-    </div>
-  </div> -->
 </div>

@@ -185,6 +185,21 @@ Bun.serve<User, void>({
         ws.data.streaming = msg.streaming;
       } else if (msg.type === "deafened") {
         ws.data.deafened = msg.deafened;
+      } else if (msg.type === "watching") {
+        ws.data.watching = msg.watching;
+      } else if (msg.type === "pause") {
+        if (ws.data.watching === null) {
+          return;
+        }
+        // TODO: this is horrible
+        const to = Array.from(clients.values()).find(
+          (c) => c.data.name === ws.data.watching,
+        );
+        if (!to) {
+          console.error(`Client ${ws.data.watching} not found`);
+          return;
+        }
+        to.send(j(msg));
       } else if (msg.type === "rtc.ice" && msg.target) {
         const target = clients.get(msg.target);
         if (!target) {
