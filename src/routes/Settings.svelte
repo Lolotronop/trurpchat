@@ -44,7 +44,6 @@
       g.mic.monitoring = false;
     }
   }}
-  open={true}
 >
   <Dialog.Trigger>
     <Button variant="ghost" class="size-8">
