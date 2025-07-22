@@ -228,14 +228,31 @@
                       {theme}
                     </Button>
                   {/each}
-                  <Button
-                    variant={g.theme.selected === "custom"
-                      ? "secondary"
-                      : "outline"}
-                    onclick={() => (g.theme.selected = "custom")}
-                  >
-                    Кастомная
-                  </Button>
+
+                  <Tooltip.Provider>
+                    <Tooltip.Root delayDuration={200}>
+                      <Tooltip.Trigger
+                        class="flex flex-row items-center justify-between"
+                      >
+                        <Button
+                          variant={g.theme.selected === "custom"
+                            ? "secondary"
+                            : "outline"}
+                          onclick={() => (g.theme.selected = "custom")}
+                        >
+                          Кастомная
+                        </Button>
+                      </Tooltip.Trigger>
+                      <Tooltip.Content>
+                        <a
+                          href="https://tweakcn.com/editor/theme"
+                          target="_blank"
+                        >
+                          Конфигуратор
+                        </a>
+                      </Tooltip.Content>
+                    </Tooltip.Root>
+                  </Tooltip.Provider>
                 </div>
               </div>
 
