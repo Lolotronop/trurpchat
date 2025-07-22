@@ -151,7 +151,7 @@
                   </p>
                   <div class="flex flex-row items-center justify-between gap-2">
                     <Tooltip.Provider>
-                      <Tooltip.Root delayDuration={100}>
+                      <Tooltip.Root disableHoverableContent={true}>
                         <Tooltip.Trigger
                           class="flex flex-row items-center justify-between"
                         >
