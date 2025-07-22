@@ -183,6 +183,8 @@ export class WebRTC {
   clientId: string;
   deafenNode: GainNode;
   peers = new SvelteMap<string, Peer>();
+  connectedFor: number = $state(0);
+  connectedTimeout: NodeJS.Timeout | null = null;
 
   #streaming: boolean = $state(false);
   get streaming() {
@@ -241,6 +243,14 @@ export class WebRTC {
         this.room = room;
         this.isConnected = true;
         console.log("Joined room:", this.room);
+
+        this.connectedFor = 0;
+        if (this.connectedTimeout) {
+          clearInterval(this.connectedTimeout);
+        }
+        this.connectedTimeout = setInterval(() => {
+          this.connectedFor += 1000;
+        }, 1000);
 
         await this.g.mic.connect();
         // Initiate calls to existing users
@@ -400,6 +410,11 @@ export class WebRTC {
     for (const peer of this.peers.values()) {
       peer.cleanup();
     }
+    this.connectedFor = 0;
+    if (this.connectedTimeout) {
+      clearInterval(this.connectedTimeout);
+    }
+    this.connectedTimeout = null;
     this.peers.clear();
     this.g.mic.disconnect();
     this.isConnected = false;

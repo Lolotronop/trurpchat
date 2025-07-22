@@ -8,23 +8,23 @@
   };
   const { rms, peak }: Props = $props();
 
-  const loudnessSteps: number[] = [
-    0, -6, -12, -18, -24, -30, -36, -42, -48, -54,
-  ];
-  const ticks = loudnessSteps;
-  const dur = Math.floor(1000 / 120);
+  const MIN = -42;
+  const ticks: number[] = [];
+  for (let i = 0; i >= MIN; i -= 6) {
+    ticks.push(i);
+  }
 </script>
 
-<Ticks {ticks}>
+<Ticks {ticks} height={18}>
   <div class="bg-muted relative h-[20px] w-full">
     <div
-      class="absolute top-0 left-0 h-full max-w-full bg-red-700"
-      style={`width: ${(1 - peak / MIN_DB) * 100}%`}
+      class="absolute top-0 left-0 h-full max-w-full bg-red-500"
+      style={`width: ${(1 - peak / MIN) * 100}%`}
     ></div>
 
     <div
-      class="absolute top-0 left-0 h-full max-w-full bg-green-700"
-      style={`width: ${(1 - rms / MIN_DB) * 100}%`}
+      class="absolute top-0 left-0 h-full max-w-full bg-green-600"
+      style={`width: ${(1 - rms / MIN) * 100}%`}
     ></div>
   </div>
 </Ticks>

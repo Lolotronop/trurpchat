@@ -20,7 +20,10 @@
     <div>
       <Button
         variant="ghost"
-        class="flex w-full flex-row items-center justify-start text-base font-normal"
+        class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {g
+          .rtc.room?.name === room.name
+          ? ''
+          : 'text-muted-foreground'}"
         onclick={() => g.rtc.joinRoom(room.name)}
       >
         <div class="flex flex-row items-center gap-2">
@@ -38,7 +41,7 @@
           streaming: boolean,
         )}
           <div
-            class="hover:bg-accent/50 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
+            class="hover:bg-accent/50 over flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
           >
             <div class="flex flex-row items-center gap-2">
               <Avatar.Root
@@ -49,11 +52,15 @@
                   {username[0].toUpperCase()}
                 </Avatar.Fallback>
               </Avatar.Root>
-              <p>
+              <p
+                class={g.rtc.room?.name === room.name
+                  ? ""
+                  : "text-muted-foreground"}
+              >
                 {username}
               </p>
             </div>
-            <div class="flex flex-row items-center gap-2 pr-2">
+            <div class="flex h-6 flex-row items-center gap-2 pr-2">
               {#if mutedSelf || mutedByMe}
                 <MicOff size={16} class={mutedByMe ? "text-yellow-600" : ""} />
               {/if}
@@ -66,12 +73,12 @@
                     <Tooltip.Trigger>
                       <Button
                         variant="ghost"
-                        class="hover:text-primary-foreground hover:bg-destructive! h-full px-1! py-0.5"
+                        class="hover:text-primary-foreground hover:bg-destructive! size-6"
                         onclick={() => {
                           g.rtc.watching = username;
                         }}
                       >
-                        <TvMinimalPlay size={16} />
+                        <TvMinimalPlay class="size-4" />
                       </Button>
                     </Tooltip.Trigger>
                     <Tooltip.Content>Смотреть</Tooltip.Content>

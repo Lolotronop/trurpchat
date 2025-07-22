@@ -4,6 +4,7 @@
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
   import {
+    Clock,
     HeadphoneOff,
     Headphones,
     Info,
@@ -15,59 +16,72 @@
   import Settings from "./Settings.svelte";
   const g = gitGud();
   $inspect(g.rtc.room?.users);
+
+  function formatTime(timeMS: number): string {
+    const hours = Math.floor(timeMS / 3600000);
+    const minutes = Math.floor((timeMS % 3600000) / 60000);
+    const seconds = Math.floor((timeMS % 60000) / 1000);
+    const pad = (num: number) => num.toString().padStart(2, "0");
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
 </script>
 
-<div class="rounded border px-2">
+<div class="text-muted-foreground rounded border-t px-2">
   {#if g.rtc.isConnected}
-    <div class="flex flex-row items-center justify-between gap-2 p-2">
-      <p>
-        <Tooltip.Provider>
-          <Tooltip.Root delayDuration={100}>
-            <Tooltip.Trigger>
-              <div class="flex flex-row items-center gap-2">
-                Подключен к {g.rtc.room?.name}
-                <Info size={16} />
-              </div>
-            </Tooltip.Trigger>
-            <Tooltip.Content>
-              <div>
-                {#each g.rtc.room?.users! as user}
-                  {@const peer = g.rtc.peers.get(user.id)}
-                  <div class="flex w-30 flex-row justify-between">
-                    <p>
-                      {user.name}
-                    </p>
-                    <p>
-                      {peer?.ping ?? "N/A"}ms
-                    </p>
-                  </div>
-                {/each}
-              </div>
-            </Tooltip.Content>
-          </Tooltip.Root>
-        </Tooltip.Provider>
-      </p>
+    <div class="flex flex-row items-center justify-between gap-2 py-2">
+      <Tooltip.Provider>
+        <Tooltip.Root delayDuration={100}>
+          <Tooltip.Trigger class="flex flex-col items-start">
+            <div class="hover:text-foreground flex flex-row items-center gap-2">
+              Подключен к {g.rtc.room?.name}
+              <Info size={16} />
+            </div>
+          </Tooltip.Trigger>
+          <Tooltip.Content class="w-34">
+            <div class="flex w-full flex-row items-center justify-center gap-2">
+              <p class="text-muted-foreground font-mono text-sm">
+                {formatTime(g.rtc.connectedFor)}
+              </p>
+            </div>
+            <div>
+              {#each g.rtc.room?.users! as user}
+                {@const peer = g.rtc.peers.get(user.id)}
+                <div class="flex w-full flex-row justify-between">
+                  <p>
+                    {user.name}
+                  </p>
+                  <p>
+                    {peer?.ping ?? "N/A"}ms
+                  </p>
+                </div>
+              {/each}
+            </div>
+          </Tooltip.Content>
+        </Tooltip.Root>
+      </Tooltip.Provider>
 
-      <Button
-        variant={g.rtc.streaming ? "default" : "ghost"}
-        class="size-8"
-        onclick={() => {
-          g.rtc.streaming = !g.rtc.streaming;
-        }}
-      >
-        <MonitorUp />
-      </Button>
-      <Button
-        variant="ghost"
-        class="size-8"
-        onclick={() => {
-          g.rtc.leaveRoom();
-        }}
-      >
-        <PhoneOff />
-      </Button>
+      <div class="flex flex-row items-center gap-2">
+        <Button
+          variant={g.rtc.streaming ? "default" : "ghost"}
+          class="size-8"
+          onclick={() => {
+            g.rtc.streaming = !g.rtc.streaming;
+          }}
+        >
+          <MonitorUp class="size-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          class="size-8"
+          onclick={() => {
+            g.rtc.leaveRoom();
+          }}
+        >
+          <PhoneOff class="size-5" />
+        </Button>
+      </div>
     </div>
-    <div class="border"></div>
+    <div class="border-t-[1px]"></div>
   {/if}
   <div
     class="bg-background flex h-16 w-full shrink flex-row items-center justify-between"
@@ -82,7 +96,7 @@
       <Tooltip.Provider>
         <Tooltip.Root delayDuration={100}>
           <Tooltip.Trigger class="max-w-28">
-            <p class="overflow-hidden text-ellipsis">
+            <p class="text-foreground overflow-hidden text-ellipsis">
               {g.settings.settings.username}
             </p>
           </Tooltip.Trigger>
@@ -92,9 +106,7 @@
         </Tooltip.Root>
       </Tooltip.Provider>
     </div>
-    <div
-      class="flex w-full max-w-28 flex-row items-center justify-around gap-2"
-    >
+    <div class="flex w-full max-w-28 flex-row items-center gap-2">
       <Button
         variant={g.muted ? "destructive" : "ghost"}
         class="size-8"
@@ -103,9 +115,9 @@
         }}
       >
         {#if !g.muted}
-          <Mic />
+          <Mic class="size-5" />
         {:else}
-          <MicOff />
+          <MicOff class="size-5" />
         {/if}
       </Button>
 
@@ -117,9 +129,9 @@
         }}
       >
         {#if !g.deafened}
-          <Headphones />
+          <Headphones class="size-5" />
         {:else}
-          <HeadphoneOff />
+          <HeadphoneOff class="size-5" />
         {/if}
       </Button>
 

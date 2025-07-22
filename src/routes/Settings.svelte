@@ -4,7 +4,7 @@
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import * as Select from "$lib/components/ui/select/index.js";
   import { gitGud } from "$lib/god.svelte";
-  import { Copy, MoonIcon, Scroll, Settings, SunIcon, X } from "@lucide/svelte";
+  import { Copy, MoonIcon, Settings, SunIcon, X } from "@lucide/svelte";
   import GainSlider from "./GainSlider.svelte";
   import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
   import { Input } from "$lib/components/ui/input";
@@ -16,6 +16,9 @@
   import { toggleMode } from "mode-watcher";
   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
   import Textarea from "$lib/components/ui/textarea/textarea.svelte";
+  import * as Tabs from "$lib/components/ui/tabs/index.js";
+  import { mode } from "mode-watcher";
+
   const g = gitGud();
   g.mic.connect();
 
@@ -41,133 +44,200 @@
       g.mic.monitoring = false;
     }
   }}
+  open={true}
 >
   <Dialog.Trigger>
     <Button variant="ghost" class="size-8">
-      <Settings />
+      <Settings class="size-5" />
     </Button>
   </Dialog.Trigger>
-  <Dialog.Content class="w-[800px] p-0! px-0! py-0!">
+  <Dialog.Content class=" max-w-2xl p-0! px-0! py-0!">
     <ScrollArea class="max-h-[80vh] w-full">
       <Dialog.Header>
         <Dialog.Title
-          class="flex flex-row justify-between px-6 pt-6 pr-12 text-xl"
+          class="mb-3 flex flex-row justify-between px-6 pt-6 text-xl"
         >
           <p>Настройки</p>
         </Dialog.Title>
-        <Dialog.Description class="flex flex-col gap-4 p-6">
+        <Dialog.Description class="flex flex-col gap-8 px-6 pb-6">
           <div class="flex flex-col gap-2">
-            <div class="flex flex-col gap-2">
-              <div class="flex w-full flex-row items-center gap-2">
-                <h1 class="text-foreground text-lg">Тема</h1>
+            <h1 class="text-foreground text-lg">Микрофон</h1>
+            <div class="flex w-full flex-col gap-6">
+              <div class="flex flex-col gap-2">
                 <Button
-                  onclick={toggleMode}
-                  class="relative"
-                  variant="outline"
-                  size="icon"
+                  variant={g.mic.monitoring ? "secondary" : "outline"}
+                  onclick={() => {
+                    g.mic.monitoring = !g.mic.monitoring;
+                    g.mic.connect();
+                  }}
                 >
-                  <SunIcon
-                    class="h-[1.2rem] w-[1.2rem] scale-100 rotate-0 !transition-all dark:scale-0 dark:-rotate-90"
-                  />
-                  <MoonIcon
-                    class="absolute h-[1.2rem] w-[1.2rem] scale-0 rotate-90 !transition-all dark:scale-100 dark:rotate-0"
-                  />
+                  Прослушать
                 </Button>
+                <h1>Выбор устройства</h1>
+                <Select.Root
+                  type="single"
+                  onValueChange={(value) => {
+                    g.mic.deviceId = value;
+                    g.mic.connect();
+                  }}
+                >
+                  <Select.Trigger
+                    class="w-full"
+                    onclick={() => {
+                      g.mic.updateDevices();
+                    }}
+                  >
+                    {g.mic.devices.find(
+                      (device) => device.deviceId === g.mic.deviceId,
+                    )?.label ?? "Не выбрано"}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each g.mic.devices as device}
+                      <Select.Item value={device.deviceId}
+                        >{device.label}</Select.Item
+                      >
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+
+                <div class="flex flex-col gap-4">
+                  <div class="flex items-center space-x-2">
+                    <Switch
+                      id="airplane-mode"
+                      bind:checked={g.mic.noiseSuppression}
+                    />
+                    <Label for="airplane-mode">Шумоподавление</Label>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <Switch
+                      id="airplane-mode"
+                      bind:checked={g.mic.echoCancellation}
+                    />
+                    <Label for="airplane-mode">Эхоподавление</Label>
+                  </div>
+                </div>
               </div>
 
-              <div class="flex flex-row gap-6">
-                <Button
-                  variant={g.theme.selected === "default"
-                    ? "secondary"
-                    : "outline"}
-                  onclick={() => (g.theme.selected = "default")}
-                >
-                  Стандартная
-                </Button>
-                <Button
-                  variant={g.theme.selected === "custom"
-                    ? "secondary"
-                    : "outline"}
-                  onclick={() => (g.theme.selected = "custom")}
-                >
-                  Кастомная
-                </Button>
+              <div class="flex flex-col gap-2">
+                <h1>Усиление микрофона</h1>
+                <GainSlider min={-12} bind:value={g.mic.gain} />
               </div>
+
+              <div class="flex flex-col gap-2">
+                <h1>Чувствительность</h1>
+                <Slider
+                  type="single"
+                  bind:value={g.mic.gateThreshold}
+                  min={-42}
+                  max={0}
+                  step={0.1}
+                />
+                <div
+                  class={`transition-[filter] duration-50 ${g.mic.speaking ? "" : "saturate-0"}`}
+                >
+                  <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h1 class="text-foreground text-lg">Горячие клавиши</h1>
+            <div class="flex flex-col gap-2">
+              {#each g.keys.bindings.entries() as [action, key] (action)}
+                <div class="flex flex-row items-center justify-between">
+                  <p class="text-muted-foreground text-base">
+                    {actions[action]}
+                  </p>
+                  <div class="flex flex-row items-center justify-between gap-2">
+                    <Tooltip.Provider>
+                      <Tooltip.Root delayDuration={100}>
+                        <Tooltip.Trigger
+                          class="flex flex-row items-center justify-between"
+                        >
+                          <Button
+                            variant="secondary"
+                            onclick={() => {
+                              if (g.keys.detectingFor === action) {
+                                g.keys.stopDetect();
+                              } else {
+                                g.keys.detect(action);
+                              }
+                            }}
+                          >
+                            {#if g.keys.detectingFor === action}
+                              Считываю...
+                            {:else if key}
+                              {key}
+                            {:else}
+                              Не задано
+                            {/if}
+                          </Button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>Нажмите, чтобы задать</Tooltip.Content>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
+                    <Button
+                      variant="secondary"
+                      onclick={() => {
+                        g.keys.unset(action);
+                      }}
+                    >
+                      <X />
+                    </Button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          </div>
+
+          <div class="flex flex-col">
+            <h1 class="text-foreground text-lg">Тема</h1>
+
+            <div class="flex flex-col gap-2">
+              <div class="flex w-full flex-row justify-between">
+                <div class="flex flex-row gap-2">
+                  <Button
+                    onclick={toggleMode}
+                    variant={mode.current === "light" ? "secondary" : "outline"}
+                  >
+                    Светлая
+                    <SunIcon class="" />
+                  </Button>
+
+                  <Button
+                    onclick={toggleMode}
+                    variant={mode.current === "dark" ? "secondary" : "outline"}
+                  >
+                    Темная
+                    <MoonIcon />
+                  </Button>
+                </div>
+
+                <div class="flex flex-row gap-2">
+                  <Button
+                    variant={g.theme.selected === "default"
+                      ? "secondary"
+                      : "outline"}
+                    onclick={() => (g.theme.selected = "default")}
+                  >
+                    Стандартная
+                  </Button>
+                  <Button
+                    variant={g.theme.selected === "custom"
+                      ? "secondary"
+                      : "outline"}
+                    onclick={() => (g.theme.selected = "custom")}
+                  >
+                    Кастомная
+                  </Button>
+                </div>
+              </div>
+
               {#if g.theme.selected === "custom"}
                 <Textarea class="max-h-48" bind:value={g.theme.customCss} />
               {/if}
             </div>
-
-            <div class="flex flex-row justify-between">
-              <h1 class="text-foreground text-lg">Микрофон</h1>
-              <Button
-                variant={g.mic.monitoring ? "secondary" : "outline"}
-                onclick={() => {
-                  g.mic.monitoring = !g.mic.monitoring;
-                  g.mic.connect();
-                }}
-              >
-                Прослушать
-              </Button>
-            </div>
-
-            <div class="flex items-center justify-between gap-2">
-              <div class="flex items-center space-x-2">
-                <Switch
-                  id="airplane-mode"
-                  bind:checked={g.mic.noiseSuppression}
-                />
-                <Label for="airplane-mode">Шумоподавление</Label>
-              </div>
-              <div class="flex items-center space-x-2">
-                <Switch
-                  id="airplane-mode"
-                  bind:checked={g.mic.echoCancellation}
-                />
-                <Label for="airplane-mode">Эхоподавление</Label>
-              </div>
-            </div>
-            <h1>Усиление микрофона</h1>
-            <GainSlider min={-12} bind:value={g.mic.gain} />
-            <h1>Чувствительность</h1>
-            <div
-              class={`transition-[filter] duration-50 ${g.mic.speaking ? "" : "sepia-100"}`}
-            >
-              <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
-            </div>
-            <Slider
-              type="single"
-              bind:value={g.mic.gateThreshold}
-              min={-54}
-              max={0}
-              step={0.1}
-            />
-            <h1>Выбор устройства</h1>
-            <Select.Root
-              type="single"
-              onValueChange={(value) => {
-                g.mic.deviceId = value;
-                g.mic.connect();
-              }}
-            >
-              <Select.Trigger
-                class="w-full"
-                onclick={() => {
-                  g.mic.updateDevices();
-                }}
-              >
-                {g.mic.devices.find(
-                  (device) => device.deviceId === g.mic.deviceId,
-                )?.label ?? "Не выбрано"}
-              </Select.Trigger>
-              <Select.Content>
-                {#each g.mic.devices as device}
-                  <Select.Item value={device.deviceId}
-                    >{device.label}</Select.Item
-                  >
-                {/each}
-              </Select.Content>
-            </Select.Root>
           </div>
 
           <div>
@@ -182,7 +252,7 @@
                     <Tooltip.Trigger>
                       <Button
                         variant="secondary"
-                        class={`transitil-colors ${copied ? "bg-green-500 text-white hover:bg-green-500 hover:text-white" : ""}`}
+                        class={`transition-colors ${copied ? "bg-green-500 text-white hover:bg-green-500 hover:text-white" : ""}`}
                         onclick={() => {
                           navigator.clipboard.writeText(streamUrl);
                           copied = true;
@@ -197,56 +267,9 @@
               </div>
             </div>
           </div>
-
-          <div>
-            <h1 class="text-foreground text-lg">Горячие клавиши</h1>
-            {#each g.keys.bindings.entries() as [action, key] (action)}
-              <div class="mb-2 flex flex-row items-center justify-between">
-                <p class="text-muted-foreground text-base">{actions[action]}</p>
-                <div class="flex flex-row items-center justify-between gap-2">
-                  <Tooltip.Provider>
-                    <Tooltip.Root delayDuration={100}>
-                      <Tooltip.Trigger
-                        class="flex flex-row items-center justify-between"
-                      >
-                        <Button
-                          variant="secondary"
-                          class={`transitil-colors ${copied ? "bg-green-500 text-white hover:bg-green-500 hover:text-white" : ""}`}
-                          onclick={() => {
-                            if (g.keys.detectingFor === action) {
-                              g.keys.stopDetect();
-                            } else {
-                              g.keys.detect(action);
-                            }
-                          }}
-                        >
-                          {#if g.keys.detectingFor === action}
-                            Считываю...
-                          {:else if key}
-                            {key}
-                          {:else}
-                            Не задано
-                          {/if}
-                        </Button>
-                      </Tooltip.Trigger>
-                      <Tooltip.Content>Нажмите, чтобы задать</Tooltip.Content>
-                    </Tooltip.Root>
-                  </Tooltip.Provider>
-                  <Button
-                    variant="secondary"
-                    onclick={() => {
-                      g.keys.unset(action);
-                    }}
-                  >
-                    <X />
-                  </Button>
-                </div>
-              </div>
-            {/each}
-          </div>
           <div>
             <h1 class="text-foreground text-lg">Никнейм</h1>
-            <div class="flex flex-row justify-between gap-4">
+            <div class="flex flex-row justify-between">
               <Input bind:value={username} />
               <Button
                 variant="secondary"
@@ -257,9 +280,10 @@
               >
             </div>
           </div>
+
           <div>
             <h1 class="text-foreground text-lg">Сервер</h1>
-            <div class="flex flex-row justify-between gap-4">
+            <div class="flex flex-row justify-between">
               <Input bind:value={gatewayUrl} />
               <Button
                 variant="secondary"
