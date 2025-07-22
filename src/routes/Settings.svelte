@@ -18,6 +18,7 @@
   import Textarea from "$lib/components/ui/textarea/textarea.svelte";
   import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { mode } from "mode-watcher";
+  import { Theme, themes } from "$lib/theme.svelte";
 
   const g = gitGud();
   g.mic.connect();
@@ -214,14 +215,19 @@
                 </div>
 
                 <div class="flex flex-row gap-2">
-                  <Button
-                    variant={g.theme.selected === "default"
-                      ? "secondary"
-                      : "outline"}
-                    onclick={() => (g.theme.selected = "default")}
-                  >
-                    Стандартная
-                  </Button>
+                  {#each Object.keys(themes) as theme (theme)}
+                    <Button
+                      variant={g.theme.selected === theme
+                        ? "secondary"
+                        : "outline"}
+                      onclick={() => {
+                        // @ts-ignore
+                        g.theme.selected = theme;
+                      }}
+                    >
+                      {theme}
+                    </Button>
+                  {/each}
                   <Button
                     variant={g.theme.selected === "custom"
                       ? "secondary"

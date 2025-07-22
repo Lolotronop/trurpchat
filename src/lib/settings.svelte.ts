@@ -31,7 +31,7 @@ const defaultSettings: SettingsKeys = {
   gateThreshold: -30,
   noiseSuppression: true,
   echoCancellation: false,
-  theme: "default",
+  theme: "gruvbox",
   customCss: "",
 };
 
