@@ -40,7 +40,7 @@
   let streamVolume = $state(1);
   const gainNode = g.c.createGain();
   gainNode.connect(g.c.destination);
-  let sourceNode: MediaStreamAudioSourceNode | null = null;
+  let sourceNode: MediaElementAudioSourceNode | null = null;
   $effect(() => {
     gainNode.gain.setTargetAtTime(streamVolume, g.c.currentTime, 0.01);
   });
@@ -64,6 +64,7 @@
       });
       g.c.resume();
       const container = player.getContainerElement();
+
       const badge = container.querySelector(
         ".op-live-badge-lowlatency",
       ) as HTMLSpanElement;

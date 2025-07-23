@@ -14,6 +14,8 @@
     PhoneOff,
   } from "@lucide/svelte";
   import Settings from "./Settings.svelte";
+  import { Switch } from "$lib/components/ui/switch";
+  import { Label } from "$lib/components/ui/label";
   const g = gitGud();
 
   function formatTime(timeMS: number): string {
@@ -60,15 +62,25 @@
       </Tooltip.Provider>
 
       <div class="flex flex-row items-center gap-2">
-        <Button
-          variant={g.rtc.streaming ? "default" : "ghost"}
-          class="size-8"
-          onclick={() => {
-            g.rtc.streaming = !g.rtc.streaming;
-          }}
-        >
-          <MonitorUp class="size-5" />
-        </Button>
+        <Tooltip.Provider>
+          <Tooltip.Root delayDuration={100}>
+            <Tooltip.Trigger class="max-w-28">
+              <Button
+                variant={g.rtc.streaming ? "default" : "ghost"}
+                class="size-8"
+                onclick={() => {
+                  g.rtc.streaming = !g.rtc.streaming;
+                }}
+              >
+                <MonitorUp class="size-5" />
+              </Button>
+            </Tooltip.Trigger>
+            <Tooltip.Content class="flex flex-row gap-2">
+              <Switch id="airplane-mode" bind:checked={g.allowPause} />
+              <Label for="airplane-mode">Разрешить удаленную паузу</Label>
+            </Tooltip.Content>
+          </Tooltip.Root>
+        </Tooltip.Provider>
         <Button
           variant="ghost"
           class="size-8"

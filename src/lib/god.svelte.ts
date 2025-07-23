@@ -77,6 +77,8 @@ export class God {
     );
   }
 
+  allowPause: boolean = $state(false);
+
   constructor(context: AudioContext, tauri: boolean) {
     this.tauri = tauri;
     this.createGate = () => {
@@ -111,7 +113,7 @@ export class God {
 
     this.ws.onmessage = (msg) => {
       if (msg.type === "pause") {
-        isTauri() && invoke("pause");
+        this.allowPause && isTauri() && invoke("pause");
       }
     };
 
@@ -139,8 +141,6 @@ export class God {
           // !!this.lock.wakeLock &&
           this.settings.ready;
       });
-
-      $inspect(this.ws.connected);
     });
   }
 }

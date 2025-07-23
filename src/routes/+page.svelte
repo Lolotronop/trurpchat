@@ -3,12 +3,13 @@
   import Input from "$lib/components/ui/input/input.svelte";
   import { gitGud } from "$lib/god.svelte";
   import Main from "./Main.svelte";
-  import { invoke } from "@tauri-apps/api/core";
+  import { invoke, isTauri } from "@tauri-apps/api/core";
   import { Loader2Icon } from "@lucide/svelte";
   import { fade } from "svelte/transition";
 
   let perm: Promise<any>;
-  const tauri = "__TAURI_INTERNALS__" in window;
+  const tauri = isTauri();
+  console.log(tauri);
   if (tauri) {
     perm = invoke("get_permissions", { origin: window.location.origin });
   } else {
