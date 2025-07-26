@@ -6,6 +6,7 @@ import { Shortcuts } from "./shortcuts.svelte";
 import { Settings } from "./settings.svelte";
 import { Theme } from "./theme.svelte";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { Sound } from "./sound.svelte";
 
 class WakeLockContainer {
   wakeLock: WakeLockSentinel | null = $state(null);
@@ -35,6 +36,7 @@ export class God {
   ready: boolean = $state(false);
   settings: Settings;
   theme: Theme;
+  sound: Sound;
 
   createGate: () => AudioWorkletNode;
   createLoudnessMeter: () => AudioWorkletNode;
@@ -48,6 +50,9 @@ export class God {
     this.#muted = value;
     if (value == false) {
       this.deafened = false;
+      this.sound.play("unmute");
+    } else {
+      this.sound.play("mute");
     }
     this.mic.nodes.outputGain.gain.setTargetAtTime(
       value ? 0 : 1,
@@ -62,6 +67,7 @@ export class God {
     return this.#deafened;
   }
   set deafened(value: boolean) {
+    if (value === this.#deafened) return;
     this.#deafened = value;
     this.ws.send({
       type: "deafened",
@@ -69,6 +75,9 @@ export class God {
     });
     if (value) {
       this.muted = true;
+      this.sound.play("deafen");
+    } else {
+      this.sound.play("undeafen");
     }
     this.rtc.deafenNode.gain.setTargetAtTime(
       value ? 0 : 1,
@@ -97,6 +106,8 @@ export class God {
     this.lock = new WakeLockContainer();
     this.lock.lock();
     this.theme = new Theme(this);
+    this.sound = new Sound(this);
+    this.sound.init();
 
     this.rtc = new WebRTC(this);
 
@@ -138,6 +149,7 @@ export class God {
         this.ready =
           this.mic.hasPermissions &&
           this.ws.connected &&
+          this.sound.ready &&
           // !!this.lock.wakeLock &&
           this.settings.ready;
       });
@@ -150,7 +162,7 @@ export function gitGud(audioContext?: AudioContext, tauri?: boolean): God {
   if (!instance) {
     if (!audioContext || tauri === undefined) {
       throw new Error(
-        "You have to provide and AudioContext with all the plugins loaded at first initialization",
+        `You have to provide and AudioContext with all the plugins loaded at first initialization ${audioContext}`,
       );
     }
     instance = new God(audioContext, tauri);

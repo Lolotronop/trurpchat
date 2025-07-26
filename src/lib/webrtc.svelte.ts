@@ -243,8 +243,12 @@ export class WebRTC {
       case "joined":
         if (msg.user.id !== this.clientId) {
           console.log(`User ${msg.user.name} joined room`, msg.room);
+          if (msg.room === this.room?.name) {
+            this.g.sound.play("user join");
+          }
           return;
         }
+        this.g.sound.play("user join");
         const room = this.rooms.find((room) => room.name === msg.room);
         if (!room) {
           console.error("Room not found");
@@ -277,6 +281,9 @@ export class WebRTC {
         } else {
           this.peers.get(msg.user.id)?.cleanup();
           this.peers.delete(msg.user.id);
+          if (msg.room === this.room?.name) {
+            this.g.sound.play("user leave");
+          }
         }
         break;
 
@@ -448,6 +455,7 @@ export class WebRTC {
 
   leaveRoom() {
     if (!this.room) return;
+    this.g.sound.play("voice disconnected");
     this.g.ws.send({
       type: "leave",
       room: this.room.name,
