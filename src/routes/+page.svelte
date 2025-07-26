@@ -12,6 +12,15 @@
   console.log(tauri);
   if (tauri) {
     perm = invoke("get_permissions", { origin: window.location.origin });
+    document.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      return false;
+    });
+
+    document.addEventListener("selectstart", (e) => {
+      e.preventDefault();
+      return false;
+    });
   } else {
     perm = Promise.resolve();
   }
