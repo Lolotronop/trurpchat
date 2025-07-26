@@ -1,6 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import type { God } from "./god.svelte";
 import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
+import { resolveResource } from "@tauri-apps/api/path";
 
 const sounds = [
   "mute",
@@ -36,12 +37,19 @@ export class Sound {
     for (const sound of sounds) {
       let file: Uint8Array;
       try {
+        const path = await resolveResource(`resources/sound/${sound}.mp3`);
+        file = await readFile(path);
+      } catch (error) {
+        console.error(`Failed to load sound from resource ${sound}:`, error);
+        continue;
+      }
+
+      try {
         file = await readFile(`sound/${sound}.mp3`, {
           baseDir: BaseDirectory.AppConfig,
         });
       } catch (error) {
-        console.error(`Failed to load sound ${sound}:`, error);
-        continue;
+        console.warn(`Failed to load sound from config ${sound}:`, error);
       }
       const buffer = new ArrayBuffer(file.length);
       const view = new Uint8Array(buffer);
