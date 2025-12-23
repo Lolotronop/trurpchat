@@ -5,6 +5,7 @@ import {
   unregisterAll,
 } from "@tauri-apps/plugin-global-shortcut";
 import { SvelteMap } from "svelte/reactivity";
+import { getPlatformStore, type IStore } from "./store";
 
 export const actions = {
   mute: "Выключить микрофон",
@@ -20,14 +21,15 @@ const keymap = {
 };
 
 export class Shortcuts extends EventTarget {
-  store: LazyStore;
+  store: IStore;
   detectingFor: KeyAction | null = $state(null);
   bindings = new SvelteMap<KeyAction, string | null>();
 
   constructor() {
     super();
     unregisterAll();
-    this.store = new LazyStore("shortcuts.json");
+    const Store = getPlatformStore();
+    this.store = new Store("settings.json");
     for (const action of Object.keys(actions) as KeyAction[]) {
       this.bindings.set(action, null);
     }

@@ -1,6 +1,7 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
-import debounced from "./utils.svelte";
+import { debounced } from "./utils.svelte";
 import type { Themes } from "./theme.svelte";
+import { getPlatformStore, type IStore } from "./store";
 
 interface SettingsKeys {
   version: string;
@@ -21,7 +22,8 @@ interface SettingsKeys {
 const defaultSettings: SettingsKeys = {
   version: "1",
   // gatewayServer: "lolotronop.ru:3000",
-  gatewayServer: "lolo-desktop:3000",
+  // gatewayServer: "lolo-desktop:3000",
+  gatewayServer: "localhost:3000",
   ovenServer: "90.188.89.207",
   username: "default",
   bgColor: "#070709",
@@ -36,22 +38,25 @@ const defaultSettings: SettingsKeys = {
 };
 
 export class Settings {
-  private store: LazyStore;
+  private store: IStore;
 
   ready: boolean = $state(false);
   settings: SettingsKeys = $state({ ...defaultSettings });
   tauri: boolean;
 
   constructor(tauri: boolean) {
-    this.store = new LazyStore("settings.json");
+    const Store = getPlatformStore();
+    this.store = new Store("settings.json");
     this.tauri = tauri;
 
     const save = debounced(() => this.save(), 500);
 
     this.init().then(() => {
+      console.log("Settings loaded");
       this.ready = true;
       $effect.root(() => {
         $effect(() => {
+          console.log(this.settings);
           this.settings;
           save();
         });

@@ -13,28 +13,18 @@ interface DebouncedLeading<F extends Procedure> {
   cancel(): void;
 }
 
-function debounced<F extends Procedure>(
-  fn: F,
-  wait: number,
-): DebouncedLeading<F> {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
-
-  const debounced = function (this: any, ...args: Parameters<F>) {
-    if (timeout) return;
-    fn.apply(this, args);
+export const debounced = <T extends (...args: any[]) => any>(
+  callback: T,
+  waitFor: number
+) => {
+  let timeout: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>): ReturnType<T> => {
+    let result: any;
+    timeout && clearTimeout(timeout);
     timeout = setTimeout(() => {
-      timeout = null;
-    }, wait);
+      result = callback(...args);
+    }, waitFor);
+    return result;
   };
+};
 
-  debounced.cancel = () => {
-    if (timeout) {
-      clearTimeout(timeout);
-      timeout = null;
-    }
-  };
-
-  return debounced as DebouncedLeading<F>;
-}
-
-export default debounced;

@@ -1,5 +1,5 @@
 import type { God } from "./god.svelte";
-import debounced from "./utils.svelte";
+import { debounced } from "./utils.svelte";
 
 export const MIN_DB = -60;
 
