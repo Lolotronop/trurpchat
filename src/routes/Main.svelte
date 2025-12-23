@@ -1,16 +1,14 @@
 <script lang="ts">
-  import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
-  import { invoke } from "@tauri-apps/api/core";
   import BottomControls from "./BottomControls.svelte";
   import RoomList from "./RoomList.svelte";
   import Stream from "./Stream.svelte";
-  import { BaseDirectory, open, readFile } from "@tauri-apps/plugin-fs";
   const g = gitGud();
   // TODO: this needs to be removed with proper
   // "speaking" sending
   g.mic.enableAnalyzer();
 
+  // TODO: figure out why is it even here????
   async function playWithAudioTag(bytes: Uint8Array, mimeType = "audio/mpeg") {
     // 1) Make a Blob
     const blob = new Blob([bytes], { type: mimeType });
@@ -28,11 +26,9 @@
       document.body.appendChild(audio);
     }
 
-    // 4) Assign and play
     audio.src = url;
     await audio.play();
 
-    // 5) Clean up the URL when done
     audio.onended = () => {
       URL.revokeObjectURL(url);
     };

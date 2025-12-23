@@ -99,7 +99,7 @@ export class God {
       return meter;
     };
 
-    this.settings = new Settings(this.tauri);
+    this.settings = new Settings();
     this.c = context;
     this.mic = new Mic(this);
     this.ws = new Gateway();

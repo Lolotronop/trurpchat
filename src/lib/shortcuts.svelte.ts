@@ -1,11 +1,12 @@
-import { LazyStore } from "@tauri-apps/plugin-store";
 import {
   register,
   unregister,
   unregisterAll,
+  type ShortcutHandler,
 } from "@tauri-apps/plugin-global-shortcut";
 import { SvelteMap } from "svelte/reactivity";
 import { getPlatformStore, type IStore } from "./store";
+import { isTauri } from "@tauri-apps/api/core";
 
 export const actions = {
   mute: "Выключить микрофон",
@@ -27,9 +28,11 @@ export class Shortcuts extends EventTarget {
 
   constructor() {
     super();
-    unregisterAll();
     const Store = getPlatformStore();
-    this.store = new Store("settings.json");
+    this.store = new Store("shortcuts.json");
+
+    this.unregisterAll();
+
     for (const action of Object.keys(actions) as KeyAction[]) {
       this.bindings.set(action, null);
     }
@@ -40,17 +43,40 @@ export class Shortcuts extends EventTarget {
     });
   }
 
+  unregisterAll() {
+    if (isTauri()) {
+      unregisterAll();
+    } else {
+      console.warn("Shortcuts are not implemented for the web yet");
+    }
+  }
+
+  async register(shortcuts: string | string[], handler: ShortcutHandler): Promise<void> {
+    if (isTauri()) {
+      register(shortcuts, handler);
+    } else {
+      console.warn("Shortcuts are not implemented for the web yet");
+    }
+  }
+
+  unregister(shortcuts: string | string[]) {
+    if (isTauri()) {
+      unregister(shortcuts);
+    } else {
+      console.warn("Shortcuts are not implemented for the web yet");
+    }
+  }
+
   set(action: KeyAction, key: string) {
-    console.log("setting", action, key);
     if (this.bindings.has(action)) {
       const oldKey = this.bindings.get(action);
       if (oldKey) {
-        unregister(oldKey);
+        this.unregister(oldKey);
       }
     }
     this.bindings.set(action, key);
     this.store.set(action, key);
-    register(key, (e) => {
+    this.register(key, (e) => {
       this.dispatchEvent(Object.assign(new Event(action), e));
     });
   }
@@ -94,7 +120,7 @@ export class Shortcuts extends EventTarget {
     const key = this.bindings.get(action);
     this.bindings.set(action, null);
     this.store.delete(action);
-    if (key) unregister(key);
+    if (key) this.unregister(key);
   }
 
   on(action: KeyAction, callback: (state: "Pressed" | "Released") => void) {

@@ -1,4 +1,3 @@
-import { LazyStore } from "@tauri-apps/plugin-store";
 import { debounced } from "./utils.svelte";
 import type { Themes } from "./theme.svelte";
 import { getPlatformStore, type IStore } from "./store";
@@ -42,21 +41,19 @@ export class Settings {
 
   ready: boolean = $state(false);
   settings: SettingsKeys = $state({ ...defaultSettings });
-  tauri: boolean;
 
-  constructor(tauri: boolean) {
+  constructor() {
     const Store = getPlatformStore();
     this.store = new Store("settings.json");
-    this.tauri = tauri;
 
     const save = debounced(() => this.save(), 500);
 
     this.init().then(() => {
-      console.log("Settings loaded");
       this.ready = true;
       $effect.root(() => {
+        console.log("Settings root created");
         $effect(() => {
-          console.log(this.settings);
+          console.log("Settings changed!", this.settings);
           this.settings;
           save();
         });
@@ -65,19 +62,13 @@ export class Settings {
   }
 
   save() {
-    console.log("Saving settings...");
-    if (this.tauri) {
-      Object.keys(this.settings).forEach(async (k) => {
-        const key = k as keyof SettingsKeys;
-        this.store.set(key, this.settings[key]);
-      });
-    }
+    Object.keys(this.settings).forEach(async (k) => {
+      const key = k as keyof SettingsKeys;
+      this.store.set(key, this.settings[key]);
+    });
   }
 
   private async init() {
-    if (!this.tauri) {
-      return;
-    }
     const hasData = await this.store.has("version");
     if (!hasData) {
       this.save();
