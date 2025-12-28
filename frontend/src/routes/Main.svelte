@@ -7,32 +7,6 @@
   // TODO: this needs to be removed with proper
   // "speaking" sending
   g.mic.enableAnalyzer();
-
-  // TODO: figure out why is it even here????
-  async function playWithAudioTag(bytes: Uint8Array, mimeType = "audio/mpeg") {
-    // 1) Make a Blob
-    const blob = new Blob([bytes], { type: mimeType });
-    // 2) Create an object URL
-    const url = URL.createObjectURL(blob);
-
-    // 3) Create or re-use an <audio> element
-    let audio: HTMLAudioElement | null = document.getElementById(
-      "my-audio",
-    ) as HTMLAudioElement;
-    if (!audio) {
-      audio = document.createElement("audio");
-      audio.id = "my-audio";
-      audio.preload = "auto"; // hint to browsers
-      document.body.appendChild(audio);
-    }
-
-    audio.src = url;
-    await audio.play();
-
-    audio.onended = () => {
-      URL.revokeObjectURL(url);
-    };
-  }
 </script>
 
 <main class="flex h-screen w-screen">

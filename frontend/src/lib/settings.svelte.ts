@@ -51,10 +51,13 @@ export class Settings {
     this.init().then(() => {
       this.ready = true;
       $effect.root(() => {
-        console.log("Settings root created");
         $effect(() => {
-          console.log("Settings changed!", this.settings);
-          this.settings;
+          for (const k of Object.keys(this.settings)) {
+            // force-subscribe to all settings updates
+            // this will not cover nested structures
+            // TODO: find a better way to do this
+            this.settings[k as keyof SettingsKeys];
+          }
           save();
         });
       });

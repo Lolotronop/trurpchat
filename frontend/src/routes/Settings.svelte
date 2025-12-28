@@ -8,7 +8,6 @@
   import GainSlider from "./GainSlider.svelte";
   import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
   import { Input } from "$lib/components/ui/input";
-  import { onMount } from "svelte";
   import { actions } from "$lib/shortcuts.svelte";
   import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
@@ -16,9 +15,8 @@
   import { toggleMode } from "mode-watcher";
   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
   import Textarea from "$lib/components/ui/textarea/textarea.svelte";
-  import * as Tabs from "$lib/components/ui/tabs/index.js";
   import { mode } from "mode-watcher";
-  import { Theme, themes } from "$lib/theme.svelte";
+  import { themes } from "$lib/theme.svelte";
 
   const g = gitGud();
   g.mic.connect();
@@ -120,7 +118,10 @@
 
               <div class="flex flex-col gap-2">
                 <h1>Усиление микрофона</h1>
-                <GainSlider min={-12} bind:value={g.mic.gain} />
+                <GainSlider min={-12} bind:value={() => g.mic.gain, (value) => {
+                  g.mic.gain = value;
+                  g.settings.settings.gain = value;
+                }} />
               </div>
 
               <div class="flex flex-col gap-2">

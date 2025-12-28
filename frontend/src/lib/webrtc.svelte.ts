@@ -1,6 +1,6 @@
 import { SvelteMap } from "svelte/reactivity";
+import type { Message, Room } from "trurpchat-backend";
 import type { Mic } from "./mic.svelte";
-import type { Message, Room } from "../../src-backend/types";
 import type { God } from "./god.svelte";
 
 export class Peer {
