@@ -1,11 +1,11 @@
 import type { ServerWebSocket } from "bun";
-import { Message, User } from "./types";
+import type { Message, User } from "./types";
 
 type Client = ServerWebSocket<User>;
 
 class Room {
   clients = new Set<Client>();
-  constructor(public name: string) {}
+  constructor(public name: string) { }
 
   toJson() {
     const allUsers = this.users;
@@ -105,7 +105,7 @@ function j(data: Message) {
   }
 }
 
-Bun.serve<User, void>({
+Bun.serve<Partial<User>, never>({
   port: 3000,
   fetch(req, server) {
     const url = new URL(req.url);

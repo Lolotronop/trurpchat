@@ -1,5 +1,5 @@
 import ReconnectingWebSocket from "reconnecting-websocket";
-import type { Message } from "../../src-backend/types";
+import type { Message } from "trurpchat-backend";
 
 export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
