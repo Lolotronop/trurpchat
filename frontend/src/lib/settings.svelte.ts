@@ -2,11 +2,17 @@ import { debounced } from "./utils.svelte";
 import type { Themes } from "./theme.svelte";
 import { getPlatformStore, type IStore } from "./store";
 
+export type Server = {
+  name: string;
+  url: string;
+  username: string;
+};
+
 interface SettingsKeys {
   version: string;
-  gatewayServer: string;
   ovenServer: string;
-  username: string | "default";
+  servers: Server[];
+  avtiveServerUrl: string | null;
   bgColor: string;
   muted: boolean;
   deviceId: string | null;
@@ -19,12 +25,12 @@ interface SettingsKeys {
 }
 
 const defaultSettings: SettingsKeys = {
-  version: "1",
+  version: "2",
   // gatewayServer: "lolotronop.ru:3000",
   // gatewayServer: "lolo-desktop:3000",
-  gatewayServer: "localhost:3000",
   ovenServer: "90.188.89.207",
-  username: "default",
+  servers: [],
+  avtiveServerUrl: null,
   bgColor: "#070709",
   muted: false,
   deviceId: null,

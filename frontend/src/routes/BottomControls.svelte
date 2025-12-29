@@ -97,26 +97,26 @@
   <div
     class="bg-background flex h-16 w-full shrink flex-row items-center justify-between"
   >
-    <div class="flex shrink flex-row items-center gap-1">
-      <Avatar.Root class="size-10">
-        <!-- <Avatar.Image src="https://github.com/shadcn.png" alt="@shadcn" /> -->
-        <Avatar.Fallback class="select-none">
-          {g.settings.settings.username[0].toUpperCase()}
-        </Avatar.Fallback>
-      </Avatar.Root>
-      <Tooltip.Provider>
-        <Tooltip.Root delayDuration={100}>
-          <Tooltip.Trigger class="max-w-28">
-            <p class="text-foreground overflow-hidden text-ellipsis">
-              {g.settings.settings.username}
-            </p>
-          </Tooltip.Trigger>
-          <Tooltip.Content>
-            {g.settings.settings.username}
-          </Tooltip.Content>
-        </Tooltip.Root>
-      </Tooltip.Provider>
-    </div>
+    <!-- <div class="flex shrink flex-row items-center gap-1"> -->
+    <!--   <Avatar.Root class="size-10"> -->
+    <!--     <!-- <Avatar.Image src="https://github.com/shadcn.png" alt="@shadcn" /> --> -->
+    <!--     <Avatar.Fallback class="select-none"> -->
+    <!--       {g.settings.settings.username[0].toUpperCase()} -->
+    <!--     </Avatar.Fallback> -->
+    <!--   </Avatar.Root> -->
+    <!--   <Tooltip.Provider> -->
+    <!--     <Tooltip.Root delayDuration={100}> -->
+    <!--       <Tooltip.Trigger class="max-w-28"> -->
+    <!--         <p class="text-foreground overflow-hidden text-ellipsis"> -->
+    <!--           {g.settings.settings.username} -->
+    <!--         </p> -->
+    <!--       </Tooltip.Trigger> -->
+    <!--       <Tooltip.Content> -->
+    <!--         {g.settings.settings.username} -->
+    <!--       </Tooltip.Content> -->
+    <!--     </Tooltip.Root> -->
+    <!--   </Tooltip.Provider> -->
+    <!-- </div> -->
     <div class="flex w-full max-w-28 flex-row items-center gap-2">
       <Button
         variant={g.muted ? "destructive" : "ghost"}

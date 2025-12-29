@@ -131,8 +131,14 @@ export class God {
     $effect.root(() => {
       $effect(() => {
         if (this.settings.ready) {
+          const username = this.settings.settings.servers.find((server) => server.url === this.settings.settings.avtiveServerUrl)?.username;
+          if (!username) {
+            console.error("Username not found");
+            return;
+          }
+          const url = this.settings.settings.avtiveServerUrl;
           this.ws.connect(
-            `ws://${this.settings.settings.gatewayServer}?name=${this.settings.settings.username}`,
+            `ws://${url}?name=${username}`,
           );
         }
       });
@@ -148,7 +154,7 @@ export class God {
       $effect(() => {
         this.ready =
           this.mic.hasPermissions &&
-          this.ws.connected &&
+          // this.ws.connected &&
           this.sound.ready &&
           // !!this.lock.wakeLock &&
           this.settings.ready;

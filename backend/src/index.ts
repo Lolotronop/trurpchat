@@ -1,4 +1,4 @@
-import type { ServerWebSocket } from "bun";
+import { env, type ServerWebSocket } from "bun";
 import type { Message, User } from "./types";
 
 type Client = ServerWebSocket<User>;
@@ -89,6 +89,7 @@ class Hotel {
 const hotel = new Hotel();
 hotel.rooms.push(new Room("Альфа"));
 hotel.rooms.push(new Room("Бета"));
+hotel.rooms.push(new Room("Sdfsdfsdf"));
 
 const clients = new Map<string, Client>();
 
@@ -105,8 +106,10 @@ function j(data: Message) {
   }
 }
 
+const PORT = +(env.PORT ?? 3000);
+
 Bun.serve<Partial<User>, never>({
-  port: 3000,
+  port: PORT,
   fetch(req, server) {
     const url = new URL(req.url);
     if (url.pathname == "/rooms") {
@@ -271,5 +274,5 @@ Bun.serve<Partial<User>, never>({
   },
 });
 
-console.log("WebRTC signaling server running on port 3000");
+console.log(`WebRTC signaling server running on port ${PORT}`);
 console.log("Rooms and users will be logged as they connect/disconnect");

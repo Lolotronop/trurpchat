@@ -1,6 +1,4 @@
 <script lang="ts">
-  import Button from "$lib/components/ui/button/button.svelte";
-  import Input from "$lib/components/ui/input/input.svelte";
   import { gitGud } from "$lib/god.svelte";
   import Main from "./Main.svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
@@ -9,7 +7,6 @@
 
   let perm: Promise<any>;
   const tauri = isTauri();
-  console.log(tauri);
   if (tauri) {
     perm = invoke("get_permissions", { origin: window.location.origin });
     document.addEventListener("contextmenu", (e) => {
@@ -35,7 +32,6 @@
   const loaded = p.then(() => {
     return gitGud(context, tauri);
   });
-  let username = "";
 </script>
 
 {#await loaded}
@@ -46,29 +42,13 @@
     <Loader2Icon class="animate-spin" />
   </div>
 {:then g}
-  {#if g.ready && g.settings.settings.username !== "default"}
+  {#if g.ready}
     <Main />
   {:else}
     <div
       class="bg-background absolute z-10 flex h-screen w-screen flex-col items-center justify-center gap-2 p-8"
       transition:fade={{ duration: 200 }}
     >
-      {#if g.settings.ready && g.settings.settings.username === "default"}
-        <form class="contents">
-          <Input
-            type="text"
-            placeholder="Имя пользователя"
-            class="mb-2 max-w-80"
-            bind:value={username}
-          />
-          <Button
-            type="submit"
-            onclick={() => (g.settings.settings.username = username)}
-          >
-            Войти
-          </Button>
-        </form>
-      {:else}
         <Loader2Icon class="animate-spin" />
         <div class="flex flex-row items-center justify-center gap-2">
           {#snippet l(label: string, value: boolean)}
@@ -82,10 +62,8 @@
 
           {@render l("L", !!g.lock.wakeLock)}
           {@render l("S", g.settings.ready)}
-          {@render l("G", g.ws.connected)}
           {@render l("M", g.mic.hasPermissions)}
         </div>
-      {/if}
     </div>
   {/if}
 {/await}

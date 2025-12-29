@@ -439,7 +439,13 @@ export class WebRTC {
   }
 
   async joinRoom(room: string) {
-    const username = this.g.settings.settings.username;
+    const url = this.g.settings.settings.avtiveServerUrl;
+    const server = this.g.settings.settings.servers.find((server) => server.url === url);
+    if (!server) {
+      console.error("Server not found");
+      return;
+    }
+    const username = server.username;
     console.log("Joining room:", room, "with username:", username);
     if (this.isConnected) {
       this.leaveRoom();
