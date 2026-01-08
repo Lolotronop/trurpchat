@@ -51,7 +51,7 @@ g.mic.enableAnalyzer();
     </Dialog.Root>
   </div>
   <div class="flex h-full min-w-[300px] flex-col border-r">
-    <div class="flex w-full p-2 px-6 text-xl">ТРУРПЧР</div>
+    <div class="flex w-full p-2 px-6 text-xl">SERVER</div>
     <RoomList />
     <div class="w-full p-0.5">
       <BottomControls />

@@ -2,7 +2,7 @@ import type { God } from "./god.svelte";
 
 export class Theme {
   customCss: string = $state("");
-  selected: Themes = $state("gruvbox");
+  selected: ThemeNames = $state("gruvbox");
   element: HTMLStyleElement;
 
   constructor(private g: God) {
@@ -247,4 +247,4 @@ export const themes = {
     --shadow-2xl: var(--shadow-2xl);
   }`,
 };
-export type Themes = keyof typeof themes | "custom";
+export type ThemeNames = keyof typeof themes | "custom";

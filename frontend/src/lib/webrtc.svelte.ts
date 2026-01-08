@@ -113,27 +113,13 @@ export class Peer {
     }
 
     this.pc.ontrack = (event) => {
-      console.log(
-        "Received remote stream from:",
-        targetId,
-        `with ${event.streams.length} streams`,
-      );
-      for (const stream of event.streams) {
-        console.log(`stream[${event.streams.indexOf(stream)}]:`, stream);
-        for (const track of stream.getTracks()) {
-          console.log(`    track[${track.id}]:`, track);
-        }
-      }
-
       const audioTrack = event.streams[0].getAudioTracks()[0];
       if (!audioTrack) {
         throw new Error(`Audio track for ${targetId} not found`);
       }
 
       const stream = event.streams[0];
-      console.log("Received stream:", stream);
       const source = this.mic.c.createMediaStreamSource(stream);
-      console.log("Source:", source);
       source.connect(this.gainNode);
       attachDomAudio("user-audio-" + targetId, stream);
       this.mic.c.resume();
@@ -160,6 +146,7 @@ export class Peer {
   }
 }
 
+// TODO: this whould be dictated by the current server
 const TURN_SERVER_IP = "45.143.95.55";
 export const ICE_CONFIG = {
   iceServers: [

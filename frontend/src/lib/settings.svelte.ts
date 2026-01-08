@@ -1,5 +1,5 @@
 import { debounced } from "./utils.svelte";
-import type { Themes } from "./theme.svelte";
+import type { ThemeNames } from "./theme.svelte";
 import { getPlatformStore, type IStore } from "./store";
 
 export type Server = {
@@ -20,7 +20,7 @@ interface SettingsKeys {
   gateThreshold: number;
   noiseSuppression: boolean;
   echoCancellation: boolean;
-  theme: Themes;
+  theme: ThemeNames;
   customCss: string;
 }
 
