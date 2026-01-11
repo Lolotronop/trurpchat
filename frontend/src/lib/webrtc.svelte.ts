@@ -2,6 +2,7 @@ import { SvelteMap } from "svelte/reactivity";
 import type { Message, Room } from "trurpchat-backend";
 import type { Mic } from "./mic.svelte";
 import type { God } from "./god.svelte";
+import { getAudioContext } from "./audiocontext";
 
 export class Peer {
   mic: Mic;
@@ -44,13 +45,12 @@ export class Peer {
   constructor(
     targetId: string,
     mic: Mic,
-    createLoudnessMeter: () => AudioWorkletNode,
     output: GainNode,
   ) {
     this.mic = mic;
     this.pc = new RTCPeerConnection(ICE_CONFIG);
     this.gainNode = this.mic.c.createGain();
-    this.analyzer = createLoudnessMeter();
+    this.analyzer = new AudioWorkletNode(this.mic.c, "loudness");
     this.muteNode = this.mic.c.createGain();
 
     this.gainNode.connect(this.muteNode);
@@ -179,7 +179,7 @@ export class WebRTC {
   }
   set streaming(value: boolean) {
     this.#streaming = value;
-    this.g.ws.send({
+    this.g.servers.selected?.gateway?.send({
       type: "streaming",
       streaming: value,
     });
@@ -191,20 +191,21 @@ export class WebRTC {
   }
   set watching(value: string | null) {
     this.#watching = value;
-    this.g.ws.send({
+    this.g.servers.selected?.gateway?.send({
       type: "watching",
       watching: value,
     });
   }
 
   constructor(private g: God) {
-    this.deafenNode = this.g.c.createGain();
-    this.deafenNode.connect(this.g.c.destination);
+    this.deafenNode = getAudioContext().createGain();
+    this.deafenNode.connect(getAudioContext().destination);
     this.clientId = Math.floor(Math.random() * 1000).toString();
-    this.g.ws.onmessage = (data) => {
+
+    this.g.servers.selected?.gateway?.onmessage((data) => {
       console.log("Received message:", data);
       this.handleSignalingMessage(data);
-    };
+    });
   }
 
   async handleSignalingMessage(rawData: unknown) {
@@ -302,7 +303,6 @@ export class WebRTC {
     peer = new Peer(
       targetId,
       this.g.mic,
-      this.g.createLoudnessMeter,
       this.deafenNode,
     );
     this.peers.set(targetId, peer);
@@ -317,7 +317,7 @@ export class WebRTC {
         console.warn("No ice candidate");
         return;
       }
-      this.g.ws.send({
+      this.g.servers.selected?.gateway?.send({
         type: "rtc.ice",
         candidate: event.candidate,
         target: targetId,
@@ -362,7 +362,7 @@ export class WebRTC {
     // offer = { ...offer, sdp };
     await peer.pc.setLocalDescription(offer);
 
-    this.g.ws.send({
+    this.g.servers.selected?.gateway?.send({
       type: "rtc.offer",
       offer: offer,
       target: targetId,
@@ -382,7 +382,7 @@ export class WebRTC {
     await peer.pc.setLocalDescription(answer);
 
     // Send answer
-    this.g.ws.send({
+    this.g.servers.selected?.gateway?.send({
       type: "rtc.answer",
       answer: answer,
       target: senderId,
@@ -426,21 +426,20 @@ export class WebRTC {
   }
 
   async joinRoom(room: string) {
-    const url = this.g.settings.settings.avtiveServerUrl;
-    const server = this.g.settings.settings.servers.find((server) => server.url === url);
+    const server = this.g.servers.selected;
     if (!server) {
-      console.error("Server not found");
+      console.error("No server selected and trying to join a room. What are you doing. Anwer me. Right now. In the dms. In detal. Exactly your intentions. How did you get here. How are you going to get yourself out of this? What is yout point? Please help me.");
       return;
     }
-    const username = server.username;
+
+    const username = server.definition.username;
     console.log("Joining room:", room, "with username:", username);
     if (this.isConnected) {
       this.leaveRoom();
-      // await (() => {
-      //   return new Promise((resolve) => setTimeout(resolve, 1000));
-      // })();
     }
-    this.g.ws.send({
+
+    // TODO: make sure that it is connected!
+    server.gateway?.send({
       type: "join",
       room: room.trim(),
     });
@@ -449,7 +448,7 @@ export class WebRTC {
   leaveRoom() {
     if (!this.room) return;
     this.g.sound.play("voice disconnected");
-    this.g.ws.send({
+    this.g.servers.selected?.gateway?.send({
       type: "leave",
       room: this.room.name,
     });

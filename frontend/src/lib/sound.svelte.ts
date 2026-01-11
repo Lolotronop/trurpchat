@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
-import type { God } from "./god.svelte";
 import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
 import { resolveResource } from "@tauri-apps/api/path";
+import { getAudioContext } from "./audiocontext";
 
 const sounds = [
   "mute",
@@ -16,16 +16,20 @@ export type sound = (typeof sounds)[number];
 
 export class Sound {
   ready = $state(false);
+
+  c: AudioContext;
   volume = $state(0.3);
   gainNode: GainNode;
 
   // @ts-expect-error: it is initialized in the .init()
   private sounds: Record<sound, AudioBuffer> = {};
 
-  constructor(private g: God) {
-    this.gainNode = this.g.c.createGain();
-    this.gainNode.connect(this.g.c.destination);
-    this.gainNode.gain.setTargetAtTime(this.volume, this.g.c.currentTime, 0.01);
+  constructor() {
+    this.c = getAudioContext();
+    this.gainNode = this.c.createGain();
+    this.gainNode.connect(this.c.destination);
+    this.gainNode.gain.setTargetAtTime(this.volume, this.c.currentTime, 0.01);
+    this.init();
   }
 
   async init() {
@@ -34,6 +38,7 @@ export class Sound {
       console.warn("Sound.init() called on non-Tauri platform");
       return;
     }
+
     for (const sound of sounds) {
       let file: Uint8Array;
       try {
@@ -54,7 +59,7 @@ export class Sound {
       const buffer = new ArrayBuffer(file.length);
       const view = new Uint8Array(buffer);
       view.set(new Uint8Array(file.buffer));
-      const data = await this.g.c.decodeAudioData(buffer);
+      const data = await this.c.decodeAudioData(buffer);
       this.sounds[sound] = data;
     }
     this.ready = true;
@@ -67,7 +72,7 @@ export class Sound {
       console.warn(`Sound.play() called with unknown sound: ${sound}`);
       return;
     }
-    const source = this.g.c.createBufferSource();
+    const source = this.c.createBufferSource();
     source.buffer = data;
     source.connect(this.gainNode);
     source.start(0);

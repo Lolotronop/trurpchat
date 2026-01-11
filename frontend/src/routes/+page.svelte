@@ -4,6 +4,7 @@
   import { invoke, isTauri } from "@tauri-apps/api/core";
   import { Loader2Icon } from "@lucide/svelte";
   import { fade } from "svelte/transition";
+    import { getAudioContext, initCustomModules } from "$lib/audiocontext";
 
   let perm: Promise<any>;
   const tauri = isTauri();
@@ -22,10 +23,9 @@
     perm = Promise.resolve();
   }
 
-  const context = new AudioContext();
+  const context = getAudioContext();
   const p = Promise.all([
-    context.audioWorklet.addModule("noise-gate.js"),
-    context.audioWorklet.addModule("loudness.js"),
+    initCustomModules(),
     perm,
   ]);
 
@@ -41,29 +41,6 @@
   >
     <Loader2Icon class="animate-spin" />
   </div>
-{:then g}
-  {#if g.ready}
-    <Main />
-  {:else}
-    <div
-      class="bg-background absolute z-10 flex h-screen w-screen flex-col items-center justify-center gap-2 p-8"
-      transition:fade={{ duration: 200 }}
-    >
-        <Loader2Icon class="animate-spin" />
-        <div class="flex flex-row items-center justify-center gap-2">
-          {#snippet l(label: string, value: boolean)}
-            <div
-              class="flex size-8 flex-col items-center justify-center rounded outline"
-              class:bg-green-500={value}
-            >
-              {label}
-            </div>
-          {/snippet}
-
-          {@render l("L", !!g.lock.wakeLock)}
-          {@render l("S", g.settings.ready)}
-          {@render l("M", g.mic.hasPermissions)}
-        </div>
-    </div>
-  {/if}
+{:then}
+  <Main />
 {/await}

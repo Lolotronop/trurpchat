@@ -1,21 +1,39 @@
-import type { God } from "./god.svelte";
+import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Theme {
-  customCss: string = $state("");
-  selected: ThemeNames = $state("gruvbox");
+  ready: boolean = $state(false);
+  store: IPersistantStore = getPlatformStore("theme.json");
   element: HTMLStyleElement;
 
-  constructor(private g: God) {
-    this.element = document.getElementById("theme")! as HTMLStyleElement;
+  #customCss: string = $state("");
+  get customCss() {
+    return this.#customCss;
+  }
+  set customCss(value) {
+    this.#customCss = value;
+    this.store.set("customCss", value);
     this.apply();
+  }
 
-    $effect.root(() => {
-      $effect(() => {
-        g.settings.settings.theme = this.selected;
-        g.settings.settings.customCss = this.customCss;
-        this.apply();
-      });
-    });
+  #selectedTheme: ThemeNames = $state("чб");
+  get selected() {
+    return this.#selectedTheme;
+  }
+  set selected(value) {
+    this.#selectedTheme = value;
+    this.store.set("selectedTheme", value);
+    this.apply();
+  }
+
+  constructor() {
+    this.element = document.getElementById("theme")! as HTMLStyleElement;
+    this.init().then(() => this.apply());
+  }
+
+  async init() {
+    this.#customCss = await this.store.get("customCss") || "";
+    this.#selectedTheme = await this.store.get("selectedTheme") || "чб";
+    this.ready = true;
   }
 
   apply() {

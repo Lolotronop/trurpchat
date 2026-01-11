@@ -17,21 +17,24 @@ g.mic.enableAnalyzer();
 <main class="flex h-screen w-screen">
   <div class="flex h-full flex-col border-r p-2">
       <div class="flex shrink flex-col items-center gap-1">
-    {#each g.settings.settings.servers as server (server.url)}
+    {#each g.servers.values as server (server.definition.url)}
         <Tooltip.Provider>
           <Tooltip.Root delayDuration={100}>
             <Tooltip.Trigger class="max-w-28">
               <Avatar.Root class="size-10" onclick={() => {
-                g.settings.settings.avtiveServerUrl = server.url;
+                g.servers.selected == server;
               }}>
                 <!-- <Avatar.Image src="https://github.com/shadcn.png" alt="@shadcn" /> -->
                 <Avatar.Fallback class="select-none">
-                  {server.name[0].toUpperCase()}
+                  {server.definition.name[0].toUpperCase()}
                 </Avatar.Fallback>
               </Avatar.Root>
             </Tooltip.Trigger>
             <Tooltip.Content>
-              {server.name}
+              {server.definition.name}
+              <Button onclick={() => {
+                g.servers.remove(server);
+              }}>Remove</Button>
             </Tooltip.Content>
           </Tooltip.Root>
         </Tooltip.Provider>

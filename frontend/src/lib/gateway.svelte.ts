@@ -57,7 +57,11 @@ export class Gateway extends EventTarget {
     this.socket = socket;
   }
 
-  set onmessage(callback: (data: Message) => void) {
+  disconnect() {
+    this.socket?.close();
+  }
+
+  onmessage(callback: (data: Message) => void) {
     this.callbacks.push(callback);
     this.socket?.addEventListener("message", (event) => {
       let data: Message;

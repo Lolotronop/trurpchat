@@ -5,7 +5,7 @@ import {
   type ShortcutHandler,
 } from "@tauri-apps/plugin-global-shortcut";
 import { SvelteMap } from "svelte/reactivity";
-import { getPlatformStore, type IStore } from "./store";
+import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { isTauri } from "@tauri-apps/api/core";
 
 export const actions = {
@@ -22,21 +22,20 @@ const keymap = {
 };
 
 export class Shortcuts extends EventTarget {
-  store: IStore;
+  store: IPersistantStore;
   detectingFor: KeyAction | null = $state(null);
   bindings = new SvelteMap<KeyAction, string | null>();
 
   constructor() {
     super();
-    const Store = getPlatformStore();
-    this.store = new Store("shortcuts.json");
+    this.store = getPlatformStore("shortcuts.json");
 
     this.unregisterAll();
 
     for (const action of Object.keys(actions) as KeyAction[]) {
       this.bindings.set(action, null);
     }
-    this.store.entries().then(async (entries) => {
+    this.store.entries().then((entries) => {
       for (const [key, value] of entries) {
         this.set(key as KeyAction, value as string);
       }

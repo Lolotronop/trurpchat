@@ -111,6 +111,7 @@ const PORT = +(env.PORT ?? 3000);
 Bun.serve<Partial<User>, never>({
   port: PORT,
   fetch(req, server) {
+    console.log("someone is doing it");
     const url = new URL(req.url);
     if (url.pathname == "/rooms") {
       const r = hotel.toJson();

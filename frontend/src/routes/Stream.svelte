@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { getAudioContext } from "$lib/audiocontext";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
@@ -15,14 +16,20 @@
   // TODO: const for now, get from config later?
 
   let g = gitGud();
-  const server = g.settings.settings.ovenServer;
+  if (g.servers.selected === undefined) {
+    throw new Error("Tried to wathed a stream on a not selected server. How did you do that")
+  }
+  // TODO: this depends on you still being on the selected server while watching the stream
+  // which wont be always true. maybe store that separately?
+  const server = g.servers.selected!.overServer;
 
   let isFullscreen = false;
 
   const keyboardCallback = (event: KeyboardEvent) => {
     console.log(event.key);
     if (event.key === " " && isFullscreen) {
-      g.ws.send({ type: "pause" });
+        // TODO: same bug
+      g.servers.selected?.gateway.send({ type: "pause" });
     }
   };
   window.addEventListener("keydown", keyboardCallback);
@@ -38,11 +45,11 @@
   let bottomControls: any;
 
   let streamVolume = $state(1);
-  const gainNode = g.c.createGain();
-  gainNode.connect(g.c.destination);
+  const gainNode = getAudioContext().createGain();
+  gainNode.connect(getAudioContext().destination);
   let sourceNode: MediaElementAudioSourceNode | null = null;
   $effect(() => {
-    gainNode.gain.setTargetAtTime(streamVolume, g.c.currentTime, 0.01);
+    gainNode.gain.setTargetAtTime(streamVolume, getAudioContext().currentTime, 0.01);
   });
 
   const setupOven: Action<HTMLVideoElement> = (node) => {
@@ -62,7 +69,7 @@
           },
         ],
       });
-      g.c.resume();
+      getAudioContext().resume();
       const container = player.getContainerElement();
 
       const badge = container.querySelector(
@@ -104,7 +111,7 @@
             // @ts-ignore
             el.webkitCaptureStream?.();
 
-          // sourceNode = g.c.createMediaStreamSource(stream);
+          // sourceNode = getAudioContext().createMediaStreamSource(stream);
           // sourceNode.connect(gainNode);
           const time = container.querySelector(
             ".op-time-display",
@@ -156,7 +163,10 @@
   <Tooltip.Provider>
     <Tooltip.Root>
       <Tooltip.Trigger>
-        <Button onclick={() => g.ws.send({ type: "pause" })}>Пауза</Button>
+        <Button onclick={() => {
+          // TODO same bug
+          g.servers.selected?.gateway.send({ type: "pause" })
+        }}>Пауза</Button>
       </Tooltip.Trigger>
       <Tooltip.Content>Пробел в полном экране</Tooltip.Content>
     </Tooltip.Root>

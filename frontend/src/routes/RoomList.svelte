@@ -92,7 +92,8 @@
           {@const peer = g.rtc.peers.get(user.id)}
           {#if user.id === g.rtc.clientId}
             {@render u(
-              g.settings.settings.username,
+              // TODO: change to actual username on the server?
+              "USERNAME",
               !g.muted && g.mic.speaking,
               g.muted,
               false,

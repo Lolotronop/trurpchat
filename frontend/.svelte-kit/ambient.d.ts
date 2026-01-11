@@ -30,8 +30,8 @@ declare module '$env/static/private' {
 	export const npm_command: string;
 	export const __ETC_PROFILE_DONE: string;
 	export const GHOSTTY_BIN_DIR: string;
-	export const COLORTERM: string;
 	export const __HM_SESS_VARS_SOURCED: string;
+	export const COLORTERM: string;
 	export const HYPRLAND_CMD: string;
 	export const XDG_CONFIG_DIRS: string;
 	export const NIX_LD_LIBRARY_PATH: string;
@@ -60,8 +60,8 @@ declare module '$env/static/private' {
 	export const GHOSTTY_SHELL_FEATURES: string;
 	export const HOME: string;
 	export const SSH_ASKPASS: string;
-	export const LANG: string;
 	export const LC_PAPER: string;
+	export const LANG: string;
 	export const _JAVA_AWT_WM_NONREPARENTING: string;
 	export const XDG_CURRENT_DESKTOP: string;
 	export const npm_package_version: string;
@@ -74,8 +74,8 @@ declare module '$env/static/private' {
 	export const npm_lifecycle_script: string;
 	export const GHOSTTY_RESOURCES_DIR: string;
 	export const LC_IDENTIFICATION: string;
-	export const TERM: string;
 	export const TERMINFO: string;
+	export const TERM: string;
 	export const npm_package_name: string;
 	export const GTK_PATH: string;
 	export const USER: string;
@@ -151,8 +151,8 @@ declare module '$env/dynamic/private' {
 		npm_command: string;
 		__ETC_PROFILE_DONE: string;
 		GHOSTTY_BIN_DIR: string;
-		COLORTERM: string;
 		__HM_SESS_VARS_SOURCED: string;
+		COLORTERM: string;
 		HYPRLAND_CMD: string;
 		XDG_CONFIG_DIRS: string;
 		NIX_LD_LIBRARY_PATH: string;
@@ -181,8 +181,8 @@ declare module '$env/dynamic/private' {
 		GHOSTTY_SHELL_FEATURES: string;
 		HOME: string;
 		SSH_ASKPASS: string;
-		LANG: string;
 		LC_PAPER: string;
+		LANG: string;
 		_JAVA_AWT_WM_NONREPARENTING: string;
 		XDG_CURRENT_DESKTOP: string;
 		npm_package_version: string;
@@ -195,8 +195,8 @@ declare module '$env/dynamic/private' {
 		npm_lifecycle_script: string;
 		GHOSTTY_RESOURCES_DIR: string;
 		LC_IDENTIFICATION: string;
-		TERM: string;
 		TERMINFO: string;
+		TERM: string;
 		npm_package_name: string;
 		GTK_PATH: string;
 		USER: string;

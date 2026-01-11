@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core"
 import { LazyStore } from "@tauri-apps/plugin-store";
 
-export interface IStore {
+export interface IPersistantStore {
   set(key: string, value: unknown): Promise<void>;
   get<T>(key: string): Promise<T | undefined>;
   has(key: string): Promise<boolean>;
@@ -17,15 +17,15 @@ export interface IStore {
   close(): Promise<void>;
 }
 
-export const getPlatformStore = () => {
+export const getPlatformStore = (filename: string) => {
   if (isTauri()) {
-    return LazyStore;
+    return new LazyStore(filename);
   } else {
-    return WebStore;
+    return new WebStore(filename);
   }
 }
 
-class WebStore implements IStore {
+class WebStore implements IPersistantStore {
   private storage: Storage;
   private prefix: string;
   private isClosed: boolean = false;

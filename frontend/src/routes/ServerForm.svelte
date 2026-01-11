@@ -2,11 +2,11 @@
     import {Input} from "$lib/components/ui/input";
     import {Button} from "$lib/components/ui/button";
     import {Label} from "$lib/components/ui/label";
-    import type {Server} from "$lib/settings.svelte";
+    import type { ServerDefinition } from "$lib/servers.svelte";
     import { gitGud } from "$lib/god.svelte";
 
     const g = gitGud();
-    let server: Server  = $state({
+    let server: ServerDefinition = $state({
       name: "",
       url: "",
       username: "",
@@ -21,7 +21,7 @@
   <Label for="username">Имя пользователя</Label>
   <Input id="username" type="text" bind:value={server.username} />
   <Button variant="secondary" onclick={() => {
-    g.settings.settings.servers.push(server);
+    g.servers.add(server);
     server = {
       name: "",
       url: "",

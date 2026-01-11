@@ -1,13 +1,14 @@
-import type { God } from "./god.svelte";
-import { debounced } from "./utils.svelte";
+import { createLoudnessAnalyzer, createNoiseGate, getAudioContext } from "./audiocontext";
+import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export const MIN_DB = -60;
 
 export class Mic {
   c: AudioContext;
+  store: IPersistantStore;
   hasPermissions: boolean = $state(false);
-  stream: MediaStream | null = null;
-  deviceId: string | null = $state(null);
+  stream: MediaStream | undefined = undefined;
+  deviceId: string | undefined = $state(undefined);
   nodes: {
     source: MediaStreamAudioSourceNode | null;
     inputGain: GainNode;
@@ -32,7 +33,7 @@ export class Mic {
       try {
         node.disconnect(this.c.destination);
       } catch (error) {
-        console.error("Error disconnecting from audio context:", error);
+        console.error("Coundn't disconnect the last node from output", error);
       }
     }
   }
@@ -45,7 +46,7 @@ export class Mic {
       return;
     }
     gateThreshold.setTargetAtTime(value, this.c.currentTime, 0.01);
-    this.g.settings.settings.gateThreshold = value;
+    this.store.set("gateThreshold", value);
     this.#gateThreshold = value;
   }
   get gateThreshold() {
@@ -56,7 +57,7 @@ export class Mic {
   set gain(value) {
     this.#gain = value;
     this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
-    // this.g.settings.settings.gain = value;
+    this.store.set("gain", value);
   }
   get gain() {
     return this.#gain;
@@ -65,7 +66,7 @@ export class Mic {
   #noiseSuppression: boolean = $state(true);
   set noiseSuppression(value) {
     this.#noiseSuppression = value;
-    this.g.settings.settings.noiseSuppression = value;
+    this.store.set("noiseSuppression", value);
     this.connect();
   }
   get noiseSuppression() {
@@ -76,7 +77,7 @@ export class Mic {
   set echoCancellation(value) {
     this.#echoCancellation = value;
 
-    this.g.settings.settings.echoCancellation = value;
+    this.store.set("echoCancellation", value);
     this.connect();
   }
   get echoCancellation() {
@@ -100,15 +101,16 @@ export class Mic {
     noiseGateRelease: 0.2,
   });
 
-  constructor(private g: God) {
-    console.log("Creating audio context");
-    this.c = g.c;
+  constructor() {
+    this.store = getPlatformStore("mic.json");
+
+    this.c = getAudioContext();
     this.nodes = {
       source: null,
       inputGain: this.c.createGain(),
       limiter: this.c.createDynamicsCompressor(),
-      analyzer: g.createLoudnessMeter(),
-      noiseGate: g.createGate(),
+      analyzer: createLoudnessAnalyzer(),
+      noiseGate: createNoiseGate(),
       outputGain: this.c.createGain(),
       destination: this.c.createMediaStreamDestination(),
       merger: this.c.createChannelMerger(2),
@@ -143,12 +145,14 @@ export class Mic {
 
     this.nodes.noiseGate.connect(this.nodes.merger, 0, 0);
     this.nodes.noiseGate.connect(this.nodes.merger, 0, 1);
+
+    this.init();
   }
 
   async init() {
-    this.deviceId = this.g.settings.settings.deviceId;
-    this.gain = this.g.settings.settings.gain;
-    this.gateThreshold = this.g.settings.settings.gateThreshold;
+    this.deviceId = await this.store.get("deviceId");
+    this.gain = await this.store.get("gain") || 1;
+    this.gateThreshold = await this.store.get("gateThreshold") || -30;
     try {
       let media = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -173,14 +177,14 @@ export class Mic {
     await this.c.resume();
 
     const settings: MediaTrackConstraints = {
-      noiseSuppression: this.g.settings.settings.noiseSuppression,
-      echoCancellation: this.g.settings.settings.echoCancellation,
+      noiseSuppression: await this.store.get("noiseSuppression") || true,
+      echoCancellation: await this.store.get("echoCancellation") || false,
       autoGainControl: false,
       channelCount: 1,
     };
     if (this.deviceId) {
       settings.deviceId = this.deviceId;
-      this.g.settings.settings.deviceId = this.deviceId;
+      this.store.set("deviceId", this.deviceId);
     }
 
     try {
@@ -188,7 +192,7 @@ export class Mic {
         audio: settings,
       });
       const deviceId = this.stream.getAudioTracks()[0].getSettings().deviceId;
-      this.deviceId = deviceId ?? null;
+      this.deviceId = deviceId;
       this.nodes.source = this.c.createMediaStreamSource(this.stream);
       this.nodes.source.connect(this.nodes.inputGain);
     } catch (error) {
@@ -205,7 +209,7 @@ export class Mic {
       track.stop();
     });
 
-    this.stream = null;
+    this.stream = undefined;
   }
 
   async updateDevices() {

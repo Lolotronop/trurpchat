@@ -1,98 +1,69 @@
-import { debounced } from "./utils.svelte";
-import type { ThemeNames } from "./theme.svelte";
-import { getPlatformStore, type IStore } from "./store";
+import { getPlatformStore, type IPersistantStore } from "./webstore";
 
-export type Server = {
-  name: string;
-  url: string;
-  username: string;
-};
-
-interface SettingsKeys {
-  version: string;
-  ovenServer: string;
-  servers: Server[];
-  avtiveServerUrl: string | null;
-  bgColor: string;
+interface UserSettings {
+  _version: string;
   muted: boolean;
-  deviceId: string | null;
-  gain: number;
-  gateThreshold: number;
-  noiseSuppression: boolean;
-  echoCancellation: boolean;
-  theme: ThemeNames;
-  customCss: string;
+  allowPause: boolean;
+  activeServerUrl: string;
 }
 
-const defaultSettings: SettingsKeys = {
-  version: "2",
-  // gatewayServer: "lolotronop.ru:3000",
-  // gatewayServer: "lolo-desktop:3000",
-  ovenServer: "90.188.89.207",
-  servers: [],
-  avtiveServerUrl: null,
-  bgColor: "#070709",
+const defaultSettings: UserSettings = {
+  _version: "3",
   muted: false,
-  deviceId: null,
-  gain: 1,
-  gateThreshold: -30,
-  noiseSuppression: true,
-  echoCancellation: false,
-  theme: "gruvbox",
-  customCss: "",
+  allowPause: false,
+  activeServerUrl: "",
 };
 
 export class Settings {
-  private store: IStore;
+  private store: IPersistantStore;
 
   ready: boolean = $state(false);
-  settings: SettingsKeys = $state({ ...defaultSettings });
+  values = $state({ ...defaultSettings });
 
   constructor() {
-    const Store = getPlatformStore();
-    this.store = new Store("settings.json");
-
-    const save = debounced(() => this.save(), 500);
+    this.store = getPlatformStore("settings.json");
 
     this.init().then(() => {
       this.ready = true;
-      $effect.root(() => {
-        $effect(() => {
-          for (const k of Object.keys(this.settings)) {
-            // force-subscribe to all settings updates
-            // this will not cover nested structures
-            // TODO: find a better way to do this
-            this.settings[k as keyof SettingsKeys];
-          }
-          save();
-        });
-      });
     });
   }
 
+  set<T extends keyof UserSettings>(key: T, value: UserSettings[T]) {
+    this.store.set(key, value);
+    this.values[key] = value;
+  }
+
   save() {
-    Object.keys(this.settings).forEach(async (k) => {
-      const key = k as keyof SettingsKeys;
-      this.store.set(key, this.settings[key]);
+    Object.keys(this.values).forEach(async (k) => {
+      const key = k as keyof UserSettings;
+      this.store.set(key, this.values[key]);
     });
   }
 
   private async init() {
-    const hasData = await this.store.has("version");
-    if (!hasData) {
+    const hasVersion = await this.store.has("_version");
+    if (!hasVersion) {
       this.save();
-    } else {
-      await this.store.reload();
-      const entries = await this.store.entries();
-      const keys = Object.keys(this.settings);
-      entries.forEach(([key, value]) => {
-        if (keys.includes(key)) {
-          // @ts-ignore
-          this.settings[key] = value;
-        } else {
-          console.warn(`Unknown setting key: ${key}: ${value}`);
-        }
-      });
+      return;
+    } 
+
+    const version = await this.store.get("_version");
+    if (version !== defaultSettings._version) {
+      this.store.clear();
+      this.save();
+      return;
     }
+
+    await this.store.reload();
+    const entries = await this.store.entries();
+    const keys = Object.keys(this.values);
+    entries.forEach(([key, value]) => {
+      if (keys.includes(key)) {
+        // @ts-ignore
+        this.values[key] = value;
+      } else {
+        console.warn(`Unknown setting key: ${key}: ${value}`);
+      }
+    });
   }
 }

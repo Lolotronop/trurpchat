@@ -1,10 +1,8 @@
 <script lang="ts">
-  import * as Avatar from "$lib/components/ui/avatar";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
   import {
-    Clock,
     HeadphoneOff,
     Headphones,
     Info,
