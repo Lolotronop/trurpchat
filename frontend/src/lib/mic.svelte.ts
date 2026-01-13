@@ -1,4 +1,8 @@
-import { createLoudnessAnalyzer, createNoiseGate, getAudioContext } from "./audiocontext";
+import {
+  createLoudnessAnalyzer,
+  createNoiseGate,
+  getAudioContext,
+} from "./audiocontext";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export const MIN_DB = -60;
@@ -27,6 +31,7 @@ export class Mic {
   set monitoring(value) {
     this.#monitoring = value;
     const node = this.nodes.merger;
+    console.log(value);
     if (value) {
       node.connect(this.c.destination);
     } else {
@@ -151,8 +156,8 @@ export class Mic {
 
   async init() {
     this.deviceId = await this.store.get("deviceId");
-    this.gain = await this.store.get("gain") || 1;
-    this.gateThreshold = await this.store.get("gateThreshold") || -30;
+    this.gain = (await this.store.get("gain")) || 1;
+    this.gateThreshold = (await this.store.get("gateThreshold")) || -30;
     try {
       let media = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -177,8 +182,8 @@ export class Mic {
     await this.c.resume();
 
     const settings: MediaTrackConstraints = {
-      noiseSuppression: await this.store.get("noiseSuppression") || true,
-      echoCancellation: await this.store.get("echoCancellation") || false,
+      noiseSuppression: (await this.store.get("noiseSuppression")) || true,
+      echoCancellation: (await this.store.get("echoCancellation")) || false,
       autoGainControl: false,
       channelCount: 1,
     };

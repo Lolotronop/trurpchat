@@ -23,28 +23,30 @@
     const pad = (num: number) => num.toString().padStart(2, "0");
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   }
+
+  let rtc = $derived(g.servers.selected?.rtc);
 </script>
 
 <div class="text-muted-foreground rounded border-t px-2">
-  {#if g.rtc.isConnected}
+  {#if rtc !== undefined}
     <div class="flex flex-row items-center justify-between gap-2 py-2">
       <Tooltip.Provider>
         <Tooltip.Root delayDuration={100}>
           <Tooltip.Trigger class="flex flex-col items-start">
             <div class="hover:text-foreground flex flex-row items-center gap-2">
-              Подключен к {g.rtc.room?.name}
+              Подключен к {rtc.room?.name}
               <Info size={16} />
             </div>
           </Tooltip.Trigger>
           <Tooltip.Content class="w-34">
             <div class="flex w-full flex-row items-center justify-center gap-2">
               <p class="text-muted-foreground font-mono text-sm">
-                {formatTime(g.rtc.connectedFor)}
+                {formatTime(rtc.connectedFor)}
               </p>
             </div>
             <div>
-              {#each g.rtc.room?.users! as user}
-                {@const peer = g.rtc.peers.get(user.id)}
+              {#each rtc.room?.users! as user}
+                {@const peer = rtc.peers.get(user.id)}
                 <div class="flex w-full flex-row justify-between">
                   <p>
                     {user.name}
@@ -64,10 +66,10 @@
           <Tooltip.Root delayDuration={100}>
             <Tooltip.Trigger class="max-w-28">
               <Button
-                variant={g.rtc.streaming ? "default" : "ghost"}
+                variant={rtc.streaming ? "default" : "ghost"}
                 class="size-8"
                 onclick={() => {
-                  g.rtc.streaming = !g.rtc.streaming;
+                  rtc.streaming = !rtc.streaming;
                 }}
               >
                 <MonitorUp class="size-5" />
@@ -83,7 +85,7 @@
           variant="ghost"
           class="size-8"
           onclick={() => {
-            g.rtc.leaveRoom();
+            g.servers.selected?.leaveRoom();
           }}
         >
           <PhoneOff class="size-5" />

@@ -5,7 +5,7 @@ type Client = ServerWebSocket<User>;
 
 class Room {
   clients = new Set<Client>();
-  constructor(public name: string) { }
+  constructor(public name: string) {}
 
   toJson() {
     const allUsers = this.users;
@@ -113,17 +113,7 @@ Bun.serve<Partial<User>, never>({
   fetch(req, server) {
     console.log("someone is doing it");
     const url = new URL(req.url);
-    if (url.pathname == "/rooms") {
-      const r = hotel.toJson();
-      console.log("Returning to http", r);
-      const res = new Response(JSON.stringify(r), { status: 200 });
-      res.headers.set("Access-Control-Allow-Origin", "*");
-      res.headers.set(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS",
-      );
-      return res;
-    }
+
     const name = url.searchParams.get("name");
     if (!name) {
       console.log("Missing name parameter");
@@ -169,6 +159,7 @@ Bun.serve<Partial<User>, never>({
         return;
       }
 
+      // TODO: add periodic pings to prune dead clients
       if (msg.type === "join") {
         const room = hotel.find(msg.room);
         if (!room) {

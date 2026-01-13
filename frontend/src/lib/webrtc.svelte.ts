@@ -3,6 +3,7 @@ import type { Message, Room } from "trurpchat-backend";
 import type { Mic } from "./mic.svelte";
 import type { God } from "./god.svelte";
 import { getAudioContext } from "./audiocontext";
+import type { Server } from "./servers.svelte";
 
 export class Peer {
   mic: Mic;
@@ -42,11 +43,7 @@ export class Peer {
 
   interval: NodeJS.Timeout | number | null = null;
 
-  constructor(
-    targetId: string,
-    mic: Mic,
-    output: GainNode,
-  ) {
+  constructor(targetId: string, mic: Mic, output: GainNode) {
     this.mic = mic;
     this.pc = new RTCPeerConnection(ICE_CONFIG);
     this.gainNode = this.mic.c.createGain();
@@ -91,27 +88,6 @@ export class Peer {
     const [audioTrack] = this.mic.nodes.destination.stream.getAudioTracks();
     this.pc.addTrack(audioTrack, this.mic.stream);
 
-    /**
-     * Attach a DOM audio element to a MediaStream
-     * because chrome WOULD NOT behave without it
-     * (data from the stream just doesn't get sent to the sink without it)
-     */
-    function attachDomAudio(id: string, stream: MediaStream) {
-      let audio = document.getElementById(id) as HTMLAudioElement;
-
-      if (!audio) {
-        audio = document.createElement("audio");
-        audio.id = id;
-        audio.autoplay = true;
-        audio.muted = true;
-        audio.style.display = "none";
-        document.body.appendChild(audio);
-      }
-
-      audio.srcObject = stream;
-      return audio;
-    }
-
     this.pc.ontrack = (event) => {
       const audioTrack = event.streams[0].getAudioTracks()[0];
       if (!audioTrack) {
@@ -119,10 +95,10 @@ export class Peer {
       }
 
       const stream = event.streams[0];
-      const source = this.mic.c.createMediaStreamSource(stream);
+      const source = getAudioContext().createMediaStreamSource(stream);
       source.connect(this.gainNode);
       attachDomAudio("user-audio-" + targetId, stream);
-      this.mic.c.resume();
+      getAudioContext().resume();
     };
 
     // this will probably be needed for enabling cam
@@ -165,9 +141,8 @@ export const ICE_CONFIG = {
 
 export class WebRTC {
   isConnected: boolean = $state(false);
-  rooms: Room[] = $state([]);
-  room: Room | null = $state(null);
-  clientId: string;
+  server: Server;
+  room: Room;
   deafenNode: GainNode;
   peers = new SvelteMap<string, Peer>();
   connectedFor: number = $state(0);
@@ -179,7 +154,7 @@ export class WebRTC {
   }
   set streaming(value: boolean) {
     this.#streaming = value;
-    this.g.servers.selected?.gateway?.send({
+    this.server.gateway.send({
       type: "streaming",
       streaming: value,
     });
@@ -191,19 +166,23 @@ export class WebRTC {
   }
   set watching(value: string | null) {
     this.#watching = value;
-    this.g.servers.selected?.gateway?.send({
+    this.server.gateway.send({
       type: "watching",
       watching: value,
     });
   }
 
-  constructor(private g: God) {
+  constructor(
+    private g: God,
+    server: Server,
+    room: Room,
+  ) {
     this.deafenNode = getAudioContext().createGain();
     this.deafenNode.connect(getAudioContext().destination);
-    this.clientId = Math.floor(Math.random() * 1000).toString();
+    this.server = server;
+    this.room = room;
 
-    this.g.servers.selected?.gateway?.onmessage((data) => {
-      console.log("Received message:", data);
+    this.server.gateway.onmessage((data) => {
       this.handleSignalingMessage(data);
     });
   }
@@ -212,38 +191,15 @@ export class WebRTC {
     const msg = rawData as Message;
 
     switch (msg.type) {
-      case "connected":
-        this.clientId = msg.id;
-        console.log("Connected with ID:", this.clientId);
-        break;
-
-      case "rooms":
-        this.rooms = msg.rooms;
-        if (this.room) {
-          const r = this.rooms.find((room) => room.name === this.room?.name);
-          if (r) {
-            this.room = r;
-          }
-        }
-        console.log("Received rooms:", msg.rooms);
-        break;
-
       case "joined":
-        if (msg.user.id !== this.clientId) {
+        if (msg.user.id !== this.server.clientId) {
           console.log(`User ${msg.user.name} joined room`, msg.room);
-          if (msg.room === this.room?.name) {
-            this.g.sound.play("user join");
-          }
+          this.g.sound.play("user join");
+          this.room.users.push(msg.user);
           return;
         }
+
         this.g.sound.play("user join");
-        const room = this.rooms.find((room) => room.name === msg.room);
-        if (!room) {
-          console.error("Room not found");
-          return;
-        }
-        this.room = room;
-        this.isConnected = true;
         console.log("Joined room:", this.room);
 
         this.connectedFor = 0;
@@ -257,19 +213,22 @@ export class WebRTC {
         await this.g.mic.connect();
         // Initiate calls to existing users
         for (const user of this.room.users) {
-          if (user.id === this.clientId) continue;
+          if (user.id === this.server.clientId) continue;
           await this.initiateCall(user.id);
         }
         break;
 
       case "left":
-        if (msg.user.id === this.clientId) {
+        if (msg.user.id === this.server.clientId) {
           this.cleanup();
           return;
         } else {
           this.peers.get(msg.user.id)?.cleanup();
           this.peers.delete(msg.user.id);
           if (msg.room === this.room?.name) {
+            this.room.users = this.room.users.filter(
+              (u) => u.id !== msg.user.id,
+            );
             this.g.sound.play("user leave");
           }
         }
@@ -287,11 +246,6 @@ export class WebRTC {
         await this.handleIceCandidate(msg.candidate, msg.sender!);
         break;
     }
-
-    if (msg.type.startsWith("rtc")) {
-      return;
-    }
-    console.log("Peer connections:", this.peers.size, this.peers);
   }
 
   createPeer(targetId: string): Peer {
@@ -300,11 +254,7 @@ export class WebRTC {
       console.log(`Peer connection with ${targetId} already exists`);
       return peer;
     }
-    peer = new Peer(
-      targetId,
-      this.g.mic,
-      this.deafenNode,
-    );
+    peer = new Peer(targetId, this.g.mic, this.deafenNode);
     this.peers.set(targetId, peer);
 
     if (!this.g.mic.stream) {
@@ -317,11 +267,11 @@ export class WebRTC {
         console.warn("No ice candidate");
         return;
       }
-      this.g.servers.selected?.gateway?.send({
+      this.server.gateway.send({
         type: "rtc.ice",
         candidate: event.candidate,
         target: targetId,
-        sender: this.clientId,
+        sender: this.server.clientId,
       });
     };
 
@@ -340,7 +290,7 @@ export class WebRTC {
       }
     };
     peer.pc.onicecandidateerror = (event) => {
-      console.warn("ICE candidate error:", event.errorText);
+      console.warn("ICE candidate error:", event);
     };
 
     return peer;
@@ -362,11 +312,11 @@ export class WebRTC {
     // offer = { ...offer, sdp };
     await peer.pc.setLocalDescription(offer);
 
-    this.g.servers.selected?.gateway?.send({
+    this.server.gateway.send({
       type: "rtc.offer",
       offer: offer,
       target: targetId,
-      sender: this.clientId,
+      sender: this.server.clientId,
     });
   }
 
@@ -382,11 +332,11 @@ export class WebRTC {
     await peer.pc.setLocalDescription(answer);
 
     // Send answer
-    this.g.servers.selected?.gateway?.send({
+    this.server.gateway.send({
       type: "rtc.answer",
       answer: answer,
       target: senderId,
-      sender: this.clientId,
+      sender: this.server.clientId,
     });
   }
 
@@ -422,35 +372,26 @@ export class WebRTC {
     this.peers.clear();
     this.g.mic.disconnect();
     this.isConnected = false;
-    this.room = null;
+  }
+}
+
+/**
+ * Attach a DOM audio element to a MediaStream
+ * because chrome WOULD NOT behave without it
+ * (data from the stream just doesn't get sent to the sink without it)
+ */
+function attachDomAudio(id: string, stream: MediaStream) {
+  let audio = document.getElementById(id) as HTMLAudioElement;
+
+  if (!audio) {
+    audio = document.createElement("audio");
+    audio.id = id;
+    audio.autoplay = true;
+    audio.muted = true;
+    audio.style.display = "none";
+    document.body.appendChild(audio);
   }
 
-  async joinRoom(room: string) {
-    const server = this.g.servers.selected;
-    if (!server) {
-      console.error("No server selected and trying to join a room. What are you doing. Anwer me. Right now. In the dms. In detal. Exactly your intentions. How did you get here. How are you going to get yourself out of this? What is yout point? Please help me.");
-      return;
-    }
-
-    const username = server.definition.username;
-    console.log("Joining room:", room, "with username:", username);
-    if (this.isConnected) {
-      this.leaveRoom();
-    }
-
-    // TODO: make sure that it is connected!
-    server.gateway?.send({
-      type: "join",
-      room: room.trim(),
-    });
-  }
-
-  leaveRoom() {
-    if (!this.room) return;
-    this.g.sound.play("voice disconnected");
-    this.g.servers.selected?.gateway?.send({
-      type: "leave",
-      room: this.room.name,
-    });
-  }
+  audio.srcObject = stream;
+  return audio;
 }

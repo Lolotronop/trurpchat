@@ -1,5 +1,4 @@
 import { Mic } from "./mic.svelte";
-import { WebRTC } from "./webrtc.svelte";
 import { Shortcuts } from "./shortcuts.svelte";
 import { Settings } from "./settings.svelte";
 import { Theme } from "./theme.svelte";
@@ -11,7 +10,6 @@ import { ServerManager } from "./servers.svelte";
 
 export class God {
   mic: Mic;
-  rtc: WebRTC;
   lock: WakeLockContainer;
   keys: Shortcuts = new Shortcuts();
   settings: Settings;
@@ -59,11 +57,12 @@ export class God {
     } else {
       this.sound.play("undeafen");
     }
-    this.rtc.deafenNode.gain.setTargetAtTime(
-      value ? 0 : 1,
-      getAudioContext().currentTime,
-      0.01,
-    );
+    // TODO: somehow make this work
+    // this..deafenNode.gain.setTargetAtTime(
+    //   value ? 0 : 1,
+    //   getAudioContext().currentTime,
+    //   0.01,
+    // );
   }
 
   #allowPause: boolean = $state(false);
@@ -83,8 +82,6 @@ export class God {
     this.theme = new Theme();
     this.sound = new Sound();
     this.servers = new ServerManager();
-
-    this.rtc = new WebRTC(this);
 
     this.keys.on("mute", (state) => {
       if (state === "Released") {

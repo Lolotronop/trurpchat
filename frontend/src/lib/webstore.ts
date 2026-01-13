@@ -1,4 +1,4 @@
-import { isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
 export interface IPersistantStore {
@@ -23,14 +23,14 @@ export const getPlatformStore = (filename: string) => {
   } else {
     return new WebStore(filename);
   }
-}
+};
 
 class WebStore implements IPersistantStore {
   private storage: Storage;
   private prefix: string;
   private isClosed: boolean = false;
 
-  constructor(prefix: string = '') {
+  constructor(prefix: string = "") {
     this.storage = window.localStorage;
     this.prefix = prefix;
   }
@@ -41,7 +41,7 @@ class WebStore implements IPersistantStore {
 
   private checkClosed(): void {
     if (this.isClosed) {
-      throw new Error('WebStore is closed');
+      throw new Error("WebStore is closed");
     }
   }
 
@@ -74,7 +74,6 @@ class WebStore implements IPersistantStore {
     this.checkClosed();
     const prefixedKey = this.getPrefixedKey(key);
     const value = this.storage.getItem(prefixedKey);
-    console.log("get", key, value);
     return this.deserialize<T>(value);
   }
 
@@ -111,7 +110,7 @@ class WebStore implements IPersistantStore {
       }
     }
 
-    keysToRemove.forEach(key => this.storage.removeItem(key));
+    keysToRemove.forEach((key) => this.storage.removeItem(key));
   }
 
   async reset(): Promise<void> {
@@ -219,7 +218,7 @@ class WebStore implements IPersistantStore {
 
   static isAvailable(): boolean {
     try {
-      const testKey = '__test__';
+      const testKey = "__test__";
       window.localStorage.setItem(testKey, testKey);
       window.localStorage.removeItem(testKey);
       return true;
@@ -240,4 +239,3 @@ class WebStore implements IPersistantStore {
     return total;
   }
 }
-

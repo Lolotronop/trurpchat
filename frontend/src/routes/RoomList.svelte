@@ -13,18 +13,21 @@
   import GainSlider from "./GainSlider.svelte";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { toDb } from "$lib/utils.svelte";
+
+  const rtc = $derived(g.servers.selected?.rtc);
+  const server = $derived(g.servers.selected);
 </script>
 
 <div class="h-full w-full p-2">
-  {#each g.rtc.rooms as room (room.name)}
+  {#each server?.rooms || [] as room (room.name)}
     <div>
       <Button
         variant="ghost"
-        class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {g
-          .rtc.room?.name === room.name
+        class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {
+        rtc?.room?.name === room.name
           ? ''
           : 'text-muted-foreground'}"
-        onclick={() => g.rtc.joinRoom(room.name)}
+        onclick={() => server?.joinRoom(room)}
       >
         <div class="flex flex-row items-center gap-2">
           <Volume2 size={16} strokeWidth={3} />
@@ -53,7 +56,7 @@
                 </Avatar.Fallback>
               </Avatar.Root>
               <p
-                class={g.rtc.room?.name === room.name
+                class={rtc?.room?.name === room.name
                   ? ""
                   : "text-muted-foreground"}
               >
@@ -75,7 +78,8 @@
                         variant="ghost"
                         class="hover:text-primary-foreground hover:bg-destructive! size-6"
                         onclick={() => {
-                          g.rtc.watching = username;
+                          if (!rtc) return;
+                          rtc.watching = username;
                         }}
                       >
                         <TvMinimalPlay class="size-4" />
@@ -89,11 +93,11 @@
           </div>
         {/snippet}
         {#each room.users as user (user.id)}
-          {@const peer = g.rtc.peers.get(user.id)}
-          {#if user.id === g.rtc.clientId}
+          {@const peer = rtc?.peers.get(user.id)}
+          {#if user.id === server?.clientId}
             {@render u(
               // TODO: change to actual username on the server?
-              "USERNAME",
+              user.name,
               !g.muted && g.mic.speaking,
               g.muted,
               false,
