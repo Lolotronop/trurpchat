@@ -67,9 +67,7 @@
 
         <span class="pointer-events-none"> | </span>
 
-        <span class="w-full text-left">
-          {(value * 100).toFixed(0)}%
-        </span>
+        <span class="w-full text-left"> {(value * 100).toFixed(0)}% </span>
       </div>
     {/if}
 
@@ -88,8 +86,7 @@
       onmouseleave={() => {
         hovering = false;
       }}
-      bind:value={
-        () => (value == 0 ? min : toDb(value)),
+      bind:value={() => (value == 0 ? min : toDb(value)),
         (v) => {
           setActive();
           if (v === min && toInfinite) {
@@ -97,16 +94,13 @@
           } else {
             value = fromDb(v);
           }
-        }
-      }
+        }}
     />
   </div>
 {/snippet}
 
 {#if steps.length > 0}
-  <Ticks {max} {min} ticks={steps}>
-    {@render slider()}
-  </Ticks>
+  <Ticks {max} {min} ticks={steps}>{@render slider()}</Ticks>
 {:else}
   {@render slider()}
 {/if}

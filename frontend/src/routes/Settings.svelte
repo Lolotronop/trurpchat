@@ -35,7 +35,6 @@
       }, 2000);
     }
   });
-
 </script>
 
 <Dialog.Root
@@ -92,9 +91,9 @@
                   </Select.Trigger>
                   <Select.Content>
                     {#each g.mic.devices as device}
-                      <Select.Item value={device.deviceId}
-                        >{device.label}</Select.Item
-                      >
+                      <Select.Item value={device.deviceId}>
+                        {device.label}
+                      </Select.Item>
                     {/each}
                   </Select.Content>
                 </Select.Root>

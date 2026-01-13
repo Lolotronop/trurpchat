@@ -45,7 +45,7 @@ export class Settings {
     if (!hasVersion) {
       this.save();
       return;
-    } 
+    }
 
     const version = await this.store.get("_version");
     if (version !== defaultSettings._version) {

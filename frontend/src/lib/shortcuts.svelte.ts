@@ -50,7 +50,10 @@ export class Shortcuts extends EventTarget {
     }
   }
 
-  async register(shortcuts: string | string[], handler: ShortcutHandler): Promise<void> {
+  async register(
+    shortcuts: string | string[],
+    handler: ShortcutHandler,
+  ): Promise<void> {
     if (isTauri()) {
       register(shortcuts, handler);
     } else {

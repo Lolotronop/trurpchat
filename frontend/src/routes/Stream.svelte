@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { getAudioContext } from "$lib/audiocontext";
+  import { getAudioContext } from "$lib/audiocontext";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
@@ -17,7 +17,9 @@
 
   let g = gitGud();
   if (g.servers.selected === undefined) {
-    throw new Error("Tried to wathed a stream on a not selected server. How did you do that")
+    throw new Error(
+      "Tried to wathed a stream on a not selected server. How did you do that",
+    );
   }
   // TODO: this depends on you still being on the selected server while watching the stream
   // which wont be always true. maybe store that separately?
@@ -28,7 +30,7 @@
   const keyboardCallback = (event: KeyboardEvent) => {
     console.log(event.key);
     if (event.key === " " && isFullscreen) {
-        // TODO: same bug
+      // TODO: same bug
       g.servers.selected?.gateway.send({ type: "pause" });
     }
   };
@@ -49,7 +51,11 @@
   gainNode.connect(getAudioContext().destination);
   let sourceNode: MediaElementAudioSourceNode | null = null;
   $effect(() => {
-    gainNode.gain.setTargetAtTime(streamVolume, getAudioContext().currentTime, 0.01);
+    gainNode.gain.setTargetAtTime(
+      streamVolume,
+      getAudioContext().currentTime,
+      0.01,
+    );
   });
 
   const setupOven: Action<HTMLVideoElement> = (node) => {
@@ -163,10 +169,14 @@
   <Tooltip.Provider>
     <Tooltip.Root>
       <Tooltip.Trigger>
-        <Button onclick={() => {
+        <Button
+          onclick={() => {
           // TODO same bug
           g.servers.selected?.gateway.send({ type: "pause" })
-        }}>Пауза</Button>
+        }}
+        >
+          Пауза
+        </Button>
       </Tooltip.Trigger>
       <Tooltip.Content>Пробел в полном экране</Tooltip.Content>
     </Tooltip.Root>

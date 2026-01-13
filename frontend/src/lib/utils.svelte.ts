@@ -15,7 +15,7 @@ interface DebouncedLeading<F extends Procedure> {
 
 export const debounced = <T extends (...args: any[]) => any>(
   callback: T,
-  waitFor: number
+  waitFor: number,
 ) => {
   let timeout: ReturnType<typeof setTimeout>;
   return (...args: Parameters<T>): ReturnType<T> => {
@@ -27,4 +27,3 @@ export const debounced = <T extends (...args: any[]) => any>(
     return result;
   };
 };
-

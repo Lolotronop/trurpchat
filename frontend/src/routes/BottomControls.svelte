@@ -49,12 +49,8 @@
               {#each rtc.room?.users! as user}
                 {@const peer = rtc.peers.get(user.id)}
                 <div class="flex w-full flex-row justify-between">
-                  <p>
-                    {user.name}
-                  </p>
-                  <p>
-                    {peer?.ping ?? "N/A"}ms
-                  </p>
+                  <p>{user.name}</p>
+                  <p>{peer?.ping ?? "N/A"}ms</p>
                 </div>
               {/each}
             </div>

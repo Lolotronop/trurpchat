@@ -31,8 +31,8 @@ export class Theme {
   }
 
   async init() {
-    this.#customCss = await this.store.get("customCss") || "";
-    this.#selectedTheme = await this.store.get("selectedTheme") || "чб";
+    this.#customCss = (await this.store.get("customCss")) || "";
+    this.#selectedTheme = (await this.store.get("selectedTheme")) || "чб";
     this.ready = true;
   }
 
