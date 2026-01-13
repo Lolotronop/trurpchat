@@ -1,0 +1,9 @@
+{
+  "formatter": {
+    "indentStyle": "space"
+  },
+  "html": {
+    "experimentalFullSupportEnabled": true,
+    "formatter": { "enabled": true, "indentScriptAndStyle": true }
+  }
+}
