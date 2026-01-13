@@ -16,13 +16,9 @@ export async function initCustomModules() {
 }
 
 export const createLoudnessAnalyzer = () => {
-  const loudness = new AudioWorkletNode(getAudioContext(), "loudness");
-  loudness.connect(getAudioContext().destination);
-  return loudness;
+  return new AudioWorkletNode(getAudioContext(), "loudness");
 };
 
 export const createNoiseGate = () => {
-  const noiseGate = new AudioWorkletNode(getAudioContext(), "noise-gate");
-  noiseGate.connect(getAudioContext().destination);
-  return noiseGate;
+  return new AudioWorkletNode(getAudioContext(), "noise-gate");
 };
