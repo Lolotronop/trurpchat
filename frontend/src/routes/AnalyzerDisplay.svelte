@@ -15,7 +15,7 @@
 </script>
 
 <Ticks {ticks} height={18}>
-  <div class="bg-muted relative h-[20px] w-full">
+  <div class="bg-muted relative h-5 w-full">
     <div
       class="absolute top-0 left-0 h-full max-w-full bg-red-500"
       style={`width: ${(1 - peak / MIN) * 100}%`}

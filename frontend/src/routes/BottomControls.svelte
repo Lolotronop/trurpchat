@@ -89,7 +89,7 @@
         </Button>
       </div>
     </div>
-    <div class="border-t-[1px]"></div>
+    <div class="border-t"></div>
   {/if}
   <div
     class="bg-background flex h-16 w-full shrink flex-row items-center justify-between"

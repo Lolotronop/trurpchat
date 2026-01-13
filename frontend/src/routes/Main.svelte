@@ -58,7 +58,7 @@
       </Dialog.Content>
     </Dialog.Root>
   </div>
-  <div class="flex h-full min-w-[300px] flex-col border-r">
+  <div class="flex h-full min-w-75 flex-col border-r">
     <div class="flex w-full p-2 px-6 text-xl">
       {g.servers.selected?.definition.name || "Select a server"}
     </div>

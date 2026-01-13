@@ -1,8 +1,9 @@
 <script lang="ts">
   import { Slider } from "$lib/components/ui/slider";
   import { fromDb, toDb } from "$lib/utils.svelte";
-  import { fly, scale } from "svelte/transition";
+  import { fly } from "svelte/transition";
   import Ticks from "./Ticks.svelte";
+
   type Props = {
     value: number;
     min?: number;
@@ -19,19 +20,28 @@
     ticks = true,
   }: Props = $props();
 
-  const steps: number[] = [];
-  if (!Array.isArray(ticks)) {
-    if (ticks) {
-      for (let i = -6; i >= min; i -= 6) {
-        steps.push(i);
-      }
-      for (let i = 0; i <= max; i += 6) {
-        steps.push(i);
-      }
+  const steps = $derived.by((): number[] => {
+    if (Array.isArray(ticks)) {
+      return [...ticks];
     }
-  } else {
-    steps.push(...ticks);
-  }
+
+    if (!ticks) {
+      return [];
+    }
+
+    const result: number[] = [];
+
+    for (let i = -6; i >= min; i -= 6) {
+      result.push(i);
+    }
+
+    for (let i = 0; i <= max; i += 6) {
+      result.push(i);
+    }
+
+    return result;
+  });
+
   const pct = (raw: number) => {
     const v = toDb(raw);
     return ((v - min) / (max - min)) * 100;
@@ -56,7 +66,7 @@
     {#if hovering || active}
       {@const db = toDb(value)}
       <div
-        class="bg-muted absolute top-[-36px] flex w-28 -translate-x-1/2 justify-center gap-1 rounded text-center select-none"
+        class="bg-muted absolute -top-9 flex w-28 -translate-x-1/2 justify-center gap-1 rounded text-center select-none"
         style="left: {pct(value)}%"
         transition:fly={{ duration: 200, y: 10 }}
       >

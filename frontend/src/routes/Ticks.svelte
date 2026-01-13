@@ -8,12 +8,22 @@
     children: Snippet;
     height?: number;
   };
-  let { ticks: t, children, min, max, height }: Props = $props();
+  let {
+    ticks: t,
+    children,
+    min: initialMin,
+    max: initialMax,
+    height,
+  }: Props = $props();
   height ??= 4;
-  const ticks = t.toSorted((a, b) => a - b);
-  min ??= ticks[0];
-  max ??= ticks[ticks.length - 1];
-  const pct = (v: number) => `${((v - min) / (max - min)) * 100}%`;
+
+  const ticks = $derived(t.toSorted((a, b) => a - b));
+  let min = $derived(initialMin ?? ticks[0]);
+  let max = $derived(initialMax ?? ticks[ticks.length - 1]);
+
+  function pct(t: number) {
+    return ((t - min) / (max - min)) * 100 + "%";
+  }
 </script>
 
 <div class="relative w-full" style="padding-bottom: {height}px">
@@ -24,7 +34,7 @@
         style="left: {pct(t)};"
       >
         <div
-          class="bg-secondary h-full w-[2px]"
+          class="bg-secondary h-full w-0.5"
           style="height: {height}px;"
         ></div>
         <div class="text-s text-muted-foreground">

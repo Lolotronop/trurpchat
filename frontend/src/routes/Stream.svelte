@@ -162,7 +162,10 @@
   class="mr-4 flex h-full items-center justify-center gap-4"
   bind:this={bottomControls}
 >
-  <Button variant="destructive" onclick={() => (g.rtc.watching = null)}>
+  <Button
+    variant="destructive"
+    onclick={() => (g.servers.selected!.rtc!.watching = null)}
+  >
     Выйти
   </Button>
 
