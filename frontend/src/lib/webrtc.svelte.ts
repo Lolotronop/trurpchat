@@ -124,9 +124,24 @@ export class Peer {
 
 // TODO: this whould be dictated by the current server
 const TURN_SERVER_IP = "45.143.95.55";
-export const ICE_CONFIG = {
+export const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
-    { urls: ["stun:stun.l.google.com:19302"] },
+    {
+      urls: [
+        "stun:stun1.l.google.com:19302",
+        "stun:stun2.l.google.com:19302",
+        "stun:stun3.l.google.com:19302",
+        "stun:stun4.l.google.com:19302",
+        "stun:stunserver.org:3478",
+        "stun:stun.stunprotocol.org:3478",
+        "stun:stun.nextcloud.com:443",
+      ],
+    },
+    {
+      urls: ["turn:openrelay.metered.ca:80"],
+      username: "openrelayproject",
+      credential: "openrelayproject",
+    },
     {
       urls: [
         `stun:${TURN_SERVER_IP}:3478`,
