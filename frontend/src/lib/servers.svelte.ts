@@ -95,6 +95,9 @@ export class ServerManager {
       return;
     }
     this.values = definitions.map((d) => new Server(d));
+    if (this.values.length > 0) {
+      this.selected = this.values[0];
+    }
   }
 
   async save() {
