@@ -1,9 +1,17 @@
 {
   "formatter": {
-    "indentStyle": "space"
+    "indentStyle": "space",
+    "formatWithErrors": true
   },
   "html": {
     "experimentalFullSupportEnabled": true,
     "formatter": { "enabled": true, "indentScriptAndStyle": true }
+  },
+  "linter": {
+    "rules": {
+      "nursery": {
+        "useSortedClasses": "error"
+      }
+    }
   }
 }
