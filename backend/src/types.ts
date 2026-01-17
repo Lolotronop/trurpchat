@@ -94,4 +94,7 @@ export type OtherEvent =
       id: number;
     };
 
-export type Message = VoiceAction | VoiceEvent | RtcMessage;
+export type Action = VoiceAction;
+export type ServerEvent = VoiceEvent | OtherEvent;
+
+export type Message = Action | ServerEvent | RtcMessage;

@@ -72,13 +72,13 @@ Bun.serve<TalkingUser, never>({
 
       ws.send(
         json({
-          type: "connected",
+          type: "event.connected",
           id: ws.data.id,
         }),
       );
       ws.send(
         json({
-          type: "rooms",
+          type: "event.rooms",
           rooms: hotel.toJson(),
         }),
       );
@@ -177,7 +177,7 @@ Bun.serve<TalkingUser, never>({
       for (const client of clients.values()) {
         client.send(
           json({
-            type: "rooms",
+            type: "event.rooms",
             rooms: Array.from(hotel.toJson()),
           }),
         );
@@ -191,7 +191,7 @@ Bun.serve<TalkingUser, never>({
       clients.forEach((client) => {
         client.send(
           json({
-            type: "rooms",
+            type: "event.rooms",
             rooms: Array.from(hotel.toJson()),
           }),
         );

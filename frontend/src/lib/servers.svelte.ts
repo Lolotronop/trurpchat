@@ -36,9 +36,9 @@ export class Server {
   }
 
   handleMessage(message: Message) {
-    if (message.type === "rooms") {
+    if (message.type === "event.rooms") {
       this.rooms = message.rooms;
-    } else if (message.type === "connected") {
+    } else if (message.type === "event.connected") {
       this.clientId = message.id;
       console.log("Connected with ID:", this.clientId);
     }
