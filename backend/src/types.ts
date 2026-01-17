@@ -1,53 +1,87 @@
-export type User = {
-  id: string;
-  name: string;
+import type { Room as RoomData, User } from "./db/schema";
+export type { Room as RoomData, User } from "./db/schema";
+
+type Flatten<T> = { [K in keyof T]: T[K] } & {};
+
+export type TalkingUserState = {
   muted: boolean;
   deafened: boolean;
   streaming: boolean;
   watching: string | null;
 };
 
-export type Room = {
-  name: string;
-  users: User[];
-};
+export type TalkingUser = User & TalkingUserState;
 
-export type Message =
+export type VoiceChat = Flatten<
+  RoomData & { type: "voice" } & {
+    users: TalkingUser[];
+  }
+>;
+
+export type Room = VoiceChat | Flatten<RoomData & { type: "text" }>;
+
+type RtcMessage =
+  | {
+      type: "rtc.offer";
+      // @ts-expect-error
+      offer: RTCSessionDescriptionInit;
+      sender?: number;
+      target?: number;
+    }
+  | {
+      type: "rtc.answer";
+      // @ts-expect-error
+      answer: RTCSessionDescriptionInit;
+      sender?: number;
+      target?: number;
+    }
+  | {
+      type: "rtc.ice";
+      // @ts-expect-error
+      candidate: RTCIceCandidateInit;
+      sender?: number;
+      target?: number;
+    };
+
+type VoiceRequest =
   | {
       type: "join";
       room: string;
-    }
-  | {
-      type: "joined";
-      room: string;
-      user: User;
     }
   | {
       type: "leave";
       room: string;
     }
   | {
+      type: "mute";
+      muted: boolean;
+    }
+  | {
+      type: "stream";
+      streaming: boolean;
+    }
+  | {
+      type: "deafen";
+      deafened: boolean;
+    }
+  | {
+      type: "watch";
+      watching: string | null;
+    }
+  | {
+      type: "pause";
+    };
+
+export type VoiceResponse =
+  | {
+      type: "joined";
+      room: string;
+      user: TalkingUser;
+    }
+  | {
       type: "left";
       room: string;
-      user: User;
-    }
-  | {
-      type: "rtc.offer";
-      offer: RTCSessionDescriptionInit;
-      sender?: string;
-      target?: string;
-    }
-  | {
-      type: "rtc.answer";
-      answer: RTCSessionDescriptionInit;
-      sender?: string;
-      target?: string;
-    }
-  | {
-      type: "rtc.ice";
-      candidate: RTCIceCandidateInit;
-      sender?: string;
-      target?: string;
+      user: TalkingUser;
     }
   | {
       type: "rooms";
@@ -55,24 +89,7 @@ export type Message =
     }
   | {
       type: "connected";
-      id: string;
-    }
-  | {
-      type: "muted";
-      muted: boolean;
-    }
-  | {
-      type: "streaming";
-      streaming: boolean;
-    }
-  | {
-      type: "deafened";
-      deafened: boolean;
-    }
-  | {
-      type: "watching";
-      watching: string | null;
-    }
-  | {
-      type: "pause";
+      id: number;
     };
+
+export type Message = VoiceRequest | VoiceResponse | RtcMessage;

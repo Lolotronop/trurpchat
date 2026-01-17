@@ -1,103 +1,19 @@
-import { env, type ServerWebSocket } from "bun";
-import type { Message, User } from "./types";
-
-type Client = ServerWebSocket<User>;
-
-class Room {
-  clients = new Set<Client>();
-  constructor(public name: string) {}
-
-  toJson() {
-    const allUsers = this.users;
-    const streaming = allUsers.filter((u) => u.streaming);
-    streaming.sort((a, b) => a.id.localeCompare(b.id));
-    const rest = allUsers.filter((u) => !u.streaming);
-    rest.sort((a, b) => a.id.localeCompare(b.id));
-    return {
-      name: this.name,
-      users: [...streaming, ...rest],
-    };
-  }
-
-  send(message: Message) {
-    try {
-      const json = JSON.stringify(message);
-      this.clients.forEach((ws) => ws.send(json));
-    } catch (error) {
-      console.error(`Error sending message to room ${this.name}:`, error);
-    }
-  }
-
-  get users() {
-    return Array.from(this.clients).map((ws) => ws.data);
-  }
-
-  add(client: Client) {
-    this.clients.add(client);
-    this.send({
-      type: "joined",
-      room: this.name,
-      user: client.data,
-    });
-  }
-
-  remove(client: Client) {
-    if (this.clients.has(client)) {
-      this.send({
-        type: "left",
-        room: this.name,
-        user: client.data,
-      });
-      this.clients.delete(client);
-    } else {
-      console.log(`Client ${client.data.id} is not in room ${this.name}`);
-    }
-  }
-}
-
-class Hotel {
-  rooms: Room[] = [];
-
-  find(roomName: string): Room | undefined {
-    return this.rooms.find((room) => room.name === roomName);
-  }
-
-  toJson() {
-    return this.rooms.map((room) => room.toJson());
-  }
-
-  connect(roomName: string, client: Client) {
-    const room = this.rooms.find((room) => room.name === roomName);
-    if (!room) {
-      console.log(`Room ${roomName} does not exist`);
-      return;
-    }
-    this.rooms.forEach(() => room.remove(client));
-    room.add(client);
-  }
-
-  remove(client: Client) {
-    const room = this.rooms.find((room) => room.clients.has(client));
-    if (!room) {
-      console.log(`Client ${client.data.id} is not in a room`);
-      return;
-    }
-    room.remove(client);
-  }
-}
+import { env } from "bun";
+import type { Message, TalkingUser, TalkingUserState } from "./types";
+import { Hotel, VoiceChatInstance, type Client } from "./voice";
 
 const hotel = new Hotel();
-hotel.rooms.push(new Room("Альфа"));
-hotel.rooms.push(new Room("Бета"));
-hotel.rooms.push(new Room("Sdfsdfsdf"));
+hotel.rooms.push(
+  new VoiceChatInstance({
+    id: 0,
+    name: "Альфа",
+    type: "voice",
+  }),
+);
 
-const clients = new Map<string, Client>();
+const clients = new Map<number, Client>();
 
-function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
-}
-
-function j(data: Message) {
+function json(data: Message) {
   try {
     return JSON.stringify(data);
   } catch (error) {
@@ -108,20 +24,38 @@ function j(data: Message) {
 
 const PORT = +(env.PORT ?? 3000);
 
-Bun.serve<Partial<User>, never>({
+function createDefaultTalkingUserState(): TalkingUserState {
+  return {
+    muted: false,
+    deafened: false,
+    streaming: false,
+    watching: null,
+  };
+}
+
+Bun.serve<TalkingUser, never>({
   port: PORT,
   fetch(req, server) {
-    console.log("someone is doing it");
     const url = new URL(req.url);
 
     const name = url.searchParams.get("name");
+
     if (!name) {
       console.log("Missing name parameter");
       return new Response("Missing name parameter", { status: 400 });
     }
-    const options = {
-      data: { name },
+
+    const user: TalkingUser = {
+      id: Math.random(),
+      name,
+      permissions: 0,
+      ...createDefaultTalkingUserState(),
     };
+
+    const options = {
+      data: user,
+    };
+
     if (server.upgrade(req, options)) {
       return;
     }
@@ -130,20 +64,20 @@ Bun.serve<Partial<User>, never>({
   },
   websocket: {
     open(ws) {
-      ws.data.id = generateId();
+      ws.data.id = Math.random();
       clients.set(ws.data.id, ws);
       ws.data.muted = false;
       ws.data.streaming = false;
       ws.data.deafened = false;
 
       ws.send(
-        j({
+        json({
           type: "connected",
           id: ws.data.id,
         }),
       );
       ws.send(
-        j({
+        json({
           type: "rooms",
           rooms: hotel.toJson(),
         }),
@@ -174,13 +108,13 @@ Bun.serve<Partial<User>, never>({
           return;
         }
         room.remove(ws);
-      } else if (msg.type === "muted") {
+      } else if (msg.type === "mute") {
         ws.data.muted = msg.muted;
-      } else if (msg.type === "streaming") {
+      } else if (msg.type === "stream") {
         ws.data.streaming = msg.streaming;
-      } else if (msg.type === "deafened") {
+      } else if (msg.type === "deafen") {
         ws.data.deafened = msg.deafened;
-      } else if (msg.type === "watching") {
+      } else if (msg.type === "watch") {
         ws.data.watching = msg.watching;
       } else if (msg.type === "pause") {
         if (ws.data.watching === null) {
@@ -194,7 +128,7 @@ Bun.serve<Partial<User>, never>({
           console.error(`Client ${ws.data.watching} not found`);
           return;
         }
-        to.send(j(msg));
+        to.send(json(msg));
       } else if (msg.type === "rtc.ice" && msg.target) {
         const target = clients.get(msg.target);
         if (!target) {
@@ -202,7 +136,7 @@ Bun.serve<Partial<User>, never>({
           return;
         }
         target.send(
-          j({
+          json({
             type: "rtc.ice",
             candidate: msg.candidate,
             sender: ws.data.id,
@@ -215,7 +149,7 @@ Bun.serve<Partial<User>, never>({
           return;
         }
         target.send(
-          j({
+          json({
             type: "rtc.offer",
             offer: msg.offer,
             sender: ws.data.id,
@@ -228,7 +162,7 @@ Bun.serve<Partial<User>, never>({
           return;
         }
         target.send(
-          j({
+          json({
             type: "rtc.answer",
             answer: msg.answer,
             sender: ws.data.id,
@@ -242,7 +176,7 @@ Bun.serve<Partial<User>, never>({
       }
       for (const client of clients.values()) {
         client.send(
-          j({
+          json({
             type: "rooms",
             rooms: Array.from(hotel.toJson()),
           }),
@@ -256,7 +190,7 @@ Bun.serve<Partial<User>, never>({
       clients.delete(ws.data.id);
       clients.forEach((client) => {
         client.send(
-          j({
+          json({
             type: "rooms",
             rooms: Array.from(hotel.toJson()),
           }),
