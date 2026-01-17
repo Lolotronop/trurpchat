@@ -1,10 +1,10 @@
 import type { ServerWebSocket } from "bun";
 import type { Message, RoomData, TalkingUser } from "./types";
 
-export type Client = ServerWebSocket<TalkingUser>;
+export type WsClient = ServerWebSocket<TalkingUser>;
 
 export class VoiceChatInstance implements RoomData {
-  clients = new Set<Client>();
+  clients = new Set<WsClient>();
   id: number;
   name: string;
   type: "voice";
@@ -48,7 +48,7 @@ export class VoiceChatInstance implements RoomData {
     return Array.from(this.clients).map((ws) => ws.data);
   }
 
-  add(client: Client) {
+  add(client: WsClient) {
     this.clients.add(client);
     this.send({
       type: "event.voice.joined",
@@ -57,7 +57,7 @@ export class VoiceChatInstance implements RoomData {
     });
   }
 
-  remove(client: Client) {
+  remove(client: WsClient) {
     if (this.clients.has(client)) {
       this.send({
         type: "event.voice.left",
@@ -82,7 +82,7 @@ export class Hotel {
     return this.rooms.map((room) => room.toJson());
   }
 
-  connect(id: number, client: Client) {
+  connect(id: number, client: WsClient) {
     const room = this.rooms.find((room) => room.id === id);
     if (!room) {
       console.log(`Room ${id} does not exist`);
@@ -96,7 +96,7 @@ export class Hotel {
     room.add(client);
   }
 
-  remove(client: Client) {
+  remove(client: WsClient) {
     const room = this.rooms.find((room) => room.clients.has(client));
     if (!room) {
       console.log(`Client ${client.data.id} is not in a room`);

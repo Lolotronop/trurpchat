@@ -20,7 +20,7 @@ export type VoiceChat = Flatten<
 
 export type Room = VoiceChat | Flatten<RoomData & { type: "text" }>;
 
-type RtcMessage =
+export type RtcMessage =
   | {
       type: "rtc.offer";
       // @ts-expect-error
@@ -43,7 +43,7 @@ type RtcMessage =
       target?: number;
     };
 
-type VoiceAction =
+export type VoiceAction =
   | {
       type: "action.voice.join";
       room: number;

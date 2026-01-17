@@ -15,6 +15,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "drizzle-orm": "^1.0.0-beta.11-05230d9"
+    "drizzle-orm": "^1.0.0-beta.11-05230d9",
+    "neverthrow": "^8.2.0"
   }
 }
