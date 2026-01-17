@@ -1,5 +1,5 @@
 import { SvelteMap } from "svelte/reactivity";
-import type { Message, Room } from "trurpchat-backend";
+import type { Message, VoiceChat } from "trurpchat-backend";
 import type { Mic } from "./mic.svelte";
 import type { God } from "./god.svelte";
 import { getAudioContext } from "./audiocontext";
@@ -43,7 +43,7 @@ export class Peer {
 
   interval: NodeJS.Timeout | number | null = null;
 
-  constructor(targetId: string, mic: Mic, output: GainNode) {
+  constructor(targetId: number, mic: Mic, output: GainNode) {
     this.mic = mic;
     this.pc = new RTCPeerConnection(ICE_CONFIG);
     this.gainNode = this.mic.c.createGain();
@@ -97,7 +97,7 @@ export class Peer {
       const stream = event.streams[0];
       const source = getAudioContext().createMediaStreamSource(stream);
       source.connect(this.gainNode);
-      attachDomAudio("user-audio-" + targetId, stream);
+      attachDomAudio(targetId, stream);
       getAudioContext().resume();
     };
 
@@ -157,9 +157,9 @@ export const ICE_CONFIG: RTCConfiguration = {
 export class WebRTC {
   isConnected: boolean = $state(false);
   server: Server;
-  room: Room;
+  room: VoiceChat;
   deafenNode: GainNode;
-  peers = new SvelteMap<string, Peer>();
+  peers = new SvelteMap<number, Peer>();
   connectedFor: number = $state(0);
   connectedTimeout: NodeJS.Timeout | null = null;
 
@@ -170,7 +170,7 @@ export class WebRTC {
   set streaming(value: boolean) {
     this.#streaming = value;
     this.server.gateway.send({
-      type: "streaming",
+      type: "action.voice.stream",
       streaming: value,
     });
   }
@@ -182,7 +182,7 @@ export class WebRTC {
   set watching(value: string | null) {
     this.#watching = value;
     this.server.gateway.send({
-      type: "watching",
+      type: "action.voice.watch",
       watching: value,
     });
   }
@@ -190,7 +190,7 @@ export class WebRTC {
   constructor(
     private g: God,
     server: Server,
-    room: Room,
+    room: VoiceChat,
   ) {
     this.deafenNode = getAudioContext().createGain();
     this.deafenNode.connect(getAudioContext().destination);
@@ -206,7 +206,7 @@ export class WebRTC {
     const msg = rawData as Message;
 
     switch (msg.type) {
-      case "joined":
+      case "event.voice.joined":
         if (msg.user.id !== this.server.clientId) {
           console.log(`User ${msg.user.name} joined room`, msg.room);
           this.g.sound.play("user join");
@@ -233,7 +233,7 @@ export class WebRTC {
         }
         break;
 
-      case "left":
+      case "event.voice.left":
         if (msg.user.id === this.server.clientId) {
           this.cleanup();
           return;
@@ -263,7 +263,7 @@ export class WebRTC {
     }
   }
 
-  createPeer(targetId: string): Peer {
+  createPeer(targetId: number): Peer {
     let peer = this.peers.get(targetId);
     if (peer) {
       console.log(`Peer connection with ${targetId} already exists`);
@@ -311,7 +311,7 @@ export class WebRTC {
     return peer;
   }
 
-  async initiateCall(targetId: string) {
+  async initiateCall(targetId: number) {
     if (!this.room?.users.find((user) => user.id === targetId)) {
       console.error(`User ${targetId} not found`);
       return;
@@ -335,7 +335,7 @@ export class WebRTC {
     });
   }
 
-  async acceptCall(offer: RTCSessionDescriptionInit, senderId: string) {
+  async acceptCall(offer: RTCSessionDescriptionInit, senderId: number) {
     console.log("Received call from:", senderId);
     const peer = this.createPeer(senderId);
 
@@ -355,7 +355,7 @@ export class WebRTC {
     });
   }
 
-  async handleAnswer(answer: RTCSessionDescriptionInit, senderId: string) {
+  async handleAnswer(answer: RTCSessionDescriptionInit, senderId: number) {
     console.log("Received answer from:", senderId);
 
     const peer = this.peers.get(senderId);
@@ -366,7 +366,7 @@ export class WebRTC {
     await peer.pc.setRemoteDescription(answer);
   }
 
-  async handleIceCandidate(candidate: RTCIceCandidateInit, senderId: string) {
+  async handleIceCandidate(candidate: RTCIceCandidateInit, senderId: number) {
     const peer = this.peers.get(senderId);
     if (!peer) {
       console.error(`Peer for ${senderId} not found`);
@@ -395,7 +395,8 @@ export class WebRTC {
  * because chrome WOULD NOT behave without it
  * (data from the stream just doesn't get sent to the sink without it)
  */
-function attachDomAudio(id: string, stream: MediaStream) {
+function attachDomAudio(userId: number, stream: MediaStream) {
+  const id = `peer-${userId}`;
   let audio = document.getElementById(id) as HTMLAudioElement;
 
   if (!audio) {

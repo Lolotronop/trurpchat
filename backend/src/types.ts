@@ -43,53 +43,55 @@ type RtcMessage =
       target?: number;
     };
 
-type VoiceRequest =
+type VoiceAction =
   | {
-      type: "join";
+      type: "action.voice.join";
       room: string;
     }
   | {
-      type: "leave";
+      type: "action.voice.leave";
       room: string;
     }
   | {
-      type: "mute";
+      type: "action.voice.mute";
       muted: boolean;
     }
   | {
-      type: "stream";
+      type: "action.voice.stream";
       streaming: boolean;
     }
   | {
-      type: "deafen";
+      type: "action.voice.deafen";
       deafened: boolean;
     }
   | {
-      type: "watch";
+      type: "action.voice.watch";
       watching: string | null;
     }
   | {
-      type: "pause";
+      type: "action.voice.pause";
     };
 
-export type VoiceResponse =
+export type VoiceEvent =
   | {
-      type: "joined";
+      type: "event.voice.joined";
       room: string;
       user: TalkingUser;
     }
   | {
-      type: "left";
+      type: "event.voice.left";
       room: string;
       user: TalkingUser;
-    }
+    };
+
+export type OtherEvent =
   | {
-      type: "rooms";
+      type: "event.rooms";
       rooms: Room[];
     }
   | {
-      type: "connected";
+      type: "event.connected";
       id: number;
     };
 
-export type Message = VoiceRequest | VoiceResponse | RtcMessage;
+export type Message = VoiceAction | VoiceEvent | RtcMessage;

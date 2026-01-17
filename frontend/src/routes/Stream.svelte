@@ -31,7 +31,7 @@
     console.log(event.key);
     if (event.key === " " && isFullscreen) {
       // TODO: same bug
-      g.servers.selected?.gateway.send({ type: "pause" });
+      g.servers.selected?.gateway.send({ type: "action.voice.pause" });
     }
   };
   window.addEventListener("keydown", keyboardCallback);
@@ -175,7 +175,7 @@
         <Button
           onclick={() => {
           // TODO same bug
-          g.servers.selected?.gateway.send({ type: "pause" })
+          g.servers.selected?.gateway.send({ type: "action.voice.pause" })
         }}
         >
           Пауза

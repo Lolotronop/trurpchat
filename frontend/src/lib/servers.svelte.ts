@@ -23,7 +23,7 @@ export class Server {
   overServer: string | undefined;
   gateway: Gateway;
   rooms: Room[] = $state([]);
-  clientId: string | undefined = undefined;
+  clientId: number | undefined = undefined;
   rtc: WebRTC | undefined = $state(undefined);
 
   constructor(definition: ServerDefinition) {
@@ -56,13 +56,17 @@ export class Server {
       this.leaveRoom();
     }
 
+    if (room.type !== "voice") {
+      throw new Error("Tried to join a non-voice room");
+    }
+
     this.rtc = new WebRTC(gitGud(), this, room);
     const username = this.definition.username;
     console.log("Joining room:", room, "with username:", username);
 
     // TODO: make sure that it is connected!
     this.gateway.send({
-      type: "join",
+      type: "action.voice.join",
       room: room.name,
     });
   }
@@ -72,7 +76,7 @@ export class Server {
 
     // this.g.sound.play("voice disconnected");
     this.gateway.send({
-      type: "leave",
+      type: "action.voice.leave",
       room: this.rtc.room.name,
     });
     this.rtc.cleanup();

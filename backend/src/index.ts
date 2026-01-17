@@ -94,29 +94,29 @@ Bun.serve<TalkingUser, never>({
       }
 
       // TODO: add periodic pings to prune dead clients
-      if (msg.type === "join") {
+      if (msg.type === "action.voice.join") {
         const room = hotel.find(msg.room);
         if (!room) {
           console.error(`Room ${msg.room} not found`);
           return;
         }
         room.add(ws);
-      } else if (msg.type === "leave") {
+      } else if (msg.type === "action.voice.leave") {
         const room = hotel.find(msg.room);
         if (!room) {
           console.error(`Room ${msg.room} not found`);
           return;
         }
         room.remove(ws);
-      } else if (msg.type === "mute") {
+      } else if (msg.type === "action.voice.mute") {
         ws.data.muted = msg.muted;
-      } else if (msg.type === "stream") {
+      } else if (msg.type === "action.voice.stream") {
         ws.data.streaming = msg.streaming;
-      } else if (msg.type === "deafen") {
+      } else if (msg.type === "action.voice.deafen") {
         ws.data.deafened = msg.deafened;
-      } else if (msg.type === "watch") {
+      } else if (msg.type === "action.voice.watch") {
         ws.data.watching = msg.watching;
-      } else if (msg.type === "pause") {
+      } else if (msg.type === "action.voice.pause") {
         if (ws.data.watching === null) {
           return;
         }

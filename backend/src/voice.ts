@@ -51,7 +51,7 @@ export class VoiceChatInstance implements RoomData {
   add(client: Client) {
     this.clients.add(client);
     this.send({
-      type: "joined",
+      type: "event.voice.joined",
       room: this.name,
       user: client.data,
     });
@@ -60,7 +60,7 @@ export class VoiceChatInstance implements RoomData {
   remove(client: Client) {
     if (this.clients.has(client)) {
       this.send({
-        type: "left",
+        type: "event.voice.left",
         room: this.name,
         user: client.data,
       });

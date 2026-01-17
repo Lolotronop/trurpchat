@@ -36,7 +36,10 @@ export class God {
       0.01,
     );
     // TODO: think about where and when this shoud actually happen
-    this.servers.selected?.gateway?.send({ type: "muted", muted: value });
+    this.servers.selected?.gateway?.send({
+      type: "action.voice.mute",
+      muted: value,
+    });
   }
 
   #deafened: boolean = $state(false);
@@ -48,7 +51,7 @@ export class God {
     this.#deafened = value;
     // TODO: think about where and when this should actually happen
     this.servers.selected?.gateway?.send({
-      type: "deafened",
+      type: "action.voice.deafen",
       deafened: value,
     });
     if (value) {
@@ -99,7 +102,7 @@ export class God {
     // if the server is not connected it wont do do that
     // move this to when joining voice channel?
     this.servers.selected?.gateway?.onmessage((msg) => {
-      if (msg.type === "pause") {
+      if (msg.type === "action.voice.pause") {
         this.allowPause && isTauri() && invoke("pause");
       }
     });

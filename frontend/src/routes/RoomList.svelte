@@ -92,6 +92,7 @@
             </div>
           </div>
         {/snippet}
+        <!-- TODO: make a separate component for this that takes a VoiceChat  -->
         {#each room.users as user (user.id)}
           {@const peer = rtc?.peers.get(user.id)}
           {#if user.id === server?.clientId}
