@@ -240,7 +240,7 @@ export class WebRTC {
         } else {
           this.peers.get(msg.user.id)?.cleanup();
           this.peers.delete(msg.user.id);
-          if (msg.room === this.room?.name) {
+          if (msg.room === this.room?.id) {
             this.room.users = this.room.users.filter(
               (u) => u.id !== msg.user.id,
             );
