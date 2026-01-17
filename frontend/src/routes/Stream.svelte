@@ -109,13 +109,13 @@
         const el = player.getMediaElement();
         // el.muted = true;
         el.addEventListener("canplay", () => {
-          const stream: MediaStream =
-            // @ts-ignore
-            el.captureStream?.() ||
-            // @ts-ignore
-            el.mozCaptureStream?.() ||
-            // @ts-ignore
-            el.webkitCaptureStream?.();
+          // const stream: MediaStream =
+          //   // @ts-ignore
+          //   el.captureStream?.() ||
+          //   // @ts-ignore
+          //   el.mozCaptureStream?.() ||
+          //   // @ts-ignore
+          //   el.webkitCaptureStream?.();
 
           // sourceNode = getAudioContext().createMediaStreamSource(stream);
           // sourceNode.connect(gainNode);

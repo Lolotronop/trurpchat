@@ -1,5 +1,5 @@
 import ReconnectingWebSocket from "reconnecting-websocket";
-import type { Message } from "trurpchat-backend";
+import type { UserAction, Message } from "trurpchat-backend";
 
 export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
@@ -79,7 +79,7 @@ export class Gateway extends EventTarget {
     });
   }
 
-  send(data: Message) {
+  send(data: UserAction) {
     try {
       this.socket?.send(JSON.stringify(data));
     } catch (error) {

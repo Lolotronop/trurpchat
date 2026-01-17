@@ -94,7 +94,7 @@ export type OtherEvent =
       id: number;
     };
 
-export type Action = VoiceAction;
+export type UserAction = VoiceAction | RtcMessage; // tho rtc message is also an event, it is done like that to keep the type definition on the Gateway clean
 export type ServerEvent = VoiceEvent | OtherEvent;
 
-export type Message = Action | ServerEvent | RtcMessage;
+export type Message = UserAction | ServerEvent;
