@@ -67,7 +67,7 @@ export class Server {
     // TODO: make sure that it is connected!
     this.gateway.send({
       type: "action.voice.join",
-      room: room.name,
+      room: room.id,
     });
   }
 
@@ -77,7 +77,7 @@ export class Server {
     // this.g.sound.play("voice disconnected");
     this.gateway.send({
       type: "action.voice.leave",
-      room: this.rtc.room.name,
+      room: this.rtc.room.id,
     });
     this.rtc.cleanup();
     this.rtc = undefined;

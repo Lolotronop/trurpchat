@@ -46,11 +46,11 @@ type RtcMessage =
 type VoiceAction =
   | {
       type: "action.voice.join";
-      room: string;
+      room: number;
     }
   | {
       type: "action.voice.leave";
-      room: string;
+      room: number;
     }
   | {
       type: "action.voice.mute";
@@ -75,12 +75,12 @@ type VoiceAction =
 export type VoiceEvent =
   | {
       type: "event.voice.joined";
-      room: string;
+      room: number;
       user: TalkingUser;
     }
   | {
       type: "event.voice.left";
-      room: string;
+      room: number;
       user: TalkingUser;
     };
 

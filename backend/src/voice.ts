@@ -52,7 +52,7 @@ export class VoiceChatInstance implements RoomData {
     this.clients.add(client);
     this.send({
       type: "event.voice.joined",
-      room: this.name,
+      room: this.id,
       user: client.data,
     });
   }
@@ -61,7 +61,7 @@ export class VoiceChatInstance implements RoomData {
     if (this.clients.has(client)) {
       this.send({
         type: "event.voice.left",
-        room: this.name,
+        room: this.id,
         user: client.data,
       });
       this.clients.delete(client);
@@ -74,18 +74,22 @@ export class VoiceChatInstance implements RoomData {
 export class Hotel {
   rooms: VoiceChatInstance[] = [];
 
-  find(roomName: string): VoiceChatInstance | undefined {
-    return this.rooms.find((room) => room.name === roomName);
+  find(id: number): VoiceChatInstance | undefined {
+    return this.rooms.find((room) => room.id === id);
   }
 
   toJson() {
     return this.rooms.map((room) => room.toJson());
   }
 
-  connect(roomName: string, client: Client) {
-    const room = this.rooms.find((room) => room.name === roomName);
+  connect(id: number, client: Client) {
+    const room = this.rooms.find((room) => room.id === id);
     if (!room) {
-      console.log(`Room ${roomName} does not exist`);
+      console.log(`Room ${id} does not exist`);
+      return;
+    }
+    if (room.type !== "voice") {
+      console.log(`Room ${id} is not a voice room`);
       return;
     }
     this.rooms.forEach(() => room.remove(client));
