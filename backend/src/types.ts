@@ -91,7 +91,7 @@ export type OtherEvent =
     }
   | {
       type: "event.connected";
-      id: number;
+      user: User;
     };
 
 export type UserAction = VoiceAction | RtcMessage; // tho rtc message is also an event, it is done like that to keep the type definition on the Gateway clean

@@ -207,7 +207,7 @@ export class WebRTC {
 
     switch (msg.type) {
       case "event.voice.joined":
-        if (msg.user.id !== this.server.clientId) {
+        if (msg.user.id !== this.server.user.id) {
           console.log(`User ${msg.user.name} joined room`, msg.room);
           this.g.sound.play("user join");
           this.room.users.push(msg.user);
@@ -228,13 +228,13 @@ export class WebRTC {
         await this.g.mic.connect();
         // Initiate calls to existing users
         for (const user of this.room.users) {
-          if (user.id === this.server.clientId) continue;
+          if (user.id === this.server.user.id) continue;
           await this.initiateCall(user.id);
         }
         break;
 
       case "event.voice.left":
-        if (msg.user.id === this.server.clientId) {
+        if (msg.user.id === this.server.user.id) {
           this.cleanup();
           return;
         } else {
@@ -286,7 +286,7 @@ export class WebRTC {
         type: "rtc.ice",
         candidate: event.candidate,
         target: targetId,
-        sender: this.server.clientId,
+        sender: this.server.user.id,
       });
     };
 
@@ -331,7 +331,7 @@ export class WebRTC {
       type: "rtc.offer",
       offer: offer,
       target: targetId,
-      sender: this.server.clientId,
+      sender: this.server.user.id,
     });
   }
 
@@ -351,7 +351,7 @@ export class WebRTC {
       type: "rtc.answer",
       answer: answer,
       target: senderId,
-      sender: this.server.clientId,
+      sender: this.server.user.id,
     });
   }
 

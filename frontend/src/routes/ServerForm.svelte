@@ -18,8 +18,8 @@
   <Input id="name" type="text" bind:value={server.name} />
   <Label for="url">URL сервера</Label>
   <Input id="url" type="text" bind:value={server.url} />
-  <Label for="username">Имя пользователя</Label>
-  <Input id="username" type="text" bind:value={server.username} />
+  <!-- <Label for="username">Имя пользователя</Label> -->
+  <!-- <Input id="username" type="text" bind:value={server.} /> -->
   <Button
     variant="secondary"
     onclick={() => {
@@ -27,7 +27,6 @@
     server = {
       name: "",
       url: "",
-      username: "",
     };
   }}
   >

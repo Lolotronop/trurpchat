@@ -104,4 +104,9 @@ export class Hotel {
     }
     room.remove(client);
   }
+
+  has(client: WsClient) {
+    const room = this.rooms.find((room) => room.clients.has(client));
+    return !!room;
+  }
 }

@@ -1,20 +1,22 @@
 import { env } from "bun";
+import { eq, getColumns } from "drizzle-orm";
 import type { Message, TalkingUser, TalkingUserState } from "./types";
 import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
 import { handleMessage, type HandlerContext } from "./handler";
 import { send } from "./send";
+import { db, keys, rooms, users } from "./db";
+import { seed } from "./devseed";
+
+await seed();
+
+console.log(await db.select().from(keys));
 
 const ctx: HandlerContext = {
   clients: new Map<number, WsClient>(),
   hotel: new Hotel(),
 };
-ctx.hotel.rooms.push(
-  new VoiceChatInstance({
-    id: 0,
-    name: "Альфа",
-    type: "voice",
-  }),
-);
+const existingRooms = await db.select().from(rooms);
+ctx.hotel.rooms.push(...existingRooms.map((r) => new VoiceChatInstance(r)));
 
 const PORT = +(env.PORT ?? 3000);
 
@@ -29,25 +31,36 @@ function createDefaultTalkingUserState(): TalkingUserState {
 
 Bun.serve<TalkingUser, never>({
   port: PORT,
-  fetch(req, server) {
+  async fetch(req, server) {
     const url = new URL(req.url);
 
-    const name = url.searchParams.get("name");
-
-    if (!name) {
-      console.log("Missing name parameter");
-      return new Response("Missing name parameter", { status: 400 });
+    const key = url.searchParams.get("key");
+    if (!key) {
+      console.log("Missing key parameter");
+      return new Response("Missing key parameter", { status: 400 });
     }
 
-    const user: TalkingUser = {
-      id: Math.random(),
-      name,
-      permissions: 0,
-      ...createDefaultTalkingUserState(),
-    };
+    const userRow = await db
+      .select({
+        ...getColumns(users),
+      })
+      .from(users)
+      .leftJoin(keys, eq(users.id, keys.userId))
+      .where(eq(keys.key, key))
+      .limit(1);
+
+    if (userRow.length === 0) {
+      console.log("User not found");
+      return new Response("User not found", { status: 400 });
+    }
+
+    const user = userRow[0]!;
 
     const options = {
-      data: user,
+      data: {
+        ...user,
+        ...createDefaultTalkingUserState(),
+      },
     };
 
     if (server.upgrade(req, options)) {
@@ -58,7 +71,6 @@ Bun.serve<TalkingUser, never>({
   },
   websocket: {
     open(ws) {
-      ws.data.id = Math.random();
       ctx.clients.set(ws.data.id, ws);
       ws.data.muted = false;
       ws.data.streaming = false;
@@ -66,7 +78,7 @@ Bun.serve<TalkingUser, never>({
 
       send(ws, {
         type: "event.connected",
-        id: ws.data.id,
+        user: ws.data,
       });
       send(ws, {
         type: "event.rooms",
@@ -92,17 +104,23 @@ Bun.serve<TalkingUser, never>({
       }
 
       // TODO: add periodic pings to prune dead ctx.clients
-      // TODO: probably this can be done in a more efficient way
-      if (msg.type.startsWith("rtc")) {
+      if (!msg.type.startsWith("action.voice")) {
         return;
       }
+
+      const isMicAction =
+        msg.type === "action.voice.mute" || msg.type === "action.voice.deafen";
+
+      if (isMicAction && !ctx.hotel.has(ws)) {
+        return;
+      }
+
       for (const client of ctx.clients.values()) {
         send(client, {
           type: "event.rooms",
           rooms: Array.from(ctx.hotel.toJson()),
         });
       }
-      console.log("Hotel status:", ctx.hotel.toJson());
     },
 
     close(ws) {

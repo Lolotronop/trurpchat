@@ -98,19 +98,17 @@
       <Avatar.Root class="size-10">
         <!-- <Avatar.Image src="https://github.com/shadcn.png" alt="@shadcn" /> -->
         <Avatar.Fallback class="select-none">
-          {g.servers.selected?.definition.username[0].toUpperCase()}
+          {g.servers.selected?.user.name[0].toUpperCase()}
         </Avatar.Fallback>
       </Avatar.Root>
       <Tooltip.Provider>
         <Tooltip.Root delayDuration={100}>
           <Tooltip.Trigger class="max-w-28">
             <p class="text-foreground overflow-hidden text-ellipsis">
-              {g.servers.selected?.definition.username}
+              {g.servers.selected?.user.name}
             </p>
           </Tooltip.Trigger>
-          <Tooltip.Content>
-            {g.servers.selected?.definition.username}
-          </Tooltip.Content>
+          <Tooltip.Content>{g.servers.selected?.user.name}</Tooltip.Content>
         </Tooltip.Root>
       </Tooltip.Provider>
     </div>

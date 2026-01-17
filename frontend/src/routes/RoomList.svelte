@@ -95,7 +95,7 @@
         <!-- TODO: make a separate component for this that takes a VoiceChat  -->
         {#each room.users as user (user.id)}
           {@const peer = rtc?.peers.get(user.id)}
-          {#if user.id === server?.clientId}
+          {#if user.id === server?.user.id}
             {@render u(
               // TODO: change to actual username on the server?
               user.name,

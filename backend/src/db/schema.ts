@@ -47,4 +47,5 @@ export const relations = defineRelations({ users, keys }, (r) => ({
   users: {
     keys: r.many.keys(),
   },
+  rooms: {},
 }));

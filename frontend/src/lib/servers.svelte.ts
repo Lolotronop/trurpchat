@@ -1,4 +1,4 @@
-import type { Message, Room } from "trurpchat-backend";
+import type { Message, Room, User } from "trurpchat-backend";
 import { Gateway } from "./gateway.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { WebRTC } from "./webrtc.svelte";
@@ -7,11 +7,6 @@ import { gitGud } from "./god.svelte";
 export type ServerDefinition = {
   name: string;
   url: string;
-  // TODO: we should get this from the server
-  // with proper auth
-  // but this will do for now
-  // since the server doesnt actualy do that
-  username: string;
 };
 
 export class Server {
@@ -23,15 +18,15 @@ export class Server {
   overServer: string | undefined;
   gateway: Gateway;
   rooms: Room[] = $state([]);
-  clientId: number | undefined = undefined;
   rtc: WebRTC | undefined = $state(undefined);
+  user: User = $state({ id: -1, name: "T", type: "text", permissions: 0 });
 
   constructor(definition: ServerDefinition) {
     this.definition = definition;
     this.gateway = new Gateway();
     // TODO: maybe we shouldt just connect to all servers?
     // TODO: this is a really bad way to do authentication
-    this.gateway.connect(this.definition.url + "?name=" + definition.username);
+    this.gateway.connect(this.definition.url + "?key=" + "oauoixdm");
     this.gateway.onmessage((msg) => this.handleMessage(msg));
   }
 
@@ -39,16 +34,14 @@ export class Server {
     if (message.type === "event.rooms") {
       this.rooms = message.rooms;
     } else if (message.type === "event.connected") {
-      this.clientId = message.id;
-      console.log("Connected with ID:", this.clientId);
+      this.user = message.user;
+      console.log("Connected with User:", this.user);
     }
   }
 
   reconnect() {
     this.gateway.disconnect();
-    this.gateway.connect(
-      this.definition.url + "?name=" + this.definition.username,
-    );
+    this.gateway.connect(this.definition.url + "?key=" + "oauoixdm");
   }
 
   async joinRoom(room: Room) {
@@ -61,7 +54,7 @@ export class Server {
     }
 
     this.rtc = new WebRTC(gitGud(), this, room);
-    const username = this.definition.username;
+    const username = this.user?.name;
     console.log("Joining room:", room, "with username:", username);
 
     // TODO: make sure that it is connected!
