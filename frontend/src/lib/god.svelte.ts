@@ -110,13 +110,8 @@ export class God {
 }
 
 let instance: God | null = null;
-export function gitGud(audioContext?: AudioContext, tauri?: boolean): God {
+export function gitGud(): God {
   if (!instance) {
-    if (!audioContext || tauri === undefined) {
-      throw new Error(
-        `You have to provide and AudioContext with all the plugins loaded at first initialization`,
-      );
-    }
     instance = new God();
   }
   return instance;
