@@ -1,11 +1,11 @@
 <script lang="ts">
+  import OvenPlayer from "ovenplayer";
+  import { onMount } from "svelte";
+  import type { Action } from "svelte/action";
   import { getAudioContext } from "$lib/audiocontext";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
-  import OvenPlayer from "ovenplayer";
-  import { onMount } from "svelte";
-  import type { Action } from "svelte/action";
 
   type Props = {
     name?: string;

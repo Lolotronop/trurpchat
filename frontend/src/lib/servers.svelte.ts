@@ -1,4 +1,4 @@
-import type { Message, Room, User } from "trurpchat-backend";
+import type { ConnectedUser, Message, Room, User } from "trurpchat-backend";
 import { Gateway } from "./gateway.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { WebRTC } from "./webrtc.svelte";
@@ -20,13 +20,15 @@ export class Server {
   rooms: Room[] = $state([]);
   rtc: WebRTC | undefined = $state(undefined);
   user: User = $state({ id: -1, name: "T", type: "text", permissions: 0 });
+  users: {
+    online: ConnectedUser[];
+    offline: User[];
+  } = $state({ online: [], offline: [] });
 
   constructor(definition: ServerDefinition) {
     this.definition = definition;
     this.gateway = new Gateway();
-    // TODO: maybe we shouldt just connect to all servers?
-    // TODO: this is a really bad way to do authentication
-    this.gateway.connect(this.definition.url + "?key=" + "oauoixdm");
+    this.gateway.connect(this.definition.url);
     this.gateway.onmessage((msg) => this.handleMessage(msg));
   }
 
@@ -35,13 +37,15 @@ export class Server {
       this.rooms = message.rooms;
     } else if (message.type === "event.connected") {
       this.user = message.user;
-      console.log("Connected with User:", this.user);
+    } else if (message.type === "event.users") {
+      this.users.online = message.online;
+      this.users.offline = message.offline;
     }
   }
 
   reconnect() {
     this.gateway.disconnect();
-    this.gateway.connect(this.definition.url + "?key=" + "oauoixdm");
+    this.gateway.connect(this.definition.url);
   }
 
   async joinRoom(room: Room) {

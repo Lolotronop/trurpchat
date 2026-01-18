@@ -3,18 +3,19 @@ export type { Room as RoomData, User } from "./db/schema";
 
 type Flatten<T> = { [K in keyof T]: T[K] } & {};
 
-export type TalkingUserState = {
+export type ConnectedUserState = {
   muted: boolean;
   deafened: boolean;
   streaming: boolean;
   watching: string | null;
+  online: true;
 };
 
-export type TalkingUser = User & TalkingUserState;
+export type ConnectedUser = User & ConnectedUserState;
 
 export type VoiceChat = Flatten<
   RoomData & { type: "voice" } & {
-    users: TalkingUser[];
+    users: ConnectedUser[];
   }
 >;
 
@@ -76,15 +77,20 @@ export type VoiceEvent =
   | {
       type: "event.voice.joined";
       room: number;
-      user: TalkingUser;
+      user: ConnectedUser;
     }
   | {
       type: "event.voice.left";
       room: number;
-      user: TalkingUser;
+      user: ConnectedUser;
     };
 
 export type OtherEvent =
+  | {
+      type: "event.users";
+      online: ConnectedUser[];
+      offline: User[];
+    }
   | {
       type: "event.rooms";
       rooms: Room[];

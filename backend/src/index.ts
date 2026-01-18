@@ -1,9 +1,9 @@
 import { env } from "bun";
 import { eq, getColumns } from "drizzle-orm";
-import type { Message, TalkingUser, TalkingUserState } from "./types";
+import type { Message, ConnectedUser, ConnectedUserState, User } from "./types";
 import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
 import { handleMessage, type HandlerContext } from "./handler";
-import { send } from "./send";
+import { send, sendAll } from "./send";
 import { db, keys, rooms, users } from "./db";
 import { seed } from "./devseed";
 
@@ -20,16 +20,32 @@ ctx.hotel.rooms.push(...existingRooms.map((r) => new VoiceChatInstance(r)));
 
 const PORT = +(env.PORT ?? 3000);
 
-function createDefaultTalkingUserState(): TalkingUserState {
+function createDefaultTalkingUserState(): ConnectedUserState {
   return {
     muted: false,
     deafened: false,
     streaming: false,
     watching: null,
+    online: true,
   };
 }
 
-Bun.serve<TalkingUser, never>({
+async function getAllUsers(): Promise<{
+  online: ConnectedUser[];
+  offline: User[];
+}> {
+  const allUsers = await db.query.users.findMany();
+  const onlineUsers = ctx.clients
+    .values()
+    .map((c) => c.data)
+    .toArray();
+
+  const offlineUsers = allUsers.filter((u) => !ctx.clients.has(u.id));
+
+  return { online: onlineUsers, offline: offlineUsers };
+}
+
+Bun.serve<ConnectedUser, never>({
   port: PORT,
   async fetch(req, server) {
     const url = new URL(req.url);
@@ -70,7 +86,7 @@ Bun.serve<TalkingUser, never>({
     return new Response("Upgrade failed", { status: 500 });
   },
   websocket: {
-    open(ws) {
+    async open(ws) {
       ctx.clients.set(ws.data.id, ws);
       ws.data.muted = false;
       ws.data.streaming = false;
@@ -83,6 +99,13 @@ Bun.serve<TalkingUser, never>({
       send(ws, {
         type: "event.rooms",
         rooms: ctx.hotel.toJson(),
+      });
+
+      const { online, offline } = await getAllUsers();
+      sendAll(ctx.clients.values(), {
+        type: "event.users",
+        online,
+        offline,
       });
     },
 
@@ -123,7 +146,7 @@ Bun.serve<TalkingUser, never>({
       }
     },
 
-    close(ws) {
+    async close(ws) {
       ctx.hotel.remove(ws);
       ctx.clients.delete(ws.data.id);
       ctx.clients.forEach((client) => {
@@ -131,6 +154,13 @@ Bun.serve<TalkingUser, never>({
           type: "event.rooms",
           rooms: Array.from(ctx.hotel.toJson()),
         });
+      });
+
+      const { online, offline } = await getAllUsers();
+      sendAll(ctx.clients.values(), {
+        type: "event.users",
+        online,
+        offline,
       });
     },
   },

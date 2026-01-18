@@ -5,9 +5,10 @@
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
   import BottomControls from "./BottomControls.svelte";
-  import RoomList from "./RoomList.svelte";
+  import RoomList from "./rooms/RoomList.svelte";
   import Stream from "./Stream.svelte";
   import ServerForm from "./ServerForm.svelte";
+  import Users from "./Users.svelte";
   const g = gitGud();
   // TODO: this needs to be removed with proper
   // "speaking" sending
@@ -83,5 +84,11 @@
     {:else}
       <p>¯\_(ツ)_/¯</p>
     {/if}
+  </div>
+  <div class="flex h-full">
+    <Users
+      online={g.servers.selected?.users.online ?? []}
+      offline={g.servers.selected?.users.offline ?? []}
+    />
   </div>
 </main>

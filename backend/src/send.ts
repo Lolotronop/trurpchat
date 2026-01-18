@@ -21,6 +21,12 @@ export function safeSend(client: WsClient, message: Message) {
   return ok();
 }
 
+export function sendAll(clients: Iterable<WsClient>, message: Message) {
+  for (const client of clients) {
+    send(client, message);
+  }
+}
+
 export function send(client: WsClient, message: Message) {
   const result = safeSend(client, message);
   if (result.isErr()) {

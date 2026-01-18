@@ -1,7 +1,7 @@
 import type { ServerWebSocket } from "bun";
-import type { Message, RoomData, TalkingUser } from "./types";
+import type { Message, RoomData, ConnectedUser } from "./types";
 
-export type WsClient = ServerWebSocket<TalkingUser>;
+export type WsClient = ServerWebSocket<ConnectedUser>;
 
 export class VoiceChatInstance implements RoomData {
   clients = new Set<WsClient>();

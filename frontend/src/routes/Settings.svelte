@@ -5,8 +5,8 @@
   import * as Select from "$lib/components/ui/select/index.js";
   import { gitGud } from "$lib/god.svelte";
   import { MoonIcon, Settings, SunIcon, X } from "@lucide/svelte";
-  import GainSlider from "./GainSlider.svelte";
-  import AnalyzerDisplay from "./AnalyzerDisplay.svelte";
+  import GainSlider from "$lib/components/GainSlider.svelte";
+  import AnalyzerDisplay from "$lib/components/AnalyzerDisplay.svelte";
   import { actions } from "$lib/shortcuts.svelte";
   import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
