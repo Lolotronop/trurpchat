@@ -21,11 +21,6 @@
   g.mic.connect();
 
   // TODO: redo this with the selected server context
-  // let gatewayUrl = $state(g.settings.values.gatewayServer);
-  // let streamUrl = $derived(
-  //   `srt://${g.settings.values.ovenServer}:9999?streamid=srt%3A%2F%2F${g.settings.settings.ovenServer}%3A9999%2Fapp%2F${g.settings.settings.username}&latency=200000`,
-  // );
-  // let username = $state(g.settings.values.username);
 
   let copied = $state(false);
   $effect(() => {
@@ -259,34 +254,6 @@
               {/if}
             </div>
           </div>
-
-          <!-- <div> -->
-          <!--   <h1 class="text-foreground text-lg">Стрим</h1> -->
-          <!--   <div> -->
-          <!--     <h1>Ссылка для OBS</h1> -->
-          <!--     <div class="flex flex-row justify-between"> -->
-          <!--       <Input disabled={true} value={streamUrl}></Input> -->
-
-          <!--       <Tooltip.Provider> -->
-          <!--         <Tooltip.Root delayDuration={100}> -->
-          <!--           <Tooltip.Trigger> -->
-          <!--             <Button -->
-          <!--               variant="secondary" -->
-          <!--               class={`transition-colors ${copied ? "bg-green-500 text-white hover:bg-green-500 hover:text-white" : ""}`} -->
-          <!--               onclick={() => { -->
-          <!--                 navigator.clipboard.writeText(streamUrl); -->
-          <!--                 copied = true; -->
-          <!--               }}><Copy /></Button -->
-          <!--             > -->
-          <!--           </Tooltip.Trigger> -->
-          <!--           <Tooltip.Content> -->
-          <!--             <div>{copied ? "Скопировано" : "Скопировать ссылку"}</div> -->
-          <!--           </Tooltip.Content> -->
-          <!--         </Tooltip.Root> -->
-          <!--       </Tooltip.Provider> -->
-          <!--     </div> -->
-          <!--   </div> -->
-          <!-- </div> -->
         </Dialog.Description>
       </Dialog.Header>
     </ScrollArea>
