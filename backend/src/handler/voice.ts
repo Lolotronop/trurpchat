@@ -19,6 +19,8 @@ export const voiceHandlers: Handlers<VoiceAction> = {
       return err(new Error(`Room ${msg.room} not found`));
     }
     room.remove(ws);
+    ws.data.streaming = false;
+    ws.data.watching = null;
     return ok();
   },
 
