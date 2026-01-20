@@ -11,6 +11,8 @@
   };
 
   const { servers }: Props = $props();
+
+  let showServerForm = $state(false);
 </script>
 <div class="flex shrink flex-col items-center gap-1">
   {#each servers.values as server (server.definition.url)}
@@ -43,14 +45,19 @@
     </Tooltip.Provider>
   {/each}
 
-  <Dialog.Root>
+  <Dialog.Root bind:open={showServerForm}>
     <Dialog.Trigger>
       <Button variant="ghost" class="size-8">
         <div class="flex flex-row items-center gap-2">+</div>
       </Button>
     </Dialog.Trigger>
     <Dialog.Content class="max-w-2xl p-0! px-0! py-0!">
-      <ServerForm />
+      <ServerForm
+        onsubmit={(server) => {
+          if (server) servers.add(server);
+          showServerForm = false;
+        }}
+      />
     </Dialog.Content>
   </Dialog.Root>
 </div>
