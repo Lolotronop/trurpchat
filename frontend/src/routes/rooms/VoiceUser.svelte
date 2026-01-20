@@ -31,8 +31,8 @@
     </Avatar.Root>
     <p
       class={rtc?.room?.name === room.name
-                  ? ""
-                  : "text-muted-foreground"}
+        ? ""
+        : "text-muted-foreground"}
     >
       {user.name}
     </p>
@@ -52,9 +52,9 @@
               variant="ghost"
               class="hover:text-primary-foreground hover:bg-destructive! size-6"
               onclick={() => {
-                          if (!rtc) return;
-                          rtc.watching = user.name;
-                        }}
+                if (!rtc) return;
+                rtc.watching = user.id;
+              }}
             >
               <TvMinimalPlay class="size-4" />
             </Button>

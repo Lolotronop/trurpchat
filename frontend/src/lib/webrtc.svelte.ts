@@ -175,11 +175,11 @@ export class WebRTC {
     });
   }
 
-  #watching: string | null = $state(null);
+  #watching: number | null = $state(null);
   get watching() {
     return this.#watching;
   }
-  set watching(value: string | null) {
+  set watching(value: number | null) {
     this.#watching = value;
     this.server.gateway.send({
       type: "action.voice.watch",
@@ -208,14 +208,12 @@ export class WebRTC {
     switch (msg.type) {
       case "event.voice.joined":
         if (msg.user.id !== this.server.user.id) {
-          console.log(`User ${msg.user.name} joined room`, msg.room);
           this.g.sound.play("user join");
           this.room.users.push(msg.user);
           return;
         }
 
         this.g.sound.play("user join");
-        console.log("Joined room:", this.room);
 
         this.connectedFor = 0;
         if (this.connectedTimeout) {
@@ -292,10 +290,6 @@ export class WebRTC {
 
     // Handle connection state changes
     peer.pc.onconnectionstatechange = () => {
-      console.log(
-        `Connection state with ${targetId}:`,
-        peer.pc.connectionState,
-      );
       if (
         peer.pc.connectionState === "disconnected" ||
         peer.pc.connectionState === "failed"
@@ -336,7 +330,6 @@ export class WebRTC {
   }
 
   async acceptCall(offer: RTCSessionDescriptionInit, senderId: number) {
-    console.log("Received call from:", senderId);
     const peer = this.createPeer(senderId);
 
     await peer.pc.setRemoteDescription(offer);
@@ -356,8 +349,6 @@ export class WebRTC {
   }
 
   async handleAnswer(answer: RTCSessionDescriptionInit, senderId: number) {
-    console.log("Received answer from:", senderId);
-
     const peer = this.peers.get(senderId);
     if (!peer) {
       console.error(`Peer for ${senderId} not found`);

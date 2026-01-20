@@ -15,7 +15,7 @@ export class Server {
    * expeceted to be in format "http(s)://domain:port/"
    * trailing slash is MANDATORY(no it isnt its just funny to think it is)
    */
-  overServer: string | undefined;
+  overServerUrl: string | undefined = $state(undefined);
   gateway: Gateway;
   rooms: Room[] = $state([]);
   rtc: WebRTC | undefined = $state(undefined);
@@ -40,6 +40,8 @@ export class Server {
     } else if (message.type === "event.users") {
       this.users.online = message.online;
       this.users.offline = message.offline;
+    } else if (message.type === "event.oven") {
+      this.overServerUrl = message.ovenServerUrl;
     }
   }
 

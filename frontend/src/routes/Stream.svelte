@@ -1,17 +1,16 @@
 <script lang="ts">
-  import OvenPlayer from "ovenplayer";
   import { onMount } from "svelte";
   import type { Action } from "svelte/action";
+  import OvenPlayer from "ovenplayer";
   import { getAudioContext } from "$lib/audiocontext";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
 
   type Props = {
-    name?: string;
+    id: string;
   };
-  let { name }: Props = $props();
-  name ??= "test";
+  let { id }: Props = $props();
 
   // TODO: const for now, get from config later?
 
@@ -23,7 +22,7 @@
   }
   // TODO: this depends on you still being on the selected server while watching the stream
   // which wont be always true. maybe store that separately?
-  const server = g.servers.selected!.overServer;
+  const server = g.servers.selected!.overServerUrl;
 
   let isFullscreen = false;
 
@@ -71,7 +70,7 @@
         sources: [
           {
             type: "webrtc",
-            file: `ws://${server}:3333/app/${name}`,
+            file: `ws://${server}/app/${id}`,
           },
         ],
       });

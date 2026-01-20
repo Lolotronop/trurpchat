@@ -48,7 +48,7 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     }
     // TODO: this is horrible
     const to = Array.from(ctx.clients.values()).find(
-      (c) => c.data.name === ws.data.watching,
+      (c) => c.data.id === ws.data.watching,
     );
     if (!to) {
       return err(new Error(`Client ${ws.data.watching} not found`));

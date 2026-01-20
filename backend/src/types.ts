@@ -7,7 +7,7 @@ export type ConnectedUserState = {
   muted: boolean;
   deafened: boolean;
   streaming: boolean;
-  watching: string | null;
+  watching: number | null;
   online: true;
 };
 
@@ -67,7 +67,7 @@ export type VoiceAction =
     }
   | {
       type: "action.voice.watch";
-      watching: string | null;
+      watching: number | null;
     }
   | {
       type: "action.voice.pause";
@@ -86,6 +86,10 @@ export type VoiceEvent =
     };
 
 export type OtherEvent =
+  | {
+      type: "event.oven";
+      ovenServerUrl: string;
+    }
   | {
       type: "event.users";
       online: ConnectedUser[];

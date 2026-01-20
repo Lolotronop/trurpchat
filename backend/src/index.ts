@@ -101,6 +101,14 @@ Bun.serve<ConnectedUser, never>({
         rooms: ctx.hotel.toJson(),
       });
 
+      const ovenServerUrl = env.OVEN_SERVER_URL;
+      if (ovenServerUrl) {
+        send(ws, {
+          type: "event.oven",
+          ovenServerUrl,
+        });
+      }
+
       const { online, offline } = await getAllUsers();
       sendAll(ctx.clients.values(), {
         type: "event.users",

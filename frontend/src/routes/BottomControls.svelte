@@ -59,25 +59,50 @@
       </Tooltip.Provider>
 
       <div class="flex flex-row items-center gap-2">
-        <Tooltip.Provider>
-          <Tooltip.Root delayDuration={100}>
-            <Tooltip.Trigger class="max-w-28">
-              <Button
-                variant={rtc.streaming ? "default" : "ghost"}
-                class="size-8"
-                onclick={() => {
+        {#if g.servers.selected?.overServerUrl}
+          <Tooltip.Provider>
+            <Tooltip.Root delayDuration={100}>
+              <Tooltip.Trigger class="max-w-28">
+                <Button
+                  variant={rtc.streaming ? "default" : "ghost"}
+                  class="size-8"
+                  onclick={() => {
                   rtc.streaming = !rtc.streaming;
                 }}
-              >
-                <MonitorUp class="size-5" />
-              </Button>
-            </Tooltip.Trigger>
-            <Tooltip.Content class="flex flex-row gap-2">
-              <Switch id="airplane-mode" bind:checked={g.allowPause} />
-              <Label for="airplane-mode">Разрешить удаленную паузу</Label>
-            </Tooltip.Content>
-          </Tooltip.Root>
-        </Tooltip.Provider>
+                >
+                  <MonitorUp class="size-5" />
+                </Button>
+              </Tooltip.Trigger>
+              <Tooltip.Content class="flex flex-col gap-2">
+                <div class="flex flex-row items-center gap-2">
+                  <Switch id="airplane-mode" bind:checked={g.allowPause} />
+                  <Label for="airplane-mode">Разрешить удаленную паузу</Label>
+                </div>
+                <div>
+                  <Button
+                    variant="outline"
+                    class="text-sm"
+                    onclick={() => {
+                      const base = g.servers.selected?.overServerUrl!;
+                      const user = g.servers.selected?.user!;
+                      const baseUrl = new URL(base);
+                      const host = baseUrl.hostname;
+                      const port = baseUrl.port;
+                      const streamId = encodeURIComponent(`srt://${host}:${port}/app/${user.id}`);
+                      const streamLatency = encodeURIComponent("200000");
+                      const streamUrl = `srt://${host}:${port}?streamid=${streamId}&latency=${streamLatency}`;
+
+                      // TODO: remember how the url scheme for this works
+                      navigator.clipboard.writeText(streamUrl);
+                    }}
+                  >
+                    Скопировать ссылку для ОБС
+                  </Button>
+                </div>
+              </Tooltip.Content>
+            </Tooltip.Root>
+          </Tooltip.Provider>
+        {/if}
         <Button
           variant="ghost"
           class="size-8"
