@@ -28,8 +28,7 @@ export class Server {
   constructor(definition: ServerDefinition) {
     this.definition = definition;
     this.gateway = new Gateway();
-    this.gateway.connect(this.definition.url);
-    this.gateway.onmessage((msg) => this.handleMessage(msg));
+    this.gateway.onmessage(this.handleMessage.bind(this));
   }
 
   handleMessage(message: Message) {
@@ -48,6 +47,10 @@ export class Server {
   reconnect() {
     this.gateway.disconnect();
     this.gateway.connect(this.definition.url);
+  }
+
+  get connected() {
+    return this.gateway.connected;
   }
 
   async joinRoom(room: Room) {
@@ -86,7 +89,29 @@ export class Server {
 export class ServerManager {
   store: IPersistantStore = getPlatformStore("servers.json");
   values: Server[] = $state([]);
-  selected: Server | undefined = $state(undefined);
+
+  #selected: Server | undefined = $state(undefined);
+  get selected() {
+    return this.#selected;
+  }
+  set selected(value: Server | undefined) {
+    if (value === this.#selected) {
+      return;
+    }
+
+    // TODO: think about connection/disconnection strategies
+    // this just assumes that you want to be on 1 server at a time
+    this.#selected?.gateway.disconnect();
+
+    this.#selected = value;
+    if (value === undefined) {
+      return;
+    }
+
+    if (!value.connected) {
+      value.reconnect();
+    }
+  }
 
   constructor() {
     this.load();

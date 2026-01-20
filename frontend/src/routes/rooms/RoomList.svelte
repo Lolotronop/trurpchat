@@ -1,13 +1,18 @@
 <script lang="ts">
   import { gitGud } from "$lib/god.svelte";
+  import type { Server } from "$lib/servers.svelte";
   import VoiceRoom from "./VoiceRoom.svelte";
   const g = gitGud();
   // TODO: this needs to be removed with proper
   // "speaking" sending
   g.mic.enableAnalyzer();
 
-  const rtc = $derived(g.servers.selected?.rtc);
-  const server = $derived(g.servers.selected);
+  type Props = {
+    server: Server;
+  };
+  const { server }: Props = $props();
+
+  const rtc = $derived(server.rtc);
 </script>
 
 <div class="h-full w-full p-2">

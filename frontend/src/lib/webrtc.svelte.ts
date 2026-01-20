@@ -378,6 +378,8 @@ export class WebRTC {
     this.peers.clear();
     this.g.mic.disconnect();
     this.isConnected = false;
+    this.streaming = false;
+    this.watching = null;
   }
 }
 

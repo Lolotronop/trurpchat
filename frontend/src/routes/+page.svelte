@@ -1,10 +1,7 @@
 <script lang="ts">
   import { gitGud } from "$lib/god.svelte";
-  import BottomControls from "./BottomControls.svelte";
-  import RoomList from "./rooms/RoomList.svelte";
-  import Stream from "./Stream.svelte";
-  import Users from "./Users.svelte";
-  import Servers from "./servers/Servers.svelte";
+  import ServerSelector from "./servers/ServerSelector.svelte";
+  import ServerUI from "./ServerUI.svelte";
   const g = gitGud();
   // TODO: this needs to be removed with proper
   // "speaking" sending
@@ -13,29 +10,13 @@
 
 <main class="flex h-screen w-screen">
   <div class="flex h-full flex-col border-r p-2">
-    <Servers servers={g.servers} />
+    <ServerSelector servers={g.servers} />
   </div>
-  <div class="flex h-full min-w-75 flex-col border-r">
-    <div class="flex w-full p-2 px-6 text-xl">
-      {g.servers.selected?.definition.name || "Select a server"}
+  {#if g.servers.selected && g.servers.selected.connected}
+    <ServerUI server={g.servers.selected} />
+  {:else}
+    <div class="flex h-full flex-col items-center justify-center">
+      <p>Nope</p>
     </div>
-    <RoomList />
-    <div class="w-full p-0.5">
-      <BottomControls />
-    </div>
-  </div>
-  <div class="flex h-full w-full flex-col items-center justify-center">
-    {#if g.servers.selected?.rtc?.watching}
-      <Stream name={g.servers.selected?.rtc?.watching} />
-      <div class="flex w-full flex-row justify-between px-16"></div>
-    {:else}
-      <p>¯\_(ツ)_/¯</p>
-    {/if}
-  </div>
-  <div class="flex h-full">
-    <Users
-      online={g.servers.selected?.users.online ?? []}
-      offline={g.servers.selected?.users.offline ?? []}
-    />
-  </div>
+  {/if}
 </main>

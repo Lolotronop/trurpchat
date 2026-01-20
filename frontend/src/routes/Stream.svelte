@@ -5,24 +5,18 @@
   import { getAudioContext } from "$lib/audiocontext";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
-  import { gitGud } from "$lib/god.svelte";
+  import type { Server } from "$lib/servers.svelte";
 
   type Props = {
-    id: string;
+    id: number;
+    server: Server;
   };
-  let { id }: Props = $props();
+  let { id, server: s }: Props = $props();
 
-  // TODO: const for now, get from config later?
-
-  let g = gitGud();
-  if (g.servers.selected === undefined) {
-    throw new Error(
-      "Tried to wathed a stream on a not selected server. How did you do that",
-    );
-  }
   // TODO: this depends on you still being on the selected server while watching the stream
   // which wont be always true. maybe store that separately?
-  const server = g.servers.selected!.overServerUrl;
+  const server = s;
+  const ovenServer = server.overServerUrl;
 
   let isFullscreen = false;
 
@@ -30,7 +24,7 @@
     console.log(event.key);
     if (event.key === " " && isFullscreen) {
       // TODO: same bug
-      g.servers.selected?.gateway.send({ type: "action.voice.pause" });
+      server.gateway.send({ type: "action.voice.pause" });
     }
   };
   window.addEventListener("keydown", keyboardCallback);
@@ -70,7 +64,7 @@
         sources: [
           {
             type: "webrtc",
-            file: `ws://${server}/app/${id}`,
+            file: `ws://${ovenServer}/app/${id}`,
           },
         ],
       });
@@ -161,10 +155,7 @@
   class="mr-4 flex h-full items-center justify-center gap-4"
   bind:this={bottomControls}
 >
-  <Button
-    variant="destructive"
-    onclick={() => (g.servers.selected!.rtc!.watching = null)}
-  >
+  <Button variant="destructive" onclick={() => (server.rtc!.watching = null)}>
     Выйти
   </Button>
 
@@ -174,7 +165,7 @@
         <Button
           onclick={() => {
           // TODO same bug
-          g.servers.selected?.gateway.send({ type: "action.voice.pause" })
+          server.gateway.send({ type: "action.voice.pause" })
         }}
         >
           Пауза

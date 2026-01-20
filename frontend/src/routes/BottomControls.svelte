@@ -11,11 +11,17 @@
     MonitorUp,
     PhoneOff,
   } from "@lucide/svelte";
-  import Settings from "./Settings.svelte";
+  import type { Server } from "$lib/servers.svelte";
   import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
   import * as Avatar from "$lib/components/ui/avatar";
+  import Settings from "./Settings.svelte";
   const g = gitGud();
+
+  type Props = {
+    server: Server;
+  };
+  const { server }: Props = $props();
 
   function formatTime(timeMS: number): string {
     const hours = Math.floor(timeMS / 3600000);
@@ -25,7 +31,7 @@
     return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
   }
 
-  let rtc = $derived(g.servers.selected?.rtc);
+  let rtc = $derived(server.rtc);
 </script>
 
 <div class="text-muted-foreground rounded border-t px-2">
@@ -59,7 +65,7 @@
       </Tooltip.Provider>
 
       <div class="flex flex-row items-center gap-2">
-        {#if g.servers.selected?.overServerUrl}
+        {#if server.overServerUrl}
           <Tooltip.Provider>
             <Tooltip.Root delayDuration={100}>
               <Tooltip.Trigger class="max-w-28">
@@ -83,8 +89,8 @@
                     variant="outline"
                     class="text-sm"
                     onclick={() => {
-                      const base = g.servers.selected?.overServerUrl!;
-                      const user = g.servers.selected?.user!;
+                      const base = server.overServerUrl!;
+                      const user = server.user!;
                       const baseUrl = new URL(base);
                       const host = baseUrl.hostname;
                       const port = baseUrl.port;
@@ -107,7 +113,7 @@
           variant="ghost"
           class="size-8"
           onclick={() => {
-            g.servers.selected?.leaveRoom();
+            server.leaveRoom();
           }}
         >
           <PhoneOff class="size-5" />
@@ -123,17 +129,17 @@
       <Avatar.Root class="size-10">
         <!-- <Avatar.Image src="https://github.com/shadcn.png" alt="@shadcn" /> -->
         <Avatar.Fallback class="select-none">
-          {g.servers.selected?.user.name[0].toUpperCase()}
+          {server.user.name[0].toUpperCase()}
         </Avatar.Fallback>
       </Avatar.Root>
       <Tooltip.Provider>
         <Tooltip.Root delayDuration={100}>
           <Tooltip.Trigger class="max-w-28">
             <p class="text-foreground overflow-hidden text-ellipsis">
-              {g.servers.selected?.user.name}
+              {server.user.name}
             </p>
           </Tooltip.Trigger>
-          <Tooltip.Content>{g.servers.selected?.user.name}</Tooltip.Content>
+          <Tooltip.Content>{server.user.name}</Tooltip.Content>
         </Tooltip.Root>
       </Tooltip.Provider>
     </div>
