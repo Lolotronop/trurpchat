@@ -16,14 +16,14 @@
     <div class="flex w-full p-2 px-6 text-xl">
       {server.definition.name || "Select a server"}
     </div>
-    <RoomList server={server} />
+    <RoomList {server} />
     <div class="w-full p-0.5">
-      <BottomControls server={server} />
+      <BottomControls {server} />
     </div>
   </div>
   <div class="flex h-full w-full flex-col items-center justify-center">
     {#if server.rtc?.watching}
-      <Stream server={server} id={server.rtc?.watching} />
+      <Stream {server} id={server.rtc?.watching} />
       <div class="flex w-full flex-row justify-between px-16"></div>
     {:else}
       <p>¯\_(ツ)_/¯</p>

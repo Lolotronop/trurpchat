@@ -159,21 +159,19 @@
     Выйти
   </Button>
 
-  <Tooltip.Provider>
-    <Tooltip.Root>
-      <Tooltip.Trigger>
-        <Button
-          onclick={() => {
+  <Tooltip.Root>
+    <Tooltip.Trigger>
+      <Button
+        onclick={() => {
           // TODO same bug
-          server.gateway.send({ type: "action.voice.pause" })
+          server.gateway.send({ type: "action.voice.pause" });
         }}
-        >
-          Пауза
-        </Button>
-      </Tooltip.Trigger>
-      <Tooltip.Content>Пробел в полном экране</Tooltip.Content>
-    </Tooltip.Root>
-  </Tooltip.Provider>
+      >
+        Пауза
+      </Button>
+    </Tooltip.Trigger>
+    <Tooltip.Content>Пробел в полном экране</Tooltip.Content>
+  </Tooltip.Root>
 </div>
 
 <div class="relative flex h-fit w-full items-center justify-center">

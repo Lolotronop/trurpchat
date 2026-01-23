@@ -45,7 +45,6 @@ export class Gateway extends EventTarget {
     });
 
     socket.addEventListener("close", () => {
-      console.log("Disconnected from Gateway, retrying...");
       this.connected = false;
     });
 
@@ -63,6 +62,7 @@ export class Gateway extends EventTarget {
 
   disconnect() {
     this.socket?.close();
+    this.socket = null;
   }
 
   onmessage(callback: (data: Message) => void) {

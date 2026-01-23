@@ -145,7 +145,13 @@ export class ServerManager {
     }
 
     value.gateway.disconnect();
+
     this.values = this.values.filter((v) => v != value);
+
+    if (this.selected === value) {
+      this.selected = this.values[0] || undefined;
+    }
+
     this.save();
   }
 }

@@ -5,6 +5,7 @@
   import { fade } from "svelte/transition";
   import { invoke, isTauri } from "@tauri-apps/api/core";
   import { Loader2Icon } from "@lucide/svelte";
+  import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
   import { initCustomModules } from "$lib/audiocontext";
 
@@ -34,5 +35,7 @@
     <Loader2Icon class="animate-spin" />
   </div>
 {:then}
-  {@render children()}
+  <Tooltip.Provider>
+    {@render children()}
+  </Tooltip.Provider>
 {/await}

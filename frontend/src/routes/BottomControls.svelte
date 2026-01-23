@@ -14,7 +14,7 @@
   import type { Server } from "$lib/servers.svelte";
   import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
-  import * as Avatar from "$lib/components/ui/avatar";
+  import Avatar from "$lib/components/Avatar.svelte";
   import Settings from "./Settings.svelte";
   const g = gitGud();
 
@@ -37,77 +37,75 @@
 <div class="text-muted-foreground rounded border-t px-2">
   {#if rtc !== undefined}
     <div class="flex flex-row items-center justify-between gap-2 py-2">
-      <Tooltip.Provider>
-        <Tooltip.Root delayDuration={100}>
-          <Tooltip.Trigger class="flex flex-col items-start">
-            <div class="hover:text-foreground flex flex-row items-center gap-2">
-              Подключен к {rtc.room?.name}
-              <Info size={16} />
-            </div>
-          </Tooltip.Trigger>
-          <Tooltip.Content class="w-34">
-            <div class="flex w-full flex-row items-center justify-center gap-2">
-              <p class="text-muted-foreground font-mono text-sm">
-                {formatTime(rtc.connectedFor)}
-              </p>
-            </div>
-            <div>
-              {#each rtc.room?.users! as user}
-                {@const peer = rtc.peers.get(user.id)}
-                <div class="flex w-full flex-row justify-between">
-                  <p>{user.name}</p>
-                  <p>{peer?.ping ?? "N/A"}ms</p>
-                </div>
-              {/each}
-            </div>
-          </Tooltip.Content>
-        </Tooltip.Root>
-      </Tooltip.Provider>
+      <Tooltip.Root delayDuration={100}>
+        <Tooltip.Trigger class="flex flex-col items-start">
+          <div class="hover:text-foreground flex flex-row items-center gap-2">
+            Подключен к {rtc.room?.name}
+            <Info size={16} />
+          </div>
+        </Tooltip.Trigger>
+        <Tooltip.Content class="w-34">
+          <div class="flex w-full flex-row items-center justify-center gap-2">
+            <p class="text-muted-foreground font-mono text-sm">
+              {formatTime(rtc.connectedFor)}
+            </p>
+          </div>
+          <div>
+            {#each rtc.room?.users! as user}
+              {@const peer = rtc.peers.get(user.id)}
+              <div class="flex w-full flex-row justify-between">
+                <p>{user.name}</p>
+                <p>{peer?.ping ?? "N/A"}ms</p>
+              </div>
+            {/each}
+          </div>
+        </Tooltip.Content>
+      </Tooltip.Root>
 
       <div class="flex flex-row items-center gap-2">
         {#if server.overServerUrl}
-          <Tooltip.Provider>
-            <Tooltip.Root delayDuration={100}>
-              <Tooltip.Trigger class="max-w-28">
-                <Button
-                  variant={rtc.streaming ? "default" : "ghost"}
-                  class="size-8"
-                  onclick={() => {
+          <Tooltip.Root delayDuration={100}>
+            <Tooltip.Trigger class="max-w-28">
+              <Button
+                variant={rtc.streaming ? "default" : "ghost"}
+                class="size-8"
+                onclick={() => {
                   rtc.streaming = !rtc.streaming;
                 }}
-                >
-                  <MonitorUp class="size-5" />
-                </Button>
-              </Tooltip.Trigger>
-              <Tooltip.Content class="flex flex-col gap-2">
-                <div class="flex flex-row items-center gap-2">
-                  <Switch id="airplane-mode" bind:checked={g.allowPause} />
-                  <Label for="airplane-mode">Разрешить удаленную паузу</Label>
-                </div>
-                <div>
-                  <Button
-                    variant="outline"
-                    class="text-sm"
-                    onclick={() => {
-                      const base = server.overServerUrl!;
-                      const user = server.user!;
-                      const baseUrl = new URL(base);
-                      const host = baseUrl.hostname;
-                      const port = baseUrl.port;
-                      const streamId = encodeURIComponent(`srt://${host}:${port}/app/${user.id}`);
-                      const streamLatency = encodeURIComponent("200000");
-                      const streamUrl = `srt://${host}:${port}?streamid=${streamId}&latency=${streamLatency}`;
+              >
+                <MonitorUp class="size-5" />
+              </Button>
+            </Tooltip.Trigger>
+            <Tooltip.Content class="flex flex-col gap-2">
+              <div class="flex flex-row items-center gap-2">
+                <Switch id="airplane-mode" bind:checked={g.allowPause} />
+                <Label for="airplane-mode">Разрешить удаленную паузу</Label>
+              </div>
+              <div>
+                <Button
+                  variant="outline"
+                  class="text-sm"
+                  onclick={() => {
+                    const base = server.overServerUrl!;
+                    const user = server.user!;
+                    const baseUrl = new URL(base);
+                    const host = baseUrl.hostname;
+                    const port = baseUrl.port;
+                    const streamId = encodeURIComponent(
+                      `srt://${host}:${port}/app/${user.id}`,
+                    );
+                    const streamLatency = encodeURIComponent("200000");
+                    const streamUrl = `srt://${host}:${port}?streamid=${streamId}&latency=${streamLatency}`;
 
-                      // TODO: remember how the url scheme for this works
-                      navigator.clipboard.writeText(streamUrl);
-                    }}
-                  >
-                    Скопировать ссылку для ОБС
-                  </Button>
-                </div>
-              </Tooltip.Content>
-            </Tooltip.Root>
-          </Tooltip.Provider>
+                    // TODO: remember how the url scheme for this works
+                    navigator.clipboard.writeText(streamUrl);
+                  }}
+                >
+                  Скопировать ссылку для ОБС
+                </Button>
+              </div>
+            </Tooltip.Content>
+          </Tooltip.Root>
         {/if}
         <Button
           variant="ghost"
@@ -126,22 +124,16 @@
     class="bg-background flex h-16 w-full shrink flex-row items-center justify-between"
   >
     <div class="flex shrink flex-row items-center gap-1">
-      <Avatar.Root class="size-10">
-        <!-- <Avatar.Image src="https://github.com/shadcn.png" alt="@shadcn" /> -->
-        <Avatar.Fallback class="select-none">
-          {server.user.name[0].toUpperCase()}
-        </Avatar.Fallback>
-      </Avatar.Root>
-      <Tooltip.Provider>
-        <Tooltip.Root delayDuration={100}>
-          <Tooltip.Trigger class="max-w-28">
-            <p class="text-foreground overflow-hidden text-ellipsis">
-              {server.user.name}
-            </p>
-          </Tooltip.Trigger>
-          <Tooltip.Content>{server.user.name}</Tooltip.Content>
-        </Tooltip.Root>
-      </Tooltip.Provider>
+      <Avatar class="size-10" name={server.user.name}></Avatar>
+
+      <Tooltip.Root delayDuration={100}>
+        <Tooltip.Trigger class="max-w-28">
+          <p class="text-foreground overflow-hidden text-ellipsis">
+            {server.user.name}
+          </p>
+        </Tooltip.Trigger>
+        <Tooltip.Content>{server.user.name}</Tooltip.Content>
+      </Tooltip.Root>
     </div>
     <div class="flex w-full max-w-28 flex-row items-center gap-2">
       <Button

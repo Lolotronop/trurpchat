@@ -14,6 +14,13 @@
     url: "",
   });
 
+  if (import.meta.env.DEV) {
+    server = {
+      name: "localhost",
+      url: "ws://localhost:3000?key=vy84pxgkxm",
+    };
+  }
+
   function checkUrl(text: string): boolean {
     try {
       const url = new URL(text);
@@ -30,7 +37,6 @@
   let shouldShowUrlError = $derived(
     server.url.length > 0 && touchedUrl && !isUrlValid,
   );
-  $inspect(touchedUrl, isUrlValid, shouldShowUrlError);
 
   function isValidName(text: string): boolean {
     return text.length > 0;
@@ -42,7 +48,7 @@
   );
 </script>
 
-<div class="flex flex-col gap-2 p-2 w-full">
+<form class="flex flex-col gap-2 p-2 w-full" onsubmit={() => onsubmit(server)}>
   <h1 class="text-2xl">Добавить сервер</h1>
 
   <div>
@@ -51,7 +57,9 @@
       id="name"
       type="text"
       bind:value={server.name}
-      oninput={() => { touchedName = true; }}
+      oninput={() => {
+        touchedName = true;
+      }}
       aria-invalid={shouldShowNameError}
     />
     <p
@@ -69,7 +77,9 @@
       id="url"
       type="text"
       bind:value={server.url}
-      oninput={() => { touchedUrl = true; }}
+      oninput={() => {
+        touchedUrl = true;
+      }}
       aria-invalid={shouldShowUrlError}
     />
     <p
@@ -81,16 +91,21 @@
     </p>
   </div>
   <div class="w-full flex justify-between">
-    <Button variant="secondary" onclick={() => { onsubmit(null); }}>
+    <Button
+      variant="secondary"
+      onclick={() => {
+        onsubmit(null);
+      }}
+    >
       Отмена
     </Button>
 
     <Button
       variant="default"
       disabled={!isUrlValid || !isNameValid}
-      onclick={() => { onsubmit(server); }}
+      type="submit"
     >
       Добавить
     </Button>
   </div>
-</div>
+</form>

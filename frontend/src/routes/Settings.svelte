@@ -143,33 +143,32 @@
                     {actions[action]}
                   </p>
                   <div class="flex flex-row items-center justify-between gap-2">
-                    <Tooltip.Provider>
-                      <Tooltip.Root disableHoverableContent={true}>
-                        <Tooltip.Trigger
-                          class="flex flex-row items-center justify-between"
+                    <Tooltip.Root disableHoverableContent={true}>
+                      <Tooltip.Trigger
+                        class="flex flex-row items-center justify-between"
+                      >
+                        <Button
+                          variant="secondary"
+                          onclick={() => {
+                            if (g.keys.detectingFor === action) {
+                              g.keys.stopDetect();
+                            } else {
+                              g.keys.detect(action);
+                            }
+                          }}
                         >
-                          <Button
-                            variant="secondary"
-                            onclick={() => {
-                              if (g.keys.detectingFor === action) {
-                                g.keys.stopDetect();
-                              } else {
-                                g.keys.detect(action);
-                              }
-                            }}
-                          >
-                            {#if g.keys.detectingFor === action}
-                              Считываю...
-                            {:else if key}
-                              {key}
-                            {:else}
-                              Не задано
-                            {/if}
-                          </Button>
-                        </Tooltip.Trigger>
-                        <Tooltip.Content>Нажмите, чтобы задать</Tooltip.Content>
-                      </Tooltip.Root>
-                    </Tooltip.Provider>
+                          {#if g.keys.detectingFor === action}
+                            Считываю...
+                          {:else if key}
+                            {key}
+                          {:else}
+                            Не задано
+                          {/if}
+                        </Button>
+                      </Tooltip.Trigger>
+                      <Tooltip.Content>Нажмите, чтобы задать</Tooltip.Content>
+                    </Tooltip.Root>
+
                     <Button
                       variant="secondary"
                       onclick={() => {
@@ -222,30 +221,28 @@
                     </Button>
                   {/each}
 
-                  <Tooltip.Provider>
-                    <Tooltip.Root delayDuration={200}>
-                      <Tooltip.Trigger
-                        class="flex flex-row items-center justify-between"
+                  <Tooltip.Root delayDuration={200}>
+                    <Tooltip.Trigger
+                      class="flex flex-row items-center justify-between"
+                    >
+                      <Button
+                        variant={g.theme.selected === "custom"
+                          ? "secondary"
+                          : "outline"}
+                        onclick={() => (g.theme.selected = "custom")}
                       >
-                        <Button
-                          variant={g.theme.selected === "custom"
-                            ? "secondary"
-                            : "outline"}
-                          onclick={() => (g.theme.selected = "custom")}
-                        >
-                          Кастомная
-                        </Button>
-                      </Tooltip.Trigger>
-                      <Tooltip.Content>
-                        <a
-                          href="https://tweakcn.com/editor/theme"
-                          target="_blank"
-                        >
-                          Конфигуратор
-                        </a>
-                      </Tooltip.Content>
-                    </Tooltip.Root>
-                  </Tooltip.Provider>
+                        Кастомная
+                      </Button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Content>
+                      <a
+                        href="https://tweakcn.com/editor/theme"
+                        target="_blank"
+                      >
+                        Конфигуратор
+                      </a>
+                    </Tooltip.Content>
+                  </Tooltip.Root>
                 </div>
               </div>
 

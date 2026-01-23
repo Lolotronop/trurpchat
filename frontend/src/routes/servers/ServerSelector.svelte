@@ -1,9 +1,9 @@
 <script lang="ts">
-  import * as Avatar from "$lib/components/ui/avatar";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import * as Dialog from "$lib/components/ui/dialog";
   import { Button } from "$lib/components/ui/button";
   import type { ServerManager } from "$lib/servers.svelte";
+  import Avatar from "$lib/components/Avatar.svelte";
   import ServerForm from "./ServerForm.svelte";
 
   type Props = {
@@ -14,35 +14,30 @@
 
   let showServerForm = $state(false);
 </script>
+
 <div class="flex shrink flex-col items-center gap-1">
-  {#each servers.values as server (server.definition.url)}
-    <Tooltip.Provider>
-      <Tooltip.Root delayDuration={100}>
-        <Tooltip.Trigger class="max-w-28">
-          <Avatar.Root
-            class="size-10"
-            onclick={() => {
-                servers.selected = server;
-              }}
-          >
-            <!-- <Avatar.Image src="https://github.com/shadcn.png" alt="@shadcn" /> -->
-            <Avatar.Fallback class="select-none">
-              {server.definition.name[0].toUpperCase()}
-            </Avatar.Fallback>
-          </Avatar.Root>
-        </Tooltip.Trigger>
-        <Tooltip.Content>
-          {server.definition.name}
-          <Button
-            onclick={() => {
-                servers.remove(server);
-              }}
-          >
-            Remove
-          </Button>
-        </Tooltip.Content>
-      </Tooltip.Root>
-    </Tooltip.Provider>
+  {#each servers.values as server (server.definition.name + server.definition.url)}
+    <Tooltip.Root delayDuration={100}>
+      <Tooltip.Trigger class="max-w-28">
+        <button
+          onclick={() => {
+            servers.selected = server;
+          }}
+        >
+          <Avatar class="size-10" name={server.definition.name}></Avatar>
+        </button>
+      </Tooltip.Trigger>
+      <Tooltip.Content side="right">
+        {server.definition.name}
+        <Button
+          onclick={() => {
+            servers.remove(server);
+          }}
+        >
+          Удалить
+        </Button>
+      </Tooltip.Content>
+    </Tooltip.Root>
   {/each}
 
   <Dialog.Root bind:open={showServerForm}>
