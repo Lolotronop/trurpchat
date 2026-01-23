@@ -3,9 +3,6 @@
   import type { Server } from "$lib/servers.svelte";
   import VoiceRoom from "./VoiceRoom.svelte";
   const g = gitGud();
-  // TODO: this needs to be removed with proper
-  // "speaking" sending
-  g.mic.enableAnalyzer();
 
   type Props = {
     server: Server;

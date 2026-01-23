@@ -5,9 +5,6 @@
   import ServerSelector from "./servers/ServerSelector.svelte";
   import ServerUI from "./ServerUI.svelte";
   const g = gitGud();
-  // TODO: this needs to be removed with proper
-  // "speaking" sending
-  g.mic.enableAnalyzer();
 </script>
 
 <main class="flex h-screen w-screen">

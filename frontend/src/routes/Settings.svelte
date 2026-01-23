@@ -19,6 +19,7 @@
 
   const g = gitGud();
   g.mic.connect();
+  g.mic.enableAnalyzer();
 
   // TODO: redo this with the selected server context
 
@@ -36,6 +37,7 @@
   onOpenChange={(open) => {
     if (open == false) {
       g.mic.monitoring = false;
+      g.mic.disableAnalyzer();
     }
   }}
 >

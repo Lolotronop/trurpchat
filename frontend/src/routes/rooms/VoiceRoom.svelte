@@ -28,10 +28,10 @@
 <div>
   <Button
     variant="ghost"
-    class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {
-        rtc?.room?.name === room.name
-          ? ''
-          : 'text-muted-foreground'}"
+    class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {rtc
+      ?.room?.name === room.name
+      ? ''
+      : 'text-muted-foreground'}"
     onclick={() => server?.joinRoom(room)}
   >
     <div class="flex flex-row items-center gap-2">
@@ -48,7 +48,7 @@
           {rtc}
           {room}
           mutedByMe={false}
-          speaking={g.mic.speaking}
+          speaking={g.mic.speaking && !g.muted}
         />
       {:else}
         <ContextMenu.Root>
@@ -66,7 +66,9 @@
               <Button
                 variant="ghost"
                 class="flex w-full flex-row justify-between"
-                onclick={() => { peer.mute = !peer.mute; }}
+                onclick={() => {
+                  peer.mute = !peer.mute;
+                }}
               >
                 <p>Замутить</p>
                 <Checkbox checked={peer.mute} />

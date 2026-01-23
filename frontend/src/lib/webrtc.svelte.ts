@@ -1,126 +1,9 @@
 import { SvelteMap } from "svelte/reactivity";
-import type { Message, VoiceChat } from "trurpchat-backend";
-import type { Mic } from "./mic.svelte";
+import type { ConnectedUser, Message, VoiceChat } from "trurpchat-backend";
 import type { God } from "./god.svelte";
 import { getAudioContext } from "./audiocontext";
 import type { Server } from "./servers.svelte";
-
-export class Peer {
-  mic: Mic;
-  pc: RTCPeerConnection;
-  analyzer: AudioWorkletNode;
-
-  gainNode: GainNode;
-  muteNode: GainNode;
-  #volume: number = $state(1);
-  get volume(): number {
-    return this.#volume;
-  }
-  set volume(value: number) {
-    this.#volume = value;
-    this.gainNode.gain.setTargetAtTime(value, this.mic.c.currentTime, 0.01);
-  }
-
-  #mute = $state(false);
-  get mute(): boolean {
-    return this.#mute;
-  }
-  set mute(value: boolean) {
-    this.#mute = value;
-    this.muteNode.gain.setTargetAtTime(
-      value ? 0 : 1,
-      this.mic.c.currentTime,
-      0.01,
-    );
-  }
-
-  speaking = $state(false);
-
-  peak: number = $state(0);
-  rms: number = $state(0);
-  /** in ms */
-  ping: number = $state(0);
-
-  interval: NodeJS.Timeout | number | null = null;
-
-  constructor(targetId: number, mic: Mic, output: GainNode) {
-    this.mic = mic;
-    this.pc = new RTCPeerConnection(ICE_CONFIG);
-    this.gainNode = this.mic.c.createGain();
-    this.analyzer = new AudioWorkletNode(this.mic.c, "loudness");
-    this.muteNode = this.mic.c.createGain();
-
-    this.gainNode.connect(this.muteNode);
-    this.muteNode.connect(this.analyzer);
-    this.analyzer.connect(output);
-
-    this.interval = setInterval(() => {
-      this.pc.getStats().then((stats) => {
-        stats.forEach((report) => {
-          if (
-            report.type === "candidate-pair" &&
-            report.state === "succeeded" &&
-            report.nominated === true
-          ) {
-            this.ping = report.currentRoundTripTime * 1000;
-          }
-        });
-      });
-    }, 1000);
-
-    this.analyzer.port.onmessage = (event) => {
-      this.peak = event.data.peak;
-      this.rms = event.data.rms;
-      // TODO: remove smoothing inside loudness.js
-      // or send this data over a data channel with webrtc
-      // based on gate state/ptt
-      if (this.peak > -60) {
-        this.speaking = true;
-      } else {
-        this.speaking = false;
-      }
-    };
-
-    if (!this.mic.stream) {
-      throw new Error("Local stream not available");
-    }
-
-    const [audioTrack] = this.mic.nodes.destination.stream.getAudioTracks();
-    this.pc.addTrack(audioTrack, this.mic.stream);
-
-    this.pc.ontrack = (event) => {
-      const audioTrack = event.streams[0].getAudioTracks()[0];
-      if (!audioTrack) {
-        throw new Error(`Audio track for ${targetId} not found`);
-      }
-
-      const stream = event.streams[0];
-      const source = getAudioContext().createMediaStreamSource(stream);
-      source.connect(this.gainNode);
-      attachDomAudio(targetId, stream);
-      getAudioContext().resume();
-    };
-
-    // this will probably be needed for enabling cam
-    // or bitrate changes?
-    this.pc.onnegotiationneeded = async () => {
-      console.log(`Negotiation needed for ${targetId}`);
-    };
-  }
-
-  /**
-   * After this the object should not be reused
-   */
-  cleanup() {
-    this.pc.close();
-    this.gainNode.disconnect();
-    this.analyzer.disconnect();
-    clearInterval(this.interval as number);
-
-    // @ts-expect-error
-    delete this.pc;
-  }
-}
+import { Peer } from "./webrtc-peer.svelte";
 
 // TODO: this whould be dictated by the current server
 const TURN_SERVER_IP = "45.143.95.55";
@@ -129,9 +12,6 @@ export const ICE_CONFIG: RTCConfiguration = {
     {
       urls: [
         "stun:stun1.l.google.com:19302",
-        "stun:stun2.l.google.com:19302",
-        "stun:stun3.l.google.com:19302",
-        "stun:stun4.l.google.com:19302",
         "stun:stunserver.org:3478",
         "stun:stun.stunprotocol.org:3478",
         "stun:stun.nextcloud.com:443",
@@ -200,64 +80,73 @@ export class WebRTC {
     this.server.gateway.onmessage((data) => {
       this.handleSignalingMessage(data);
     });
+
+    g.mic.nodes.noiseGate.port.addEventListener("message", (event) => {
+      for (const peer of this.peers.values()) {
+        peer.datachannel?.send(JSON.stringify({
+          type: "speaking",
+          speaking: event.data.isOpen && !g.muted,
+        }))
+      }
+    })
   }
 
-  async handleSignalingMessage(rawData: unknown) {
-    const msg = rawData as Message;
+  async handleSignalingMessage(msg: Message) {
+    if (msg.type === "event.voice.joined") {
+      this.handleUserJoined(msg.user, msg.room);
+    } else if (msg.type === "event.voice.left") {
+      this.handleUserJoined(msg.user, msg.room);
+    } else if (msg.type === "rtc.offer") {
+      await this.acceptCall(msg.offer, msg.sender);
+    } else if (msg.type === "rtc.answer") {
+      await this.handleAnswer(msg.answer, msg.sender);
+    } else if (msg.type === "rtc.ice") {
+      await this.handleIceCandidate(msg.candidate, msg.sender);
+    }
+  }
 
-    switch (msg.type) {
-      case "event.voice.joined":
-        if (msg.user.id !== this.server.user.id) {
-          this.g.sound.play("user join");
-          this.room.users.push(msg.user);
-          return;
-        }
+  async handleUserJoined(user: ConnectedUser, roomId: number) {
+    if (this.room.id !== roomId) {
+      return;
+    }
 
-        this.g.sound.play("user join");
+    if (user.id !== this.server.user.id) {
+      this.g.sound.play("user join");
+      this.room.users.push(user);
+      return;
+    }
 
-        this.connectedFor = 0;
-        if (this.connectedTimeout) {
-          clearInterval(this.connectedTimeout);
-        }
-        this.connectedTimeout = setInterval(() => {
-          this.connectedFor += 1000;
-        }, 1000);
+    this.g.sound.play("user join");
 
-        await this.g.mic.connect();
-        // Initiate calls to existing users
-        for (const user of this.room.users) {
-          if (user.id === this.server.user.id) continue;
-          await this.initiateCall(user.id);
-        }
-        break;
+    this.connectedFor = 0;
+    if (this.connectedTimeout) {
+      clearInterval(this.connectedTimeout);
+    }
+    this.connectedTimeout = setInterval(() => {
+      this.connectedFor += 1000;
+    }, 1000);
 
-      case "event.voice.left":
-        if (msg.user.id === this.server.user.id) {
-          this.cleanup();
-          return;
-        } else {
-          this.peers.get(msg.user.id)?.cleanup();
-          this.peers.delete(msg.user.id);
-          if (msg.room === this.room?.id) {
-            this.room.users = this.room.users.filter(
-              (u) => u.id !== msg.user.id,
-            );
-            this.g.sound.play("user leave");
-          }
-        }
-        break;
+    await this.g.mic.connect();
+    // Initiate calls to existing users
+    for (const user of this.room.users) {
+      if (user.id === this.server.user.id) continue;
+      await this.initiateCall(user.id);
+    }
+  }
 
-      case "rtc.offer":
-        await this.acceptCall(msg.offer, msg.sender!);
-        break;
-
-      case "rtc.answer":
-        await this.handleAnswer(msg.answer, msg.sender!);
-        break;
-
-      case "rtc.ice":
-        await this.handleIceCandidate(msg.candidate, msg.sender!);
-        break;
+  async handleUserLeft(user: ConnectedUser, roomId: number) {
+    if (user.id === this.server.user.id) {
+      this.cleanup();
+      return;
+    } else {
+      if (roomId === this.room?.id) {
+        this.peers.get(user.id)?.cleanup();
+        this.peers.delete(user.id);
+        this.room.users = this.room.users.filter(
+          (u) => u.id !== user.id,
+        );
+        this.g.sound.play("user leave");
+      }
     }
   }
 
@@ -315,6 +204,8 @@ export class WebRTC {
       return;
     }
     const peer = this.createPeer(targetId);
+    const chan = peer.pc.createDataChannel("speaking");
+    peer.setDatachannel(chan);
 
     let offer = await peer.pc.createOffer();
     // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
@@ -381,26 +272,4 @@ export class WebRTC {
     this.streaming = false;
     this.watching = null;
   }
-}
-
-/**
- * Attach a DOM audio element to a MediaStream
- * because chrome WOULD NOT behave without it
- * (data from the stream just doesn't get sent to the sink without it)
- */
-function attachDomAudio(userId: number, stream: MediaStream) {
-  const id = `peer-${userId}`;
-  let audio = document.getElementById(id) as HTMLAudioElement;
-
-  if (!audio) {
-    audio = document.createElement("audio");
-    audio.id = id;
-    audio.autoplay = true;
-    audio.muted = true;
-    audio.style.display = "none";
-    document.body.appendChild(audio);
-  }
-
-  audio.srcObject = stream;
-  return audio;
 }

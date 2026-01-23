@@ -60,12 +60,15 @@ export class God {
     } else {
       this.sound.play("undeafen");
     }
-    // TODO: somehow make this work
-    // this..deafenNode.gain.setTargetAtTime(
-    //   value ? 0 : 1,
-    //   getAudioContext().currentTime,
-    //   0.01,
-    // );
+
+    // TODO: this should probably work by having a separate output in the
+    // mic or somethig that I can mute with the button
+    // this way it doesn't actually depend on global state or smth?
+    this.servers.selected?.rtc?.deafenNode.gain.setTargetAtTime(
+      value ? 0 : 1,
+      getAudioContext().currentTime,
+      0.01,
+    );
   }
 
   #allowPause: boolean = $state(false);

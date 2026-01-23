@@ -31,15 +31,15 @@ export class Mic {
   set monitoring(value) {
     this.#monitoring = value;
     const node = this.nodes.merger;
-    console.log(value);
     if (value) {
       node.connect(this.c.destination);
     } else {
       try {
         node.disconnect(this.c.destination);
-      } catch (error) {
-        console.error("Coundn't disconnect the last node from output", error);
-      }
+        // we just silence the error because we blanket disconnect
+        // it with no regard for whether it was connected previosly
+        // or not. and if it wasnt it would error out
+      } catch (_) { }
     }
   }
 
@@ -144,12 +144,15 @@ export class Mic {
     this.nodes.inputGain.connect(eq);
     eq.connect(this.nodes.limiter);
     this.nodes.limiter.connect(this.nodes.noiseGate);
-    this.nodes.noiseGate.connect(this.nodes.outputGain);
-    this.nodes.outputGain.connect(this.nodes.destination);
-    this.nodes.outputGain.gain.setTargetAtTime(1, this.c.currentTime, 0.01);
+    // this.nodes.noiseGate.connect(this.nodes.outputGain);
 
     this.nodes.noiseGate.connect(this.nodes.merger, 0, 0);
     this.nodes.noiseGate.connect(this.nodes.merger, 0, 1);
+
+    this.nodes.merger.connect(this.nodes.outputGain);
+
+    this.nodes.outputGain.connect(this.nodes.destination);
+    this.nodes.outputGain.gain.setTargetAtTime(1, this.c.currentTime, 0.01);
 
     this.init();
   }
@@ -187,17 +190,24 @@ export class Mic {
       autoGainControl: false,
       channelCount: 1,
     };
+
     if (this.deviceId) {
+      console.log("Before:", this.deviceId);
       settings.deviceId = this.deviceId;
-      this.store.set("deviceId", this.deviceId);
     }
 
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         audio: settings,
       });
-      const deviceId = this.stream.getAudioTracks()[0].getSettings().deviceId;
+      const track = this.stream.getAudioTracks()[0];
+      if (!track) {
+        throw new Error("The audio track for the mic is not there!");
+      }
+      const deviceId = track.getSettings().deviceId;
+      console.log("After:", deviceId)
       this.deviceId = deviceId;
+      this.store.set("deviceId", this.deviceId);
       this.nodes.source = this.c.createMediaStreamSource(this.stream);
       this.nodes.source.connect(this.nodes.inputGain);
     } catch (error) {

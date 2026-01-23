@@ -54,7 +54,7 @@ export class Gateway extends EventTarget {
     });
 
     socket.addEventListener("message", (event) => {
-      console.log("Gateway:", event.data);
+      // console.log("Gateway:", event.data);
     });
 
     this.socket = socket;
