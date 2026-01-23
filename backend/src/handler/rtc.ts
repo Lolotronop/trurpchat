@@ -19,6 +19,7 @@ export const rtcHandlers: Handlers<RtcMessage> = {
       type: "rtc.ice",
       candidate: msg.candidate,
       sender: ws.data.id,
+      target: msg.target,
     });
     return ok();
   },
@@ -38,6 +39,7 @@ export const rtcHandlers: Handlers<RtcMessage> = {
       type: "rtc.offer",
       offer: msg.offer,
       sender: ws.data.id,
+      target: msg.target,
     });
     return ok();
   },
@@ -57,6 +59,7 @@ export const rtcHandlers: Handlers<RtcMessage> = {
       type: "rtc.answer",
       answer: msg.answer,
       sender: ws.data.id,
+      target: msg.target,
     });
     return ok();
   },
