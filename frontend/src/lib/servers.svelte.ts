@@ -45,6 +45,8 @@ export class Server {
       this.overServerUrl = message.ovenServerUrl;
     } else if (message.type === "event.key.list") {
       this.keys = message.keys;
+    } else if (message.type === "event.user.me") {
+      this.user = message.user;
     }
   }
 

@@ -108,17 +108,30 @@ export type KeyEvent = {
   keys: Key[];
 };
 
-export type UserAction = {
-  type: "action.user.rename";
-  userId: number;
-  name: string;
-};
+export type UserAction =
+  | {
+      type: "action.user.create";
+      name: string;
+    }
+  | ({
+      type: "action.user.update";
+      id: number;
+    } & Partial<User>)
+  | {
+      type: "action.user.delete";
+      id: number;
+    };
 
-export type UserEvent = {
-  type: "event.users";
-  online: ConnectedUser[];
-  offline: User[];
-};
+export type UserEvent =
+  | {
+      type: "event.users";
+      online: ConnectedUser[];
+      offline: User[];
+    }
+  | {
+      type: "event.user.me";
+      user: User;
+    };
 
 export type OtherEvent =
   | {

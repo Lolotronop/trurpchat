@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Button } from "$lib/components/ui/button";
   import type { Server } from "$lib/servers.svelte";
-  import { Clipboard, Loader2, Pencil, X } from "@lucide/svelte";
+  import { Clipboard, Loader2, X } from "@lucide/svelte";
   import type { User } from "trurpchat-backend";
   import type { Key } from "trurpchat-backend/src/db";
   import UsernameFeild from "./UsernameFeild.svelte";
@@ -42,16 +42,31 @@
 
 <div class="flex flex-row justify-between items-center gap-2">
   <h1 class="text-foreground text-2xl mb-2">Пользователи</h1>
-  <Button
-    variant="secondary"
-    onclick={() => {
+  <div>
+    {#if server.user.permissions === 1}
+      <Button
+        variant="secondary"
+        onclick={() => {
+        server.gateway.send({
+          type: "action.user.create",
+          name: "New" + Math.random().toString(36).slice(2),
+        });
+      }}
+      >
+        Добавить
+      </Button>
+    {/if}
+    <Button
+      variant="secondary"
+      onclick={() => {
       server.gateway.send({
         type: "action.key.list",
       });
     }}
-  >
-    Обновить
-  </Button>
+    >
+      Обновить
+    </Button>
+  </div>
 </div>
 <div class="flex w-full flex-col gap-2">
   {#if server.keys.length === 0}
