@@ -1,5 +1,5 @@
 import { err, ok } from "neverthrow";
-import type { Message } from "./types";
+import type { Message, ServerEvent } from "./types";
 import type { WsClient } from "./voice";
 
 export function safeSend(client: WsClient, message: Message) {
@@ -21,13 +21,13 @@ export function safeSend(client: WsClient, message: Message) {
   return ok();
 }
 
-export function sendAll(clients: Iterable<WsClient>, message: Message) {
+export function sendAll(clients: Iterable<WsClient>, message: ServerEvent) {
   for (const client of clients) {
     send(client, message);
   }
 }
 
-export function send(client: WsClient, message: Message) {
+export function send(client: WsClient, message: ServerEvent) {
   const result = safeSend(client, message);
   if (result.isErr()) {
     console.error("Failed to send message:", result.error);

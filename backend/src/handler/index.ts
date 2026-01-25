@@ -1,21 +1,25 @@
 import { err } from "neverthrow";
-import type { Message, UserAction } from "$src/types";
+import type { Message, ClientAction } from "$src/types";
 import { type WsClient } from "$src/voice";
 import type { HandlerContext } from "./types";
 import { rtcHandlers } from "./rtc";
 import { voiceHandlers } from "./voice";
+import { keyHandlers } from "./key";
+import { userHandlers } from "./user";
 
 export type { HandlerContext } from "./types";
 
 const handlers = {
   ...rtcHandlers,
   ...voiceHandlers,
+  ...keyHandlers,
+  ...userHandlers,
 } as const;
 
 // TODO: maybe rename rtc to actions too?
 const ACTION_PREFIXES = ["action", "rtc"];
 
-function isAction(message: Message): message is UserAction {
+function isAction(message: Message): message is ClientAction {
   let allowed = false;
   for (const prefix of ACTION_PREFIXES) {
     if (message.type.startsWith(prefix)) {
@@ -41,7 +45,7 @@ export async function handleMessage(
     return err(new Error(`Handler not found for message: ${message.type}`));
   }
 
-  // @ts-expect-error - while this does complain about the message type
+  // @ts-expect-error while this does complain about the message type,
   // it is correct as per the checks above
   return await handler(ctx, client, message);
 }

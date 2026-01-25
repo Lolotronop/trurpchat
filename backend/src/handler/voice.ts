@@ -48,14 +48,18 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     if (ws.data.watching === null) {
       return ok();
     }
-    // TODO: this is horrible
-    const to = Array.from(ctx.clients.values()).find(
-      (c) => c.data.id === ws.data.watching,
-    );
+    const to = ctx.clients.get(msg.userId);
     if (!to) {
       return err(new Error(`Client ${ws.data.watching} not found`));
     }
-    send(to, msg);
+    if (!to.data.streaming) {
+      return ok();
+    }
+
+    send(to, {
+      type: "event.voice.pause",
+      fromUserId: ws.data.id,
+    });
     return ok();
   },
 };

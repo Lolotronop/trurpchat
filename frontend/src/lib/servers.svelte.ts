@@ -1,4 +1,5 @@
 import type { ConnectedUser, Message, Room, User } from "trurpchat-backend";
+import type { Key } from "trurpchat-backend/src/db";
 import { Gateway } from "./gateway.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { WebRTC } from "./webrtc.svelte";
@@ -24,6 +25,7 @@ export class Server {
     online: ConnectedUser[];
     offline: User[];
   } = $state({ online: [], offline: [] });
+  keys: Key[] = $state([]);
 
   constructor(definition: ServerDefinition) {
     this.definition = definition;
@@ -41,6 +43,8 @@ export class Server {
       this.users.offline = message.offline;
     } else if (message.type === "event.oven") {
       this.overServerUrl = message.ovenServerUrl;
+    } else if (message.type === "event.key.list") {
+      this.keys = message.keys;
     }
   }
 
@@ -51,6 +55,12 @@ export class Server {
 
   get connected() {
     return this.gateway.connected;
+  }
+
+  findUser(id: number) {
+    let online = this.users.online.find((u) => u.id === id);
+    let offline = this.users.offline.find((u) => u.id === id);
+    return online ?? offline;
   }
 
   async joinRoom(room: Room) {

@@ -1,4 +1,4 @@
-import type { Result, ResultAsync } from "neverthrow";
+import type { Result } from "neverthrow";
 import type { Message } from "$src/types";
 import type { WsClient, Hotel } from "$src/voice";
 
@@ -15,7 +15,7 @@ export type HandlerFunction<T extends Message> = (
   ctx: HandlerContext,
   ws: WsClient,
   msg: T,
-) => Result<void, Error> | ResultAsync<void, Error>;
+) => Result<void, Error> | Promise<Result<void, Error>>;
 
 export type Handlers<T extends Message> = {
   [K in MessageNames<T>]: HandlerFunction<Extract<T, { type: K }>>;

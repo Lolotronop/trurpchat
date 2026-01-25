@@ -9,8 +9,6 @@ import { seed } from "./devseed";
 
 await seed();
 
-console.log(await db.select().from(keys));
-
 const ctx: HandlerContext = {
   clients: new Map<number, WsClient>(),
   hotel: new Hotel(),
@@ -69,6 +67,11 @@ Bun.serve<ConnectedUser, never>({
       console.log("User not found");
       return new Response("User not found", { status: 400 });
     }
+
+    await db
+      .update(keys)
+      .set({ lastSeen: new Date() })
+      .where(eq(keys.key, key));
 
     const user = userRow[0]!;
 
