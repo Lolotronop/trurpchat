@@ -13,7 +13,7 @@
 </script>
 
 <div class="flex h-full w-full">
-  <div class="flex h-full w-75 flex-col border-r">
+  <div class="flex h-full flex-col w-80 border-r">
     <div class="flex p-2 px-6 text-xl justify-between">
       <p>{server.definition.name || "Select a server"}</p>
       <ServerSettings {server} />

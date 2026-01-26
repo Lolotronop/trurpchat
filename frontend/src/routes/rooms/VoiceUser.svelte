@@ -20,16 +20,16 @@
 <div
   class="hover:bg-accent/50 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
 >
-  <div class="flex flex-row items-center gap-2 w-full">
+  <div class="flex flex-row items-center gap-2 min-w-0">
     <Avatar
-      class={`size-6 ${speaking ? "border-2 border-green-500" : ""}`}
+      class="size-6 shrink-0 {speaking ? "border-2 border-green-500" : ""}"
       name={user.name}
     ></Avatar>
-    <p class="text-ellipsis overflow-hidden text-nowrap {rtc?.room?.name === room.name ? "" : "text-muted-foreground"}">
+    <p class="truncate flex-1 {rtc?.room?.name === room.name ? "" : "text-muted-foreground"}">
       {user.name}
     </p>
   </div>
-  <div class="flex h-6 flex-row items-center gap-2 pr-2">
+  <div class="flex h-6 flex-row shrink-0 items-center gap-2 pr-2">
     {#if user.muted || mutedByMe}
       <MicOff size={16} class={mutedByMe ? "text-yellow-600" : ""} />
     {/if}

@@ -34,7 +34,7 @@
   let rtc = $derived(server.rtc);
 </script>
 
-<div class="text-muted-foreground rounded border-t px-2">
+<div class="text-muted-foreground rounded border-t px-2 flex flex-col w-full">
   {#if rtc !== undefined}
     <div class="flex flex-row items-center justify-between gap-2 py-2">
       <Tooltip.Root delayDuration={100}>
@@ -121,21 +121,19 @@
     <div class="border-t"></div>
   {/if}
   <div
-    class="bg-background flex h-16 w-full shrink flex-row items-center justify-between"
+    class="bg-background flex h-16 flex-row shrink items-center justify-between"
   >
-    <div class="flex shrink flex-row items-center gap-1">
-      <Avatar class="size-10" name={server.user.name}></Avatar>
+    <div class="flex grow shrink flex-row items-center gap-1 min-w-0">
+      <Avatar class="size-10 shrink-0" name={server.user.name}></Avatar>
 
       <Tooltip.Root delayDuration={100}>
-        <Tooltip.Trigger class="max-w-28">
-          <p class="text-foreground overflow-hidden text-ellipsis">
-            {server.user.name}
-          </p>
+        <Tooltip.Trigger class="flex min-w-0 flex-1">
+          <p class="text-foreground truncate">{server.user.name}</p>
         </Tooltip.Trigger>
         <Tooltip.Content>{server.user.name}</Tooltip.Content>
       </Tooltip.Root>
     </div>
-    <div class="flex w-full max-w-28 flex-row items-center gap-2">
+    <div class="flex flex-row items-center gap-2 shrink-0">
       <Button
         variant={g.muted ? "destructive" : "ghost"}
         class="size-8"
