@@ -39,7 +39,7 @@ export class Mic {
         // we just silence the error because we blanket disconnect
         // it with no regard for whether it was connected previosly
         // or not. and if it wasnt it would error out
-      } catch (_) { }
+      } catch (_) {}
     }
   }
 
@@ -192,7 +192,6 @@ export class Mic {
     };
 
     if (this.deviceId) {
-      console.log("Before:", this.deviceId);
       settings.deviceId = this.deviceId;
     }
 
@@ -205,7 +204,6 @@ export class Mic {
         throw new Error("The audio track for the mic is not there!");
       }
       const deviceId = track.getSettings().deviceId;
-      console.log("After:", deviceId)
       this.deviceId = deviceId;
       this.store.set("deviceId", this.deviceId);
       this.nodes.source = this.c.createMediaStreamSource(this.stream);

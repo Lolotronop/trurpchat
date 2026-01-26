@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { gitGud } from "$lib/god.svelte";
   import { Server } from "$lib/servers.svelte";
   import BottomControls from "./BottomControls.svelte";
+  import VoiceGrid from "./main/VoiceGrid.svelte";
   import RoomList from "./rooms/RoomList.svelte";
   import ServerSettings from "./servers/ServerSettings.svelte";
-  import Stream from "./Stream.svelte";
   import Users from "./Users.svelte";
 
   type Props = {
@@ -23,10 +24,13 @@
       <BottomControls {server} />
     </div>
   </div>
-  <div class="flex h-full w-full flex-col items-center justify-center">
-    {#if server.rtc?.watching}
-      <Stream {server} id={server.rtc?.watching} />
-      <div class="flex w-full flex-row justify-between px-16"></div>
+  <div
+    class="flex grow-0 h-full w-full flex-col items-center justify-center min-h-0 min-w-0"
+  >
+    {#if server.rtc !== undefined}
+      <!-- <Stream {server} id={server.rtc?.watching} /> -->
+      <!-- <div class="flex w-full flex-row justify-between px-16"></div> -->
+      <VoiceGrid {server} />
     {:else}
       <p>¯\_(ツ)_/¯</p>
     {/if}

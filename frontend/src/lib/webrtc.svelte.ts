@@ -35,7 +35,6 @@ export const ICE_CONFIG: RTCConfiguration = {
 };
 
 export class WebRTC {
-  isConnected: boolean = $state(false);
   server: Server;
   room: VoiceChat;
   deafenNode: GainNode;
@@ -83,12 +82,14 @@ export class WebRTC {
 
     g.mic.nodes.noiseGate.port.addEventListener("message", (event) => {
       for (const peer of this.peers.values()) {
-        peer.datachannel?.send(JSON.stringify({
-          type: "speaking",
-          speaking: event.data.isOpen && !g.muted,
-        }))
+        peer.datachannel?.send(
+          JSON.stringify({
+            type: "speaking",
+            speaking: event.data.isOpen && !g.muted,
+          }),
+        );
       }
-    })
+    });
   }
 
   async handleSignalingMessage(msg: Message) {
@@ -142,9 +143,7 @@ export class WebRTC {
       if (roomId === this.room?.id) {
         this.peers.get(user.id)?.cleanup();
         this.peers.delete(user.id);
-        this.room.users = this.room.users.filter(
-          (u) => u.id !== user.id,
-        );
+        this.room.users = this.room.users.filter((u) => u.id !== user.id);
         this.g.sound.play("user leave");
       }
     }
@@ -268,7 +267,6 @@ export class WebRTC {
     this.connectedTimeout = null;
     this.peers.clear();
     this.g.mic.disconnect();
-    this.isConnected = false;
     this.streaming = false;
     this.watching = null;
   }
