@@ -27,6 +27,12 @@
 
   function groupById(items: Key[]): Map<User, Key[]> {
     const map = new Map<User, Key[]>();
+    for (const user of server.users.online) {
+      map.set(user, []);
+    }
+    for (const user of server.users.offline) {
+      map.set(user, []);
+    }
     for (const key of items) {
       const user = server.findUser(key.userId);
       if (!user) continue;
