@@ -127,6 +127,7 @@ export const userHandlers: Handlers<UserAction> = {
       );
     }
 
+    // TODO: we should do soft deletions here
     await db.delete(keys).where(eq(keys.userId, msg.id));
 
     // this has to be done after the keys are deleted
