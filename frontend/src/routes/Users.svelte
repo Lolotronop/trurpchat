@@ -12,13 +12,13 @@
 {#snippet u(user: User, online: boolean)}
   <div class="flex flex-row items-center gap-2">
     <Avatar class="size-6" name={user.name}></Avatar>
-    <p class={online ? "text-foreground" : "text-muted-foreground"}>
+    <p class="text-ellipsis overflow-hidden {online ? "text-foreground" : "text-muted-foreground"}">
       {user.name}
     </p>
   </div>
 {/snippet}
 
-<div class="flex flex-col gap-2 w-32 justify-start">
+<div class="flex flex-col gap-2 w-32 justify-start text-ellipsis">
   <h1 class="text-foreground text-lg">Online</h1>
   <div class="flex flex-col gap-2">
     {#each online as user (user.id)}{@render u(user, true)}{/each}

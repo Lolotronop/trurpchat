@@ -18,14 +18,14 @@
 </script>
 
 <div
-  class="hover:bg-accent/50 over flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
+  class="hover:bg-accent/50 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
 >
-  <div class="flex flex-row items-center gap-2">
+  <div class="flex flex-row items-center gap-2 w-full">
     <Avatar
       class={`size-6 ${speaking ? "border-2 border-green-500" : ""}`}
       name={user.name}
     ></Avatar>
-    <p class={rtc?.room?.name === room.name ? "" : "text-muted-foreground"}>
+    <p class="text-ellipsis overflow-hidden text-nowrap {rtc?.room?.name === room.name ? "" : "text-muted-foreground"}">
       {user.name}
     </p>
   </div>
