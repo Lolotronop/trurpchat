@@ -11,7 +11,7 @@
 </script>
 
 <div class="h-full p-2">
-  {#each server?.rooms || [] as room (room.name)}
+  {#each server.rooms as room (room.id)}
     {#if room.type === "voice"}
       <VoiceRoom {room} server={server!} {rtc} />
     {/if}

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { gitGud } from "$lib/god.svelte";
   import { Server } from "$lib/servers.svelte";
   import BottomControls from "./BottomControls.svelte";
   import VoiceGrid from "./main/VoiceGrid.svelte";
@@ -15,8 +14,8 @@
 
 <div class="flex h-full w-full">
   <div class="flex h-full flex-col min-w-80 border-r">
-    <div class="flex p-2 px-6 text-xl justify-between">
-      <p>{server.definition.name || "Select a server"}</p>
+    <div class="flex p-2 px-2 text-xl justify-between">
+      <p class="pl-2">{server.definition.name || "Select a server"}</p>
       <ServerSettings {server} />
     </div>
     <RoomList {server} />

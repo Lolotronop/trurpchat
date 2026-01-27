@@ -74,6 +74,7 @@ Bun.serve<ConnectedUser, never>({
       .where(eq(keys.key, key));
 
     const user = userRow[0]!;
+    ctx.hotel.removeById(user.id);
 
     const options = {
       data: {
@@ -91,9 +92,6 @@ Bun.serve<ConnectedUser, never>({
   websocket: {
     async open(ws) {
       ctx.clients.set(ws.data.id, ws);
-      ws.data.muted = false;
-      ws.data.streaming = false;
-      ws.data.deafened = false;
 
       send(ws, {
         type: "event.connected",
@@ -135,25 +133,6 @@ Bun.serve<ConnectedUser, never>({
         console.error("Message:", msg);
         console.error("Client:", ws.data);
         return;
-      }
-
-      // TODO: add periodic pings to prune dead ctx.clients
-      if (!msg.type.startsWith("action.voice")) {
-        return;
-      }
-
-      const isMicAction =
-        msg.type === "action.voice.mute" || msg.type === "action.voice.deafen";
-
-      if (isMicAction && !ctx.hotel.has(ws)) {
-        return;
-      }
-
-      for (const client of ctx.clients.values()) {
-        send(client, {
-          type: "event.rooms",
-          rooms: Array.from(ctx.hotel.toJson()),
-        });
       }
     },
 

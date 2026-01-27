@@ -13,8 +13,11 @@
   // TODO: this doesn't actually center the last row
   function optimizeGrid(el: HTMLDivElement) {
     const grid = el;
-    const container = el.parentElement!;
+    const container = el.parentElement;
     const items = grid.children.length;
+    if (!container) {
+      return;
+    }
 
     const containerWidth = container.clientWidth - 32;
     const containerHeight = container.clientHeight - 32;
@@ -76,22 +79,25 @@
         observer.observe(el);
         }}
 >
-  {#each {length: 1} as _}
-    <VoiceUserCard
-      name={server.user.name}
-      speaking={!g.muted && g.mic.speaking}
-      muted={g.muted}
-      deafened={g.deafened}
-    />
-  {/each}
+  <!-- {#each {length: 1} as _} -->
+  <!--   <VoiceUserCard -->
+  <!--     name={server.user.name} -->
+  <!--     speaking={!g.muted && g.mic.speaking} -->
+  <!--     muted={g.muted} -->
+  <!--     deafened={g.deafened} -->
+  <!--   /> -->
+  <!-- {/each} -->
 
   {#each server.rtc?.room.users || [] as user (user.id)}
     {@const peer = server.rtc?.peers.get(user.id)}
+    {@const muted = user.id === server.user.id ? g.muted : peer?.mute || user.muted || false}
+    {@const deafened = user.id === server.user.id ? g.deafened : user.deafened || false}
+    {@const speaking = user.id === server.user.id ? g.mic.speaking && !g.muted : peer?.speaking || false}
     <VoiceUserCard
       name={user.name}
-      speaking={peer?.speaking || false}
-      muted={peer?.mute || user.muted || false}
-      deafened={user.deafened || false}
+      speaking={speaking}
+      muted={muted}
+      deafened={deafened}
     />
   {/each}
 </div>

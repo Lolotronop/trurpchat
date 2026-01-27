@@ -50,20 +50,10 @@ export class VoiceChatInstance implements RoomData {
 
   add(client: WsClient) {
     this.clients.add(client);
-    this.send({
-      type: "event.voice.joined",
-      room: this.id,
-      user: client.data,
-    });
   }
 
   remove(client: WsClient) {
     if (this.clients.has(client)) {
-      this.send({
-        type: "event.voice.left",
-        room: this.id,
-        user: client.data,
-      });
       this.clients.delete(client);
     } else {
       console.log(`Client ${client.data.id} is not in room ${this.name}`);
@@ -103,6 +93,26 @@ export class Hotel {
       return;
     }
     room.remove(client);
+  }
+
+  removeById(clientId: number) {
+    let room: VoiceChatInstance | undefined;
+    let client: WsClient | undefined;
+    for (const r of this.rooms) {
+      client = r.clients.values().find((c) => c.data.id === clientId);
+      if (!client) {
+        continue;
+      }
+      room = r;
+      break;
+    }
+    if (!client) {
+      return;
+    }
+    if (room) {
+      room.remove(client);
+    }
+    client.close();
   }
 
   roomByClient(client: WsClient) {

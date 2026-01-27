@@ -11,20 +11,20 @@
     id: number;
     server: Server;
   };
-  let { id, server: s }: Props = $props();
+  let { id, server }: Props = $props();
 
   // TODO: this depends on you still being on the selected server while watching the stream
   // which wont be always true. maybe store that separately?
-  const server = s;
-  const ovenServer = server.overServerUrl;
+  // const server = s;
+  const ovenServer = $derived(server.overServerUrl);
 
-  let isFullscreen = false;
+  let isFullscreen = $state(false);
 
   const keyboardCallback = (event: KeyboardEvent) => {
     console.log(event.key);
     if (event.key === " " && isFullscreen) {
       // TODO: same bug
-      server.gateway.send({ type: "action.voice.pause" });
+      // server.gateway.send({ type: "action.voice.pause" });
     }
   };
   window.addEventListener("keydown", keyboardCallback);
@@ -164,7 +164,7 @@
       <Button
         onclick={() => {
           // TODO same bug
-          server.gateway.send({ type: "action.voice.pause" });
+          // server.gateway.send({ type: "action.voice.pause" });
         }}
       >
         Пауза

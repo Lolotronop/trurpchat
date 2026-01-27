@@ -37,7 +37,7 @@ export class God {
     );
     // TODO: think about where and when this shoud actually happen
     this.servers.selected?.gateway?.send({
-      type: "action.voice.mute",
+      type: "action.voice.userstate",
       muted: value,
     });
   }
@@ -51,7 +51,7 @@ export class God {
     this.#deafened = value;
     // TODO: think about where and when this should actually happen
     this.servers.selected?.gateway?.send({
-      type: "action.voice.deafen",
+      type: "action.voice.userstate",
       deafened: value,
     });
     if (value) {

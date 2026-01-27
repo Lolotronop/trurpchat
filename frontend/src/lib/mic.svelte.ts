@@ -164,7 +164,6 @@ export class Mic {
     try {
       let media = await navigator.mediaDevices.getUserMedia({
         audio: true,
-        video: true,
       });
       media.getTracks().forEach((track) => {
         track.stop();

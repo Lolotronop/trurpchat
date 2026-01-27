@@ -69,7 +69,7 @@ export class Sound {
     if (!this.ready) return;
     const data = this.sounds[sound];
     if (!data) {
-      console.warn(`Sound.play() called with unknown sound: ${sound}`);
+      // console.warn(`Sound.play() called with unknown sound: ${sound}`);
       return;
     }
     const source = this.c.createBufferSource();

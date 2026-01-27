@@ -53,8 +53,8 @@ export class Gateway extends EventTarget {
       this.connected = false;
     });
 
-    socket.addEventListener("message", (event) => {
-      // console.log("Gateway:", event.data);
+    socket.addEventListener("message", (_) => {
+      // console.log("Gateway:", _.data);
     });
 
     this.socket = socket;
@@ -66,7 +66,7 @@ export class Gateway extends EventTarget {
   }
 
   onmessage(callback: (data: Message) => void) {
-    this.callbacks.push(callback);
+    this.callbacks = [callback];
     this.socket?.addEventListener("message", (event) => {
       let data: Message;
       try {
@@ -74,6 +74,9 @@ export class Gateway extends EventTarget {
       } catch (error) {
         console.error("Error parsing", event.data, "message:", error);
         return;
+      }
+      if (!data.type.startsWith("rtc.")) {
+        console.log("New thing!");
       }
       callback(data);
     });

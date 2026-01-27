@@ -30,7 +30,10 @@ export class Server {
   constructor(definition: ServerDefinition) {
     this.definition = definition;
     this.gateway = new Gateway();
-    this.gateway.onmessage(this.handleMessage.bind(this));
+    this.gateway.onmessage((msg) => {
+      this.handleMessage(msg);
+      if (this.rtc) this.rtc.handleSignalingMessage(msg);
+    });
   }
 
   handleMessage(message: Message) {
@@ -47,6 +50,35 @@ export class Server {
       this.keys = message.keys;
     } else if (message.type === "event.user.me") {
       this.user = message.user;
+    } else if (message.type === "event.voice.joined") {
+      const room = this.findRoom(message.room);
+      if (!room || room.type !== "voice") {
+        return;
+      }
+      const has = room.users.find((u) => u.id === message.user.id);
+      if (has) {
+        return;
+      }
+      room.users.push(message.user);
+    } else if (message.type === "event.voice.left") {
+      const room = this.findRoom(message.room);
+      if (!room || room.type !== "voice") {
+        return;
+      }
+      room.users = room.users.filter((u) => u.id !== message.user.id);
+    } else if (message.type === "event.voice.userstate") {
+      const room = this.findRoom(message.room);
+      if (!room || room.type !== "voice") {
+        return;
+      }
+      const userIndex = room.users.findIndex((u) => u.id === message.user.id);
+      if (userIndex === -1) {
+        console.error(
+          `event.voice.userstate: user ${message.user.id} not found in room ${message.room}`,
+        );
+        return;
+      }
+      room.users[userIndex] = message.user;
     }
   }
 
@@ -65,20 +97,29 @@ export class Server {
     return online ?? offline;
   }
 
-  async joinRoom(room: Room) {
-    if (this.rtc) {
-      this.leaveRoom();
-    }
+  findRoom(id: number) {
+    return this.rooms.find((r) => r.id === id);
+  }
 
+  async joinRoom(room: Room) {
     if (room.type !== "voice") {
       throw new Error("Tried to join a non-voice room");
     }
 
-    this.rtc = new WebRTC(gitGud(), this, room);
-    const username = this.user?.name;
-    console.log("Joining room:", room, "with username:", username);
+    if (this.gateway.connected !== true) {
+      throw new Error("Gateway is not connected");
+    }
 
-    // TODO: make sure that it is connected!
+    if (this.rtc && this.rtc.room.id === room.id) {
+      return;
+    }
+
+    if (this.rtc) {
+      this.leaveRoom();
+    }
+
+    this.rtc = new WebRTC(gitGud(), this, room);
+
     this.gateway.send({
       type: "action.voice.join",
       room: room.id,

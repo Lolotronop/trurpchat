@@ -53,22 +53,9 @@ export type VoiceAction =
       type: "action.voice.leave";
       room: number;
     }
-  | {
-      type: "action.voice.mute";
-      muted: boolean;
-    }
-  | {
-      type: "action.voice.stream";
-      streaming: boolean;
-    }
-  | {
-      type: "action.voice.deafen";
-      deafened: boolean;
-    }
-  | {
-      type: "action.voice.watch";
-      watching: number | null;
-    }
+  | ({
+      type: "action.voice.userstate";
+    } & Partial<Omit<ConnectedUserState, "online">>)
   | {
       type: "action.voice.pause";
       userId: number;
@@ -82,6 +69,11 @@ export type VoiceEvent =
     }
   | {
       type: "event.voice.left";
+      room: number;
+      user: ConnectedUser;
+    }
+  | {
+      type: "event.voice.userstate";
       room: number;
       user: ConnectedUser;
     }

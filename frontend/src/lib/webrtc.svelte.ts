@@ -13,14 +13,8 @@ export const ICE_CONFIG: RTCConfiguration = {
       urls: [
         "stun:stun1.l.google.com:19302",
         "stun:stunserver.org:3478",
-        "stun:stun.stunprotocol.org:3478",
         "stun:stun.nextcloud.com:443",
       ],
-    },
-    {
-      urls: ["turn:openrelay.metered.ca:80"],
-      username: "openrelayproject",
-      credential: "openrelayproject",
     },
     {
       urls: [
@@ -49,7 +43,7 @@ export class WebRTC {
   set streaming(value: boolean) {
     this.#streaming = value;
     this.server.gateway.send({
-      type: "action.voice.stream",
+      type: "action.voice.userstate",
       streaming: value,
     });
   }
@@ -61,7 +55,7 @@ export class WebRTC {
   set watching(value: number | null) {
     this.#watching = value;
     this.server.gateway.send({
-      type: "action.voice.watch",
+      type: "action.voice.userstate",
       watching: value,
     });
   }
@@ -75,10 +69,6 @@ export class WebRTC {
     this.deafenNode.connect(getAudioContext().destination);
     this.server = server;
     this.room = room;
-
-    this.server.gateway.onmessage((data) => {
-      this.handleSignalingMessage(data);
-    });
 
     g.mic.nodes.noiseGate.port.addEventListener("message", (event) => {
       for (const peer of this.peers.values()) {
@@ -96,7 +86,7 @@ export class WebRTC {
     if (msg.type === "event.voice.joined") {
       this.handleUserJoined(msg.user, msg.room);
     } else if (msg.type === "event.voice.left") {
-      this.handleUserJoined(msg.user, msg.room);
+      this.handleUserLeft(msg.user, msg.room);
     } else if (msg.type === "rtc.offer") {
       await this.acceptCall(msg.offer, msg.sender);
     } else if (msg.type === "rtc.answer") {
@@ -113,7 +103,6 @@ export class WebRTC {
 
     if (user.id !== this.server.user.id) {
       this.g.sound.play("user join");
-      this.room.users.push(user);
       return;
     }
 
@@ -139,13 +128,14 @@ export class WebRTC {
     if (user.id === this.server.user.id) {
       this.cleanup();
       return;
-    } else {
-      if (roomId === this.room?.id) {
-        this.peers.get(user.id)?.cleanup();
-        this.peers.delete(user.id);
-        this.room.users = this.room.users.filter((u) => u.id !== user.id);
-        this.g.sound.play("user leave");
+    } else if (roomId === this.room.id) {
+      const peer = this.peers.get(user.id);
+      if (!peer) {
+        return;
       }
+      peer.cleanup();
+      this.peers.delete(user.id);
+      this.g.sound.play("user leave");
     }
   }
 

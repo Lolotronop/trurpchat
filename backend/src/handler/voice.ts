@@ -1,6 +1,6 @@
 import { err, ok } from "neverthrow";
 import type { VoiceAction } from "$src/types";
-import { send } from "$src/send";
+import { send, sendAll } from "$src/send";
 import type { Handlers } from "./types";
 
 export const voiceHandlers: Handlers<VoiceAction> = {
@@ -10,6 +10,11 @@ export const voiceHandlers: Handlers<VoiceAction> = {
       return err(new Error(`Room ${msg.room} not found`));
     }
     room.add(ws);
+    sendAll(ctx.clients.values(), {
+      type: "event.voice.joined",
+      room: msg.room,
+      user: ws.data,
+    });
     return ok();
   },
 
@@ -21,26 +26,25 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     room.remove(ws);
     ws.data.streaming = false;
     ws.data.watching = null;
+    sendAll(ctx.clients.values(), {
+      type: "event.voice.left",
+      room: msg.room,
+      user: ws.data,
+    });
     return ok();
   },
 
-  "action.voice.mute": (_, ws, msg) => {
-    ws.data.muted = msg.muted;
-    return ok();
-  },
-
-  "action.voice.stream": (_, ws, msg) => {
-    ws.data.streaming = msg.streaming;
-    return ok();
-  },
-
-  "action.voice.deafen": (_, ws, msg) => {
-    ws.data.deafened = msg.deafened;
-    return ok();
-  },
-
-  "action.voice.watch": (_, ws, msg) => {
-    ws.data.watching = msg.watching;
+  "action.voice.userstate": (ctx, ws, msg) => {
+    const { type: _type, ...data } = msg;
+    ws.data = { ...ws.data, ...data };
+    const room = ctx.hotel.roomByClient(ws);
+    if (room) {
+      sendAll(ctx.clients.values(), {
+        type: "event.voice.userstate",
+        room: room.id,
+        user: ws.data,
+      });
+    }
     return ok();
   },
 

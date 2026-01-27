@@ -13,6 +13,7 @@
   };
   const { server, user }: Props = $props();
 
+  // svelte-ignore state_referenced_locally
   let name = $state(user.name);
   let editing = $state(false);
   // TODO: find a better way to do this

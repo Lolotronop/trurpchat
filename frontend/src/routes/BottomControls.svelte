@@ -3,6 +3,7 @@
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
   import {
+    Camera,
     HeadphoneOff,
     Headphones,
     Info,
@@ -51,12 +52,14 @@
             </p>
           </div>
           <div>
-            {#each rtc.room?.users! as user}
-              {@const peer = rtc.peers.get(user.id)}
-              <div class="flex w-full flex-row justify-between">
-                <p>{user.name}</p>
-                <p>{peer?.ping ?? "N/A"}ms</p>
-              </div>
+            {#each rtc.room.users as user}
+              {#if user.id !== server.user.id}
+                {@const peer = rtc.peers.get(user.id)}
+                <div class="flex w-full flex-row justify-between">
+                  <p>{user.name}</p>
+                  <p>{peer?.ping ?? "N/A"}ms</p>
+                </div>
+              {/if}
             {/each}
           </div>
         </Tooltip.Content>
@@ -107,6 +110,16 @@
             </Tooltip.Content>
           </Tooltip.Root>
         {/if}
+
+        <Button
+          variant={rtc.streaming ? "default" : "ghost"}
+          class="size-8"
+          onclick={() => {
+            console.log("thing!")
+          }}
+        >
+          <Camera class="size-5" />
+        </Button>
         <Button
           variant="ghost"
           class="size-8"
