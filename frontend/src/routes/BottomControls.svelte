@@ -41,8 +41,8 @@
       <Tooltip.Root delayDuration={100}>
         <Tooltip.Trigger class="flex flex-col items-start">
           <div class="hover:text-foreground flex flex-row items-center gap-2">
-            Подключен к {rtc.room?.name}
             <Info size={16} />
+            {rtc.room?.name}
           </div>
         </Tooltip.Trigger>
         <Tooltip.Content class="w-34">
@@ -112,10 +112,10 @@
         {/if}
 
         <Button
-          variant={rtc.streaming ? "default" : "ghost"}
+          variant={rtc.camera ? "default" : "ghost"}
           class="size-8"
           onclick={() => {
-            console.log("thing!")
+            rtc.camera = !rtc.camera;
           }}
         >
           <Camera class="size-5" />

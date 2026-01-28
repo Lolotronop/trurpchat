@@ -35,6 +35,7 @@ export class WebRTC {
   peers = new SvelteMap<number, Peer>();
   connectedFor: number = $state(0);
   connectedTimeout: NodeJS.Timeout | null = null;
+  cameraStream: MediaStream | undefined = $state(undefined);
 
   #streaming: boolean = $state(false);
   get streaming() {
@@ -57,6 +58,29 @@ export class WebRTC {
     this.server.gateway.send({
       type: "action.voice.userstate",
       watching: value,
+    });
+  }
+
+  #camera: boolean = $state(false);
+  get camera() {
+    return this.#camera;
+  }
+  set camera(value: boolean) {
+    try {
+      if (value) {
+        this.enableCamera();
+      } else {
+        this.disableCamera();
+      }
+    } catch (e) {
+      console.error("Error enabling/disabling camera", e);
+      return;
+    }
+
+    this.#camera = value;
+    this.server.gateway.send({
+      type: "action.voice.userstate",
+      camera: value,
     });
   }
 
@@ -145,8 +169,17 @@ export class WebRTC {
       console.log(`Peer connection with ${targetId} already exists`);
       return peer;
     }
-    peer = new Peer(targetId, this.g.mic, this.deafenNode);
+    peer = new Peer(
+      targetId,
+      this.g.mic.nodes.destination.stream,
+      this.deafenNode,
+    );
     this.peers.set(targetId, peer);
+
+    if (this.cameraStream) {
+      const [cameraTrack] = this.cameraStream.getVideoTracks();
+      peer.pc.addTrack(cameraTrack, this.cameraStream);
+    }
 
     if (!this.g.mic.stream) {
       throw new Error("Local stream not available");
@@ -176,8 +209,24 @@ export class WebRTC {
         this.peers.delete(targetId);
       }
     };
+
     peer.pc.onicecandidateerror = (event) => {
       console.warn("ICE candidate error:", event);
+    };
+
+    peer.pc.onnegotiationneeded = async (event) => {
+      console.log("onnegotiationneeded", event);
+      let offer = await peer.pc.createOffer();
+      // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
+      // offer = { ...offer, sdp };
+      await peer.pc.setLocalDescription(offer);
+
+      this.server.gateway.send({
+        type: "rtc.offer",
+        offer: offer,
+        target: targetId,
+        sender: this.server.user.id,
+      });
     };
 
     return peer;
@@ -246,6 +295,28 @@ export class WebRTC {
     await peer.pc.addIceCandidate(candidate);
   }
 
+  async enableCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: false,
+    });
+    this.cameraStream = stream;
+    for (const peer of this.peers.values()) {
+      peer.pc.addTrack(stream.getVideoTracks()[0], this.cameraStream);
+    }
+  }
+
+  disableCamera() {
+    const stream = this.cameraStream;
+    if (!stream) {
+      return;
+    }
+    this.cameraStream?.getTracks().forEach((track) => {
+      track.stop();
+    });
+    this.cameraStream = undefined;
+  }
+
   cleanup() {
     for (const peer of this.peers.values()) {
       peer.cleanup();
@@ -257,6 +328,10 @@ export class WebRTC {
     this.connectedTimeout = null;
     this.peers.clear();
     this.g.mic.disconnect();
+    this.cameraStream?.getTracks().forEach((track) => {
+      track.stop();
+    });
+    this.cameraStream = undefined;
     this.streaming = false;
     this.watching = null;
   }

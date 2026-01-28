@@ -3,14 +3,14 @@ import type { Mic } from "./mic.svelte";
 import { ICE_CONFIG } from "./webrtc.svelte";
 
 type DatachannelMessage = {
-  type: "speaking",
+  type: "speaking";
   speaking: boolean;
-}
+};
 
 export class Peer {
-  mic: Mic;
   pc: RTCPeerConnection;
   datachannel: RTCDataChannel | null = null;
+  cameraStream: MediaStream | undefined = $state(undefined);
 
   gainNode: GainNode;
   muteNode: GainNode;
@@ -20,7 +20,11 @@ export class Peer {
   }
   set volume(value: number) {
     this.#volume = value;
-    this.gainNode.gain.setTargetAtTime(value, this.mic.c.currentTime, 0.01);
+    this.gainNode.gain.setTargetAtTime(
+      value,
+      getAudioContext().currentTime,
+      0.01,
+    );
   }
 
   #mute = $state(false);
@@ -31,7 +35,7 @@ export class Peer {
     this.#mute = value;
     this.muteNode.gain.setTargetAtTime(
       value ? 0 : 1,
-      this.mic.c.currentTime,
+      getAudioContext().currentTime,
       0.01,
     );
   }
@@ -43,8 +47,11 @@ export class Peer {
 
   interval: NodeJS.Timeout | number | null = null;
 
-  constructor(public targetId: number, mic: Mic, output: GainNode) {
-    this.mic = mic;
+  constructor(
+    public targetId: number,
+    audioStream: MediaStream,
+    output: GainNode,
+  ) {
     this.pc = new RTCPeerConnection(ICE_CONFIG);
     this.gainNode = getAudioContext().createGain();
     this.muteNode = getAudioContext().createGain();
@@ -54,25 +61,28 @@ export class Peer {
 
     this.interval = setInterval(() => this.updatePing(), 1000);
 
-    if (!this.mic.stream) {
-      throw new Error("Local stream not available");
-    }
+    const [audioTrack] = audioStream.getAudioTracks();
+    this.pc.addTrack(audioTrack, audioStream);
 
-    const [audioTrack] = this.mic.nodes.destination.stream.getAudioTracks();
-    this.pc.addTrack(audioTrack, this.mic.stream);
-
-    this.pc.ontrack = (event) => { this.handleOntrack(event) };
-    this.pc.ondatachannel = (event) => { this.setDatachannel(event.channel) };
-
-    // this will probably be needed for enabling cam
-    // or bitrate changes?
-    this.pc.onnegotiationneeded = async (event) => {
-      console.log(`Negotiation needed for ${targetId}`, event);
+    this.pc.ontrack = (event) => {
+      this.handleOntrack(event);
     };
+    this.pc.ondatachannel = (event) => {
+      this.setDatachannel(event.channel);
+    };
+
+    // since Svelte doesn't save state between HMR updates
+    // we need to cleanup the object when the file changes
+    // https://github.com/sveltejs/svelte/issues/14434
+    if (import.meta.hot) {
+      import.meta.hot.on("vite:beforeUpdate", () => {
+        this.cleanup();
+      });
+    }
   }
 
   async updatePing() {
-    const stats = await this.pc.getStats()
+    const stats = await this.pc.getStats();
     stats.forEach((report) => {
       if (
         report.type === "candidate-pair" &&
@@ -85,15 +95,24 @@ export class Peer {
   }
 
   handleOntrack(event: RTCTrackEvent) {
-    const stream = event.streams[0];
-    if (!stream) {
-      throw new Error(`No stream for ${this.targetId} found`);
-    }
-    const audioTrack = stream.getAudioTracks()[0];
-    if (!audioTrack) {
-      throw new Error(`Audio track for ${this.targetId} not found`);
-    }
+    event.streams.forEach((stream) => {
+      stream.getTracks().forEach((track) => {
+        console.log("track.kind", track.kind);
+        if (track.kind === "audio") {
+          this.handleAudioTrack(stream);
+        }
+        if (track.kind === "video") {
+          this.handleVideoTrack(stream);
+        }
+      });
+    });
+  }
 
+  handleVideoTrack(stream: MediaStream) {
+    this.cameraStream = stream;
+  }
+
+  handleAudioTrack(stream: MediaStream) {
     const source = getAudioContext().createMediaStreamSource(stream);
     source.connect(this.gainNode);
     attachDomAudio(this.targetId, stream);
@@ -114,23 +133,30 @@ export class Peer {
       if (msg.type === "speaking") {
         this.speaking = msg.speaking;
       }
-    }
+    };
   }
 
   sendData(data: DatachannelMessage) {
     if (!this.datachannel) {
-      console.warn(`Trying to send a message when no channel is present for ${this.targetId}`);
+      console.warn(
+        `Trying to send a message when no channel is present for ${this.targetId}`,
+      );
       return;
     }
     if (this.datachannel?.readyState !== "open") {
-      console.warn(`Trying to send a message when datachannel is not open for ${this.targetId}`);
+      console.warn(
+        `Trying to send a message when datachannel is not open for ${this.targetId}`,
+      );
       return;
     }
 
     try {
-      this.datachannel.send(JSON.stringify(data))
+      this.datachannel.send(JSON.stringify(data));
     } catch (e) {
-      console.error(`Failed to send datachannel message to ${this.targetId}`, data)
+      console.error(
+        `Failed to send datachannel message to ${this.targetId}`,
+        data,
+      );
     }
   }
 
@@ -148,8 +174,6 @@ export class Peer {
     delete this.pc;
   }
 }
-
-
 
 /**
  * Attach a DOM audio element to a MediaStream

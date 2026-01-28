@@ -4,7 +4,7 @@
   import Avatar from "$lib/components/Avatar.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import { Button } from "$lib/components/ui/button";
-  import { HeadphoneOff, MicOff, TvMinimalPlay } from "@lucide/svelte";
+  import { Camera, HeadphoneOff, MicOff, TvMinimalPlay } from "@lucide/svelte";
 
   type Props = {
     user: ConnectedUser;
@@ -35,6 +35,9 @@
     {/if}
     {#if user.deafened}
       <HeadphoneOff size={16} />
+    {/if}
+    {#if user.camera}
+      <Camera size={16} />
     {/if}
     {#if user.streaming}
       <Tooltip.Root delayDuration={100}>

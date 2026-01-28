@@ -22,6 +22,7 @@ function createDefaultTalkingUserState(): ConnectedUserState {
   return {
     muted: false,
     deafened: false,
+    camera: false,
     streaming: false,
     watching: null,
     online: true,

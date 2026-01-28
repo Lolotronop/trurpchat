@@ -6,6 +6,7 @@ type Flatten<T> = { [K in keyof T]: T[K] } & {};
 export type ConnectedUserState = {
   muted: boolean;
   deafened: boolean;
+  camera: boolean;
   streaming: boolean;
   watching: number | null;
   online: true;

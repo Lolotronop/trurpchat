@@ -7,14 +7,28 @@
     muted: boolean;
     deafened: boolean;
     speaking: boolean;
+    camera: boolean;
+    cameraStream?: MediaStream;
   };
-  const { name, muted, deafened, speaking }: Props = $props();
+  const { name, muted, deafened, speaking, camera, cameraStream }: Props =
+    $props();
+
+  function attachCamera(el: HTMLVideoElement) {
+    if (!cameraStream) {
+      return;
+    }
+    el.srcObject = cameraStream;
+  }
 </script>
 
 <div
-  class="aspect-video flex w-full justify-center items-center rounded-md bg-accent relative {speaking ? "outline outline-green-500" : ""}"
+  class="aspect-video flex w-full justify-center items-center rounded-md relative {camera ? "bg-black" : "bg-accent"} {speaking ? "outline outline-green-500" : ""}"
 >
-  <Avatar name={name} class="size-8"></Avatar>
+  {#if camera && cameraStream !== undefined}
+    <video class="w-full h-full object-fit" {@attach attachCamera} autoplay muted></video>
+  {:else}
+    <Avatar name={name} class="size-8"></Avatar>
+  {/if}
   <div class="absolute bottom-0 flex w-full justify-between p-2">
     <div class="flex items-center gap-2 bg-background rounded-md p-2">
       <p class="text-foreground text-sm">{name}</p>
