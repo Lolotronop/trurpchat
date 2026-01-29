@@ -10,14 +10,16 @@
     max?: number;
     toInfinite?: boolean;
     ticks?: boolean | number[];
+    class?: string;
   };
 
   let {
     value = $bindable(),
     min = -42,
-    max = 18,
+    max = 10,
     toInfinite = true,
     ticks = true,
+    class: className,
   }: Props = $props();
 
   const steps = $derived.by((): number[] => {
@@ -62,7 +64,7 @@
 </script>
 
 {#snippet slider()}
-  <div>
+  <div class={className}>
     {#if hovering || active}
       {@const db = toDb(value)}
       <div

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Stream from "$lib/components/stream/Stream.svelte";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
   import VoiceUserCard from "./VoiceUserCard.svelte";
@@ -99,6 +100,9 @@
         camera={user.camera}
         cameraStream={peer?.cameraStream}
       />
+    {/if}
+    {#if user.streaming}
+      <Stream server={server} user={user} />
     {/if}
   {/each}
 </div>
