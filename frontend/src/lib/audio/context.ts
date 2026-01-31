@@ -1,6 +1,6 @@
 let context: AudioContext | null;
 
-export const getAudioContext = () => {
+export const audioctx = () => {
   if (!context) {
     context = new AudioContext();
   }
@@ -9,16 +9,16 @@ export const getAudioContext = () => {
 
 export async function initCustomModules() {
   const promises = [
-    getAudioContext().audioWorklet.addModule("loudness.js"),
-    getAudioContext().audioWorklet.addModule("noise-gate.js"),
+    audioctx().audioWorklet.addModule("loudness.js"),
+    audioctx().audioWorklet.addModule("noise-gate.js"),
   ];
   await Promise.all(promises);
 }
 
 export const createLoudnessAnalyzer = () => {
-  return new AudioWorkletNode(getAudioContext(), "loudness");
+  return new AudioWorkletNode(audioctx(), "loudness");
 };
 
 export const createNoiseGate = () => {
-  return new AudioWorkletNode(getAudioContext(), "noise-gate");
+  return new AudioWorkletNode(audioctx(), "noise-gate");
 };

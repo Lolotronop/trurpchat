@@ -7,7 +7,7 @@
   import { Loader2Icon } from "@lucide/svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
-  import { initCustomModules } from "$lib/audiocontext";
+  import { initCustomModules } from "$lib/audio/context";
 
   let { children } = $props();
 

@@ -23,7 +23,6 @@ export class Gateway extends EventTarget {
     });
 
     socket.addEventListener("open", () => {
-      console.log("Connected to Gateway");
       this.connected = true;
       // FIXME: because race conditions, yay!
       // it connects faster than it disconnects

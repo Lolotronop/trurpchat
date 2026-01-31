@@ -1,4 +1,4 @@
-import { getAudioContext } from "$lib/audiocontext";
+import { audioctx } from "$lib/audio/context";
 
 export class OvenSignaling {
   id?: string;
@@ -17,11 +17,7 @@ export class OvenSignaling {
   }
   set gain(value: number) {
     this.#gain = value;
-    this.gainnode.gain.setTargetAtTime(
-      value,
-      getAudioContext().currentTime,
-      0.01,
-    );
+    this.gainnode.gain.setTargetAtTime(value, audioctx().currentTime, 0.01);
   }
 
   handleIce(event: RTCPeerConnectionIceEvent) {
@@ -53,7 +49,7 @@ export class OvenSignaling {
           this.hasVideo = true;
         } else if (track.kind === "audio") {
           this.gainnode.disconnect();
-          const ctx = getAudioContext();
+          const ctx = audioctx();
           const source = ctx.createMediaStreamSource(stream);
           source.connect(this.gainnode);
           this.gainnode.connect(ctx.destination);
@@ -149,7 +145,7 @@ export class OvenSignaling {
     public host: string,
     public userId: number,
   ) {
-    const ctx = getAudioContext();
+    const ctx = audioctx();
     this.gainnode = ctx.createGain();
     this.gainnode.connect(ctx.destination);
   }

@@ -1,7 +1,7 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
 import { resolveResource } from "@tauri-apps/api/path";
-import { getAudioContext } from "./audiocontext";
+import { audioctx } from "./audio/context";
 
 const sounds = [
   "mute",
@@ -12,7 +12,7 @@ const sounds = [
   "user leave",
   "voice disconnected",
 ] as const;
-export type sound = (typeof sounds)[number];
+export type SoundName = (typeof sounds)[number];
 
 export class Sound {
   ready = $state(false);
@@ -22,10 +22,10 @@ export class Sound {
   gainNode: GainNode;
 
   // @ts-expect-error: it is initialized in the .init()
-  private sounds: Record<sound, AudioBuffer> = {};
+  private sounds: Record<SoundName, AudioBuffer> = {};
 
   constructor() {
-    this.c = getAudioContext();
+    this.c = audioctx();
     this.gainNode = this.c.createGain();
     this.gainNode.connect(this.c.destination);
     this.gainNode.gain.setTargetAtTime(this.volume, this.c.currentTime, 0.01);
@@ -65,7 +65,7 @@ export class Sound {
     this.ready = true;
   }
 
-  play(sound: sound) {
+  play(sound: SoundName) {
     if (!this.ready) return;
     const data = this.sounds[sound];
     if (!data) {
@@ -78,3 +78,5 @@ export class Sound {
     source.start(0);
   }
 }
+
+export const sound = new Sound();

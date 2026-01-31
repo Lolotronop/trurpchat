@@ -3,6 +3,7 @@ import type { Key } from "trurpchat-backend/src/db";
 import { Gateway } from "./gateway.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { WebRTC } from "./webrtc.svelte";
+import { sound } from "./sound.svelte";
 import { gitGud } from "./god.svelte";
 
 export type ServerDefinition = {
@@ -118,7 +119,8 @@ export class Server {
       this.leaveRoom();
     }
 
-    this.rtc = new WebRTC(gitGud(), this, room);
+    // TODO: we are still grabbing mic from the god
+    this.rtc = new WebRTC(gitGud().mic, this, room);
 
     this.gateway.send({
       type: "action.voice.join",
@@ -129,7 +131,7 @@ export class Server {
   leaveRoom() {
     if (!this.rtc) return;
 
-    // this.g.sound.play("voice disconnected");
+    sound.play("voice disconnected");
     this.gateway.send({
       type: "action.voice.leave",
       room: this.rtc.room.id,

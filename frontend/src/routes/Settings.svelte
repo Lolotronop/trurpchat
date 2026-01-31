@@ -18,8 +18,6 @@
   import { themes } from "$lib/theme.svelte";
 
   const g = gitGud();
-  g.mic.connect();
-  g.mic.enableAnalyzer();
 
   // TODO: redo this with the selected server context
 
@@ -38,6 +36,9 @@
     if (open == false) {
       g.mic.monitoring = false;
       g.mic.disableAnalyzer();
+    } else {
+      g.mic.connect();
+      g.mic.enableAnalyzer();
     }
   }}
 >
@@ -115,14 +116,17 @@
 
               <div class="flex flex-col gap-2">
                 <h1>Усиление микрофона</h1>
-                <GainSlider min={-12} bind:value={g.mic.gain} />
+                <GainSlider
+                  min={-12}
+                  bind:value={g.mic.effects.nodes.gain.gain}
+                />
               </div>
 
               <div class="flex flex-col gap-2">
                 <h1>Чувствительность</h1>
                 <Slider
                   type="single"
-                  bind:value={g.mic.gateThreshold}
+                  bind:value={g.mic.effects.nodes.gate.threshold}
                   min={-42}
                   max={0}
                   step={0.1}

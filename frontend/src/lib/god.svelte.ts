@@ -3,9 +3,9 @@ import { Shortcuts } from "./shortcuts.svelte";
 import { Settings } from "./settings.svelte";
 import { Theme } from "./theme.svelte";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { Sound } from "./sound.svelte";
+import { sound } from "./sound.svelte";
 import { WakeLockContainer } from "./wakelock";
-import { getAudioContext } from "./audiocontext";
+import { audioctx } from "./audio/context";
 import { ServerManager } from "./servers.svelte";
 
 export class God {
@@ -14,29 +14,21 @@ export class God {
   keys: Shortcuts = new Shortcuts();
   settings: Settings;
   theme: Theme;
-  sound: Sound;
   servers: ServerManager;
 
-  #muted: boolean = $state(false);
   get muted() {
-    return this.#muted;
+    return this.mic.muted;
   }
   set muted(value) {
-    this.settings.set("muted", value);
-    this.#muted = value;
     if (value == false) {
       this.deafened = false;
-      this.sound.play("unmute");
+      sound.play("unmute");
     } else {
-      this.sound.play("mute");
+      sound.play("mute");
     }
-    this.mic.nodes.outputGain.gain.setTargetAtTime(
-      value ? 0 : 1,
-      getAudioContext().currentTime,
-      0.01,
-    );
+    this.mic.muted = value;
     // TODO: think about where and when this shoud actually happen
-    this.servers.selected?.gateway?.send({
+    this.servers.selected?.gateway.send({
       type: "action.voice.userstate",
       muted: value,
     });
@@ -56,9 +48,9 @@ export class God {
     });
     if (value) {
       this.muted = true;
-      this.sound.play("deafen");
+      sound.play("deafen");
     } else {
-      this.sound.play("undeafen");
+      sound.play("undeafen");
     }
 
     // TODO: this should probably work by having a separate output in the
@@ -66,7 +58,7 @@ export class God {
     // this way it doesn't actually depend on global state or smth?
     this.servers.selected?.rtc?.deafenNode.gain.setTargetAtTime(
       value ? 0 : 1,
-      getAudioContext().currentTime,
+      audioctx().currentTime,
       0.01,
     );
   }
@@ -86,7 +78,6 @@ export class God {
     this.lock = new WakeLockContainer();
     this.lock.lock();
     this.theme = new Theme();
-    this.sound = new Sound();
     this.servers = new ServerManager();
 
     this.keys.on("mute", (state) => {

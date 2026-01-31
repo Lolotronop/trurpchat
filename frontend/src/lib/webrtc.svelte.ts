@@ -1,9 +1,10 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ConnectedUser, Message, VoiceChat } from "trurpchat-backend";
-import type { God } from "./god.svelte";
-import { getAudioContext } from "./audiocontext";
+import { audioctx } from "./audio/context";
 import type { Server } from "./servers.svelte";
 import { Peer } from "./webrtc-peer.svelte";
+import { sound } from "./sound.svelte";
+import type { Mic } from "./mic.svelte";
 
 // TODO: this whould be dictated by the current server
 const TURN_SERVER_IP = "45.143.95.55";
@@ -29,8 +30,6 @@ export const ICE_CONFIG: RTCConfiguration = {
 };
 
 export class WebRTC {
-  server: Server;
-  room: VoiceChat;
   deafenNode: GainNode;
   peers = new SvelteMap<number, Peer>();
   connectedFor: number = $state(0);
@@ -85,21 +84,19 @@ export class WebRTC {
   }
 
   constructor(
-    private g: God,
-    server: Server,
-    room: VoiceChat,
+    public mic: Mic,
+    public server: Server,
+    public room: VoiceChat,
   ) {
-    this.deafenNode = getAudioContext().createGain();
-    this.deafenNode.connect(getAudioContext().destination);
-    this.server = server;
-    this.room = room;
+    this.deafenNode = audioctx().createGain();
+    this.deafenNode.connect(audioctx().destination);
 
-    g.mic.nodes.noiseGate.port.addEventListener("message", (event) => {
+    this.mic.effects.nodes.gate.onmessage(({ isOpen }) => {
       for (const peer of this.peers.values()) {
         peer.datachannel?.send(
           JSON.stringify({
             type: "speaking",
-            speaking: event.data.isOpen && !g.muted,
+            speaking: isOpen && !this.mic.muted,
           }),
         );
       }
@@ -126,11 +123,11 @@ export class WebRTC {
     }
 
     if (user.id !== this.server.user.id) {
-      this.g.sound.play("user join");
+      sound.play("user join");
       return;
     }
 
-    this.g.sound.play("user join");
+    sound.play("user join");
 
     this.connectedFor = 0;
     if (this.connectedTimeout) {
@@ -140,7 +137,7 @@ export class WebRTC {
       this.connectedFor += 1000;
     }, 1000);
 
-    await this.g.mic.connect();
+    await this.mic.connect();
     // Initiate calls to existing users
     for (const user of this.room.users) {
       if (user.id === this.server.user.id) continue;
@@ -159,7 +156,7 @@ export class WebRTC {
       }
       peer.cleanup();
       this.peers.delete(user.id);
-      this.g.sound.play("user leave");
+      sound.play("user leave");
     }
   }
 
@@ -169,11 +166,7 @@ export class WebRTC {
       console.log(`Peer connection with ${targetId} already exists`);
       return peer;
     }
-    peer = new Peer(
-      targetId,
-      this.g.mic.nodes.destination.stream,
-      this.deafenNode,
-    );
+    peer = new Peer(targetId, this.mic.destination.stream, this.deafenNode);
     this.peers.set(targetId, peer);
 
     if (this.cameraStream) {
@@ -181,7 +174,7 @@ export class WebRTC {
       peer.pc.addTrack(cameraTrack, this.cameraStream);
     }
 
-    if (!this.g.mic.stream) {
+    if (!this.mic.stream) {
       throw new Error("Local stream not available");
     }
 
@@ -327,7 +320,7 @@ export class WebRTC {
     }
     this.connectedTimeout = null;
     this.peers.clear();
-    this.g.mic.disconnect();
+    this.mic.disconnect();
     this.cameraStream?.getTracks().forEach((track) => {
       track.stop();
     });

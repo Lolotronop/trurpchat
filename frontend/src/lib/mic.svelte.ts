@@ -1,28 +1,35 @@
-import {
-  createLoudnessAnalyzer,
-  createNoiseGate,
-  getAudioContext,
-} from "./audiocontext";
+import { AnalyzerEffect } from "./audio/analyzer.svelte";
+import { EffectChain } from "./audio/chain.svelte";
+import { CompressorEffect } from "./audio/compressor.svelte";
+import { audioctx } from "./audio/context";
+import { GainEffect } from "./audio/gain.svelte";
+import { GateEffect } from "./audio/gate.svelte";
+import { ChannelMergerEffect } from "./audio/merger.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
-export const MIN_DB = -60;
-
 export class Mic {
-  c: AudioContext;
-  store: IPersistantStore;
+  ctx: AudioContext = audioctx();
+  store: IPersistantStore = getPlatformStore("mic.json");
   hasPermissions: boolean = $state(false);
   stream: MediaStream | undefined = undefined;
   deviceId: string | undefined = $state(undefined);
-  nodes: {
-    source: MediaStreamAudioSourceNode | null;
-    inputGain: GainNode;
-    limiter: DynamicsCompressorNode;
-    analyzer: AudioWorkletNode;
-    noiseGate: AudioWorkletNode;
-    outputGain: GainNode;
-    destination: MediaStreamAudioDestinationNode;
-    merger: ChannelMergerNode;
-  };
+
+  private source: MediaStreamAudioSourceNode | null = null;
+  effects = new EffectChain({
+    gain: new GainEffect(),
+    limiter: new CompressorEffect({
+      threshold: -8,
+      knee: 0,
+      ratio: 20,
+      attack: 0.03,
+      release: 0.2,
+    }),
+    gate: new GateEffect(),
+    merger: new ChannelMergerEffect(),
+    mute: new GainEffect(),
+  });
+  analyzer = new AnalyzerEffect();
+  destination = this.ctx.createMediaStreamDestination();
 
   #monitoring: boolean = $state(false);
   get monitoring() {
@@ -30,42 +37,20 @@ export class Mic {
   }
   set monitoring(value) {
     this.#monitoring = value;
-    const node = this.nodes.merger;
+    const node = this.effects.nodes.merger.node;
     if (value) {
-      node.connect(this.c.destination);
-    } else {
-      try {
-        node.disconnect(this.c.destination);
-        // we just silence the error because we blanket disconnect
-        // it with no regard for whether it was connected previosly
-        // or not. and if it wasnt it would error out
-      } catch (_) {}
-    }
-  }
-
-  #gateThreshold: number = $state(-30);
-  set gateThreshold(value) {
-    const gateThreshold = this.nodes.noiseGate.parameters.get("threshold");
-    if (!gateThreshold) {
-      console.error("Noise gate threshold not found");
+      node.connect(this.ctx.destination);
       return;
     }
-    gateThreshold.setTargetAtTime(value, this.c.currentTime, 0.01);
-    this.store.set("gateThreshold", value);
-    this.#gateThreshold = value;
-  }
-  get gateThreshold() {
-    return this.#gateThreshold;
-  }
 
-  #gain: number = $state(1);
-  set gain(value) {
-    this.#gain = value;
-    this.nodes.inputGain.gain.setTargetAtTime(value, this.c.currentTime, 0.01);
-    this.store.set("gain", value);
-  }
-  get gain() {
-    return this.#gain;
+    try {
+      node.disconnect(this.ctx.destination);
+    } catch (err) {
+      err;
+      // we just silence the error because we blanket disconnect
+      // it with no regard for whether it was connected previosly
+      // or not. and if it wasnt it would error out
+    }
   }
 
   #noiseSuppression: boolean = $state(true);
@@ -89,6 +74,16 @@ export class Mic {
     return this.#echoCancellation;
   }
 
+  #muted: boolean = $state(false);
+  set muted(value) {
+    this.#muted = value;
+    this.store.set("muted", value);
+    this.effects.nodes.mute.muted = value;
+  }
+  get muted() {
+    return this.#muted;
+  }
+
   speaking: boolean = $state(false);
 
   peak: number = $state(0);
@@ -96,71 +91,28 @@ export class Mic {
 
   devices: MediaDeviceInfo[] = $state([]);
 
-  controls = $state({
-    limiterthreshold: -8,
-    limiterKnee: 0,
-    limiterRatio: 20,
-    limiterAttack: 0.03,
-    limiterRelease: 0.25,
-    noiseGateAttack: 0.01,
-    noiseGateRelease: 0.2,
-  });
-
   constructor() {
-    this.store = getPlatformStore("mic.json");
+    this.effects.nodes.gate.onmessage(({ isOpen }) => {
+      this.speaking = isOpen;
+    });
 
-    this.c = getAudioContext();
-    this.nodes = {
-      source: null,
-      inputGain: this.c.createGain(),
-      limiter: this.c.createDynamicsCompressor(),
-      analyzer: createLoudnessAnalyzer(),
-      noiseGate: createNoiseGate(),
-      outputGain: this.c.createGain(),
-      destination: this.c.createMediaStreamDestination(),
-      merger: this.c.createChannelMerger(2),
-    };
+    this.analyzer.onmessage(({ rms, peak }) => {
+      this.peak = peak;
+      this.rms = rms;
+    });
 
-    this.nodes.limiter.threshold.setValueAtTime(-8, this.c.currentTime);
-    this.nodes.limiter.knee.setValueAtTime(0, this.c.currentTime);
-    this.nodes.limiter.ratio.setValueAtTime(20, this.c.currentTime);
-    this.nodes.limiter.attack.setValueAtTime(0.03, this.c.currentTime);
-    this.nodes.limiter.release.setValueAtTime(0.2, this.c.currentTime);
-
-    this.nodes.noiseGate.port.onmessage = (event) => {
-      this.speaking = event.data.isOpen;
-    };
-
-    this.nodes.analyzer.port.onmessage = (event) => {
-      const data = event.data;
-      this.peak = data.peak;
-      this.rms = data.rms;
-    };
-
-    const eq = this.c.createBiquadFilter();
-    eq.type = "highpass";
-    eq.frequency.setValueAtTime(20, this.c.currentTime); // cutoff at 20 Hz
-    eq.Q.setValueAtTime(0.707, this.c.currentTime); // Butterworth (≈0.707)
-    this.nodes.inputGain.connect(eq);
-    eq.connect(this.nodes.limiter);
-    this.nodes.limiter.connect(this.nodes.noiseGate);
-    // this.nodes.noiseGate.connect(this.nodes.outputGain);
-
-    this.nodes.noiseGate.connect(this.nodes.merger, 0, 0);
-    this.nodes.noiseGate.connect(this.nodes.merger, 0, 1);
-
-    this.nodes.merger.connect(this.nodes.outputGain);
-
-    this.nodes.outputGain.connect(this.nodes.destination);
-    this.nodes.outputGain.gain.setTargetAtTime(1, this.c.currentTime, 0.01);
+    this.effects.addSink(this.destination);
 
     this.init();
   }
 
   async init() {
     this.deviceId = await this.store.get("deviceId");
-    this.gain = (await this.store.get("gain")) || 1;
-    this.gateThreshold = (await this.store.get("gateThreshold")) || -30;
+    this.muted = (await this.store.get("muted")) || false;
+    this.effects.nodes.gain.gain = (await this.store.get("gain")) || 1;
+    this.effects.nodes.gate.threshold =
+      (await this.store.get("gateThreshold")) || -30;
+
     try {
       let media = await navigator.mediaDevices.getUserMedia({
         audio: true,
@@ -181,7 +133,7 @@ export class Mic {
 
   async connect() {
     this.disconnect();
-    await this.c.resume();
+    await this.ctx.resume();
 
     const settings: MediaTrackConstraints = {
       noiseSuppression: (await this.store.get("noiseSuppression")) || true,
@@ -205,8 +157,8 @@ export class Mic {
       const deviceId = track.getSettings().deviceId;
       this.deviceId = deviceId;
       this.store.set("deviceId", this.deviceId);
-      this.nodes.source = this.c.createMediaStreamSource(this.stream);
-      this.nodes.source.connect(this.nodes.inputGain);
+      this.source = this.ctx.createMediaStreamSource(this.stream);
+      this.effects.addSource(this.source);
     } catch (error) {
       console.error("Error enabling mic:", error);
       return;
@@ -214,8 +166,8 @@ export class Mic {
   }
 
   disconnect() {
-    this.nodes.source?.disconnect();
-    this.nodes.source = null;
+    this.source && this.effects.removeSource(this.source);
+    this.source = null;
 
     this.stream?.getAudioTracks().forEach((track) => {
       track.stop();
@@ -231,10 +183,14 @@ export class Mic {
   }
 
   enableAnalyzer() {
-    this.nodes.limiter.connect(this.nodes.analyzer);
+    this.effects.nodes.limiter.node.connect(this.analyzer.node);
   }
 
   disableAnalyzer() {
-    this.nodes.analyzer.disconnect();
+    try {
+      this.effects.nodes.limiter.node.disconnect(this.analyzer.node);
+    } catch (err) {
+      err;
+    }
   }
 }

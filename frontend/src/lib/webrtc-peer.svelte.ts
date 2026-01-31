@@ -1,4 +1,4 @@
-import { getAudioContext } from "./audiocontext";
+import { audioctx } from "./audio/context";
 import type { Mic } from "./mic.svelte";
 import { ICE_CONFIG } from "./webrtc.svelte";
 
@@ -20,11 +20,7 @@ export class Peer {
   }
   set volume(value: number) {
     this.#volume = value;
-    this.gainNode.gain.setTargetAtTime(
-      value,
-      getAudioContext().currentTime,
-      0.01,
-    );
+    this.gainNode.gain.setTargetAtTime(value, audioctx().currentTime, 0.01);
   }
 
   #mute = $state(false);
@@ -35,7 +31,7 @@ export class Peer {
     this.#mute = value;
     this.muteNode.gain.setTargetAtTime(
       value ? 0 : 1,
-      getAudioContext().currentTime,
+      audioctx().currentTime,
       0.01,
     );
   }
@@ -53,8 +49,8 @@ export class Peer {
     output: GainNode,
   ) {
     this.pc = new RTCPeerConnection(ICE_CONFIG);
-    this.gainNode = getAudioContext().createGain();
-    this.muteNode = getAudioContext().createGain();
+    this.gainNode = audioctx().createGain();
+    this.muteNode = audioctx().createGain();
 
     this.gainNode.connect(this.muteNode);
     this.muteNode.connect(output);
@@ -113,10 +109,10 @@ export class Peer {
   }
 
   handleAudioTrack(stream: MediaStream) {
-    const source = getAudioContext().createMediaStreamSource(stream);
+    const source = audioctx().createMediaStreamSource(stream);
     source.connect(this.gainNode);
     attachDomAudio(this.targetId, stream);
-    getAudioContext().resume();
+    audioctx().resume();
   }
 
   setDatachannel(chan: RTCDataChannel) {
