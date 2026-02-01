@@ -6,6 +6,7 @@ import { rtcHandlers } from "./rtc";
 import { voiceHandlers } from "./voice";
 import { keyHandlers } from "./key";
 import { userHandlers } from "./user";
+import { roomHandlers } from "./room";
 
 export type { HandlerContext } from "./types";
 
@@ -14,6 +15,7 @@ const handlers = {
   ...voiceHandlers,
   ...keyHandlers,
   ...userHandlers,
+  ...roomHandlers,
 } as const;
 
 // TODO: maybe rename rtc to actions too?

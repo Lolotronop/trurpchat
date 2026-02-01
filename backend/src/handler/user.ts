@@ -34,7 +34,7 @@ export const userHandlers: Handlers<UserAction> = {
       .toArray();
 
     sendAll(ctx.clients.values(), {
-      type: "event.users",
+      type: "event.user.list",
       online,
       offline,
     });
@@ -95,7 +95,7 @@ export const userHandlers: Handlers<UserAction> = {
       .toArray();
 
     sendAll(ctx.clients.values(), {
-      type: "event.users",
+      type: "event.user.list",
       online,
       offline,
     });
@@ -110,7 +110,7 @@ export const userHandlers: Handlers<UserAction> = {
     }
 
     sendAll(ctx.clients.values(), {
-      type: "event.rooms",
+      type: "event.room.list",
       rooms: ctx.hotel.toJson(),
     });
 
@@ -138,7 +138,7 @@ export const userHandlers: Handlers<UserAction> = {
         room.remove(client);
 
         sendAll(ctx.clients.values(), {
-          type: "event.rooms",
+          type: "event.room.list",
           rooms: ctx.hotel.toJson(),
         });
       }
@@ -157,7 +157,7 @@ export const userHandlers: Handlers<UserAction> = {
       .toArray();
 
     sendAll(ctx.clients.values(), {
-      type: "event.users",
+      type: "event.user.list",
       online,
       offline,
     });

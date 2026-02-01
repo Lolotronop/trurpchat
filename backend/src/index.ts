@@ -99,7 +99,7 @@ Bun.serve<ConnectedUser, never>({
         user: ws.data,
       });
       send(ws, {
-        type: "event.rooms",
+        type: "event.room.list",
         rooms: ctx.hotel.toJson(),
       });
 
@@ -113,7 +113,7 @@ Bun.serve<ConnectedUser, never>({
 
       const { online, offline } = await getAllUsers();
       sendAll(ctx.clients.values(), {
-        type: "event.users",
+        type: "event.user.list",
         online,
         offline,
       });
@@ -142,14 +142,14 @@ Bun.serve<ConnectedUser, never>({
       ctx.clients.delete(ws.data.id);
       ctx.clients.forEach((client) => {
         send(client, {
-          type: "event.rooms",
+          type: "event.room.list",
           rooms: Array.from(ctx.hotel.toJson()),
         });
       });
 
       const { online, offline } = await getAllUsers();
       sendAll(ctx.clients.values(), {
-        type: "event.users",
+        type: "event.user.list",
         online,
         offline,
       });

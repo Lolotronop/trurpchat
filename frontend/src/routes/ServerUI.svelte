@@ -2,6 +2,7 @@
   import { Server } from "$lib/servers.svelte";
   import BottomControls from "./BottomControls.svelte";
   import VoiceGrid from "./main/VoiceGrid.svelte";
+  import RoomForm from "./rooms/RoomForm.svelte";
   import RoomList from "./rooms/RoomList.svelte";
   import ServerSettings from "./servers/ServerSettings.svelte";
   import Users from "./Users.svelte";

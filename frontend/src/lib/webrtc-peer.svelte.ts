@@ -93,7 +93,6 @@ export class Peer {
   handleOntrack(event: RTCTrackEvent) {
     event.streams.forEach((stream) => {
       stream.getTracks().forEach((track) => {
-        console.log("track.kind", track.kind);
         if (track.kind === "audio") {
           this.handleAudioTrack(stream);
         }

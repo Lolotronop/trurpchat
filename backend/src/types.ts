@@ -117,7 +117,7 @@ export type UserAction =
 
 export type UserEvent =
   | {
-      type: "event.users";
+      type: "event.user.list";
       online: ConnectedUser[];
       offline: User[];
     }
@@ -126,19 +126,29 @@ export type UserEvent =
       user: User;
     };
 
+export type RoomAction =
+  | {
+      type: "action.room.create";
+      room: Omit<RoomData, "id">;
+    }
+  | {
+      type: "action.room.delete";
+      id: number;
+    }
+  | {
+      type: "action.room.update";
+      room: RoomData;
+    };
+
+export type RoomEvent = {
+  type: "event.room.list";
+  rooms: Room[];
+};
+
 export type OtherEvent =
   | {
       type: "event.oven";
       ovenServerUrl: string;
-    }
-  | {
-      type: "event.users";
-      online: ConnectedUser[];
-      offline: User[];
-    }
-  | {
-      type: "event.rooms";
-      rooms: Room[];
     }
   | {
       type: "event.connected";
@@ -146,12 +156,18 @@ export type OtherEvent =
     };
 
 // RtcMessage is kinda weird, it is both an event and an action
-export type ClientAction = VoiceAction | KeyAction | UserAction | RtcMessage;
+export type ClientAction =
+  | VoiceAction
+  | KeyAction
+  | UserAction
+  | RoomAction
+  | RtcMessage;
 export type ServerEvent =
   | VoiceEvent
   | KeyEvent
   | UserEvent
   | RtcMessage
+  | RoomEvent
   | OtherEvent;
 
 export type Message = ClientAction | ServerEvent;

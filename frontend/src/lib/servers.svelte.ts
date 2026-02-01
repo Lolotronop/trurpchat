@@ -38,11 +38,11 @@ export class Server {
   }
 
   handleMessage(message: Message) {
-    if (message.type === "event.rooms") {
+    if (message.type === "event.room.list") {
       this.rooms = message.rooms;
     } else if (message.type === "event.connected") {
       this.user = message.user;
-    } else if (message.type === "event.users") {
+    } else if (message.type === "event.user.list") {
       this.users.online = message.online;
       this.users.offline = message.offline;
     } else if (message.type === "event.oven") {
@@ -66,7 +66,21 @@ export class Server {
       if (!room || room.type !== "voice") {
         return;
       }
-      room.users = room.users.filter((u) => u.id !== message.user.id);
+
+      let index = room.users.findIndex((u) => u.id === message.user.id);
+      if (index === -1) {
+        console.error(
+          `event.voice.left: user ${message.user.id} not found in room ${message.room}`,
+        );
+        return;
+      }
+      room.users.splice(index, 1);
+
+      const isMe = message.user.id === this.user.id;
+      const inRoom = this.rtc?.room.id === room.id;
+      if (isMe && inRoom) {
+        this.leaveRoom(false);
+      }
     } else if (message.type === "event.voice.userstate") {
       const room = this.findRoom(message.room);
       if (!room || room.type !== "voice") {
@@ -128,16 +142,18 @@ export class Server {
     });
   }
 
-  leaveRoom() {
+  leaveRoom(send = true) {
     if (!this.rtc) return;
 
-    sound.play("voice disconnected");
-    this.gateway.send({
-      type: "action.voice.leave",
-      room: this.rtc.room.id,
-    });
-    this.rtc.cleanup();
+    const id = this.rtc.room.id;
+    this.rtc?.cleanup();
     this.rtc = undefined;
+    sound.play("voice disconnected");
+    send &&
+      this.gateway.send({
+        type: "action.voice.leave",
+        room: id,
+      });
   }
 }
 

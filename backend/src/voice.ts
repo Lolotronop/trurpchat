@@ -89,7 +89,6 @@ export class Hotel {
   remove(client: WsClient) {
     const room = this.rooms.find((room) => room.clients.has(client));
     if (!room) {
-      console.log(`Client ${client.data.id} is not in a room`);
       return;
     }
     room.remove(client);

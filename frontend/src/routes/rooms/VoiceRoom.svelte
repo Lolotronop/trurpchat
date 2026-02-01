@@ -10,6 +10,7 @@
   import type { WebRTC } from "$lib/webrtc.svelte";
   import type { Server } from "$lib/servers.svelte";
   import VoiceUser from "./VoiceUser.svelte";
+  import RoomContextMenu from "./RoomContextMenu.svelte";
 
   const g = gitGud();
   // TODO: this needs to be removed with proper
@@ -25,19 +26,21 @@
   const { rtc, room, server }: Props = $props();
 </script>
 
-<Button
-  variant="ghost"
-  class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {rtc
+<RoomContextMenu room={room} server={server}>
+  <Button
+    variant="ghost"
+    class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {rtc
       ?.room?.name === room.name
       ? ''
       : 'text-muted-foreground'}"
-  onclick={() => server?.joinRoom(room)}
->
-  <div class="flex flex-row items-center gap-2">
-    <Volume2 size={16} strokeWidth={3} />
-    <p>{room.name}</p>
-  </div>
-</Button>
+    onclick={() => server?.joinRoom(room)}
+  >
+    <div class="flex flex-row items-center gap-2">
+      <Volume2 size={16} strokeWidth={3} />
+      <p>{room.name}</p>
+    </div>
+  </Button>
+</RoomContextMenu>
 <div class="flex flex-col pl-8">
   {#each room.users as user (user.id)}
     {@const peer = rtc?.peers.get(user.id)}
