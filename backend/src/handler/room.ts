@@ -1,6 +1,6 @@
 import { err, ok } from "neverthrow";
 import { eq } from "drizzle-orm";
-import type { RoomAction, RoomData } from "$src/types";
+import type { Room, RoomAction, RoomData } from "$src/types";
 import { db, rooms } from "$src/db";
 import { VoiceChatInstance, type WsClient } from "$src/voice";
 import { send, sendAll } from "$src/send";
@@ -28,6 +28,13 @@ function sendRooms(ctx: HandlerContext) {
   });
 }
 
+function sendRoom(ctx: HandlerContext, room: Room) {
+  sendAll(ctx.clients.values(), {
+    type: "event.room.update",
+    room: room,
+  });
+}
+
 export const roomHandlers: Handlers<RoomAction> = {
   "action.room.create": async (ctx, ws, { room }) => {
     const result = cheks(ws, room);
@@ -42,10 +49,14 @@ export const roomHandlers: Handlers<RoomAction> = {
     }
 
     if (created.type === "voice") {
-      ctx.hotel.rooms.push(new VoiceChatInstance(created));
+      const instance = new VoiceChatInstance(created);
+      ctx.hotel.rooms.push(instance);
+      sendRoom(ctx, instance.toJson());
+    } else {
+      // TODO: handle text rooms properly
+      sendRoom(ctx, created as Room);
     }
 
-    sendRooms(ctx);
     return ok();
   },
 
@@ -61,12 +72,13 @@ export const roomHandlers: Handlers<RoomAction> = {
       for (const client of room.clients.values()) {
         send(client, {
           type: "event.voice.left",
-          room: room.id,
+          room: room.data.id,
           user: client.data,
         });
       }
       ctx.hotel.rooms.splice(ctx.hotel.rooms.indexOf(room), 1);
     }
+    // TODO: don't resent the entire list on delete
     sendRooms(ctx);
     return ok();
   },
@@ -78,11 +90,16 @@ export const roomHandlers: Handlers<RoomAction> = {
     }
 
     await db.update(rooms).set(room).where(eq(rooms.id, room.id));
-    const roomInstance = ctx.hotel.find(room.id);
-    if (roomInstance) {
-      roomInstance.name = room.name;
+
+    const voice = ctx.hotel.find(room.id);
+    if (voice) {
+      voice.data = room;
+      sendRoom(ctx, voice.toJson());
+    } else {
+      // TODO: handle text rooms properly
+      sendRoom(ctx, room as Room);
     }
-    sendRooms(ctx);
+
     return ok();
   },
 };

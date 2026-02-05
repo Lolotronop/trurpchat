@@ -41,7 +41,7 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     if (room) {
       sendAll(ctx.clients.values(), {
         type: "event.voice.userstate",
-        room: room.id,
+        room: room.data.id,
         user: ws.data,
       });
     }

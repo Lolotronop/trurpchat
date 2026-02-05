@@ -140,10 +140,15 @@ export type RoomAction =
       room: RoomData;
     };
 
-export type RoomEvent = {
-  type: "event.room.list";
-  rooms: Room[];
-};
+export type RoomEvent =
+  | {
+      type: "event.room.list";
+      rooms: Room[];
+    }
+  | {
+      type: "event.room.update";
+      room: Room;
+    };
 
 export type OtherEvent =
   | {

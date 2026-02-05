@@ -40,6 +40,16 @@ export class Server {
   handleMessage(message: Message) {
     if (message.type === "event.room.list") {
       this.rooms = message.rooms;
+      this.rooms.sort((a, b) => a.order - b.order);
+    } else if (message.type === "event.room.update") {
+      const roomIndex = this.rooms.findIndex((r) => r.id === message.room.id);
+      if (roomIndex === -1) {
+        this.rooms.push(message.room);
+      } else {
+        const room = this.rooms[roomIndex];
+        this.rooms[roomIndex] = { ...room, ...message.room };
+      }
+      this.rooms.sort((a, b) => a.order - b.order);
     } else if (message.type === "event.connected") {
       this.user = message.user;
     } else if (message.type === "event.user.list") {

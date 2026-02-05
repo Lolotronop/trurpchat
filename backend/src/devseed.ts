@@ -48,6 +48,8 @@ async function seedUsers() {
     return key;
   });
 
+  console.log(result[0]!.name, newKeys[0]);
+
   await db.insert(keys).values(newKeys);
 }
 
@@ -72,14 +74,17 @@ async function seedRooms() {
     {
       name: "Альфа",
       type: "voice",
+      order: 1,
     },
     {
       name: "Бета",
       type: "voice",
+      order: 2,
     },
     {
       name: "Гамма",
       type: "voice",
+      order: 3,
     },
   ]);
 }

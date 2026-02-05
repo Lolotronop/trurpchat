@@ -3,11 +3,9 @@ import type { Message, RoomData, ConnectedUser } from "./types";
 
 export type WsClient = ServerWebSocket<ConnectedUser>;
 
-export class VoiceChatInstance implements RoomData {
+export class VoiceChatInstance {
   clients = new Set<WsClient>();
-  id: number;
-  name: string;
-  type: "voice";
+  data: RoomData;
 
   constructor(data: RoomData) {
     if (data.type !== "voice") {
@@ -16,9 +14,7 @@ export class VoiceChatInstance implements RoomData {
       );
     }
 
-    this.name = data.name;
-    this.id = data.id;
-    this.type = data.type;
+    this.data = data;
   }
 
   toJson() {
@@ -28,9 +24,7 @@ export class VoiceChatInstance implements RoomData {
     const rest = allUsers.filter((u) => !u.streaming);
     rest.sort((a, b) => a.name.localeCompare(b.name));
     return {
-      id: this.id,
-      name: this.name,
-      type: this.type,
+      ...this.data,
       users: [...streaming, ...rest],
     };
   }
@@ -40,7 +34,7 @@ export class VoiceChatInstance implements RoomData {
       const json = JSON.stringify(message);
       this.clients.forEach((ws) => ws.send(json));
     } catch (error) {
-      console.error(`Error sending message to room ${this.name}:`, error);
+      console.error(`Error sending message to room ${this.data.name}:`, error);
     }
   }
 
@@ -56,7 +50,7 @@ export class VoiceChatInstance implements RoomData {
     if (this.clients.has(client)) {
       this.clients.delete(client);
     } else {
-      console.log(`Client ${client.data.id} is not in room ${this.name}`);
+      console.log(`Client ${client.data.id} is not in room ${this.data.name}`);
     }
   }
 }
@@ -65,7 +59,7 @@ export class Hotel {
   rooms: VoiceChatInstance[] = [];
 
   find(id: number): VoiceChatInstance | undefined {
-    return this.rooms.find((room) => room.id === id);
+    return this.rooms.find((room) => room.data.id === id);
   }
 
   toJson() {
@@ -73,12 +67,12 @@ export class Hotel {
   }
 
   connect(id: number, client: WsClient) {
-    const room = this.rooms.find((room) => room.id === id);
+    const room = this.rooms.find((room) => room.data.id === id);
     if (!room) {
       console.log(`Room ${id} does not exist`);
       return;
     }
-    if (room.type !== "voice") {
+    if (room.data.type !== "voice") {
       console.log(`Room ${id} is not a voice room`);
       return;
     }

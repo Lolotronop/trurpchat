@@ -1,5 +1,5 @@
 import { defineRelations, sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
   id: integer({ mode: "number" }).primaryKey(),
@@ -33,6 +33,7 @@ export const rooms = sqliteTable("rooms", {
   id: integer().primaryKey(),
   name: text({ length: 255 }).notNull(),
   type: text({ mode: "text", enum: CHANNEL_TYPES }).notNull(),
+  order: real().notNull(),
 });
 
 export type Room = typeof rooms.$inferSelect;
