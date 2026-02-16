@@ -118,9 +118,9 @@ export class OvenSignaling {
       secure = false;
     }
     const protocol = secure ? "wss://" : "ws://";
-    this.ws = new WebSocket(
-      protocol + this.host + "/app/" + this.userId + "?transport=tcp",
-    );
+    const url = protocol + this.host + "/app/" + this.userId;
+    console.log("Connecting to", url);
+    this.ws = new WebSocket(url);
 
     this.ws.onmessage = (msg) => this.handleMessage(msg);
 

@@ -48,7 +48,7 @@ async function seedUsers() {
     return key;
   });
 
-  console.log(result[0]!.name, newKeys[0]);
+  console.log(newKeys);
 
   await db.insert(keys).values(newKeys);
 }
