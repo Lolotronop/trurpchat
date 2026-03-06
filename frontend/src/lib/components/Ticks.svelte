@@ -38,8 +38,8 @@
           style="height: {height}px;"
         ></div>
         <div class="text-s text-muted-foreground">
-          {t > 0 ? "+" : ""}
-          {t}
+          <!-- {t > 0 ? "+" : ""} -->
+          <!-- {t} -->
         </div>
       </div>
     {/each}

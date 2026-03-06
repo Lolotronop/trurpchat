@@ -11,7 +11,7 @@ export class OvenSignaling {
   hasVideo = false;
   hasAudio = false;
 
-  #gain = $state(1);
+  #gain = $state(0.75);
   get gain() {
     return this.#gain;
   }
@@ -45,8 +45,8 @@ export class OvenSignaling {
     for (const stream of event.streams) {
       for (const track of stream.getTracks()) {
         if (track.kind === "video" && !this.stream) {
-          this.stream = stream;
-          this.hasVideo = true;
+          // this.stream = stream;
+          // this.hasVideo = true;
         } else if (track.kind === "audio") {
           this.gainnode.disconnect();
           const ctx = audioctx();
@@ -58,7 +58,11 @@ export class OvenSignaling {
       }
     }
 
-    if (this.hasVideo && this.hasAudio) {
+    if (this.hasAudio) {
+      let hintMs = 200;
+      this.pc?.getReceivers().forEach((receiver) => {
+        receiver.jitterBufferTarget = hintMs;
+      });
       this.state = "connected";
     } else {
       this.state = "disconnected";
@@ -147,6 +151,7 @@ export class OvenSignaling {
   ) {
     const ctx = audioctx();
     this.gainnode = ctx.createGain();
+    this.gainnode.gain.setTargetAtTime(0.75, audioctx().currentTime, 0.01);
     this.gainnode.connect(ctx.destination);
   }
 }

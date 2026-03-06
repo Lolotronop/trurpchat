@@ -13,6 +13,10 @@
   import { OvenSignaling } from "./ovenplayer.svelte";
   import { fade } from "svelte/transition";
   import GainSlider from "../GainSlider.svelte";
+  import {
+    type OvenPlayerInstance,
+    create as createOvenPlayer,
+  } from "ovenplayer";
 
   type Props = {
     user: User;
@@ -24,21 +28,49 @@
   const oven = $derived(new OvenSignaling(server.overServerUrl!, user.id));
   $effect(() => {
     return () => {
-      oven.disconnect();
+      cleanup();
     };
   });
 
-  let video: HTMLVideoElement | undefined = $state(undefined);
-  function attachStream(el: HTMLVideoElement) {
-    if (!oven.stream) {
-      console.warn("[OVEN] attachStream called with no stream");
-      return;
+  function cleanup() {
+    player?.stop();
+    player?.remove();
+    const el = document.getElementById(`oven-${user.id}`);
+    if (el) {
+      el.remove();
     }
+    oven.disconnect();
+  }
 
-    el.srcObject = oven.stream;
-    el.play()
-      .then(() => {})
-      .catch((e) => console.error(e));
+  let video: HTMLVideoElement | undefined = $state(undefined);
+  let player: OvenPlayerInstance | undefined = $state(undefined);
+  function attachStream(el: HTMLVideoElement) {
+    // if (!oven.stream) {
+    //   console.warn("[OVEN] attachStream called with no stream");
+    //   return;
+    // }
+    // el.srcObject = oven.stream;
+    // el.play()
+    //   .then(() => {})
+    //   .catch((e) => console.error(e));
+    player = createOvenPlayer(el.id, {
+      volume: 0,
+      disableSeekUI: true,
+      expandFullScreenUI: false,
+      controls: false,
+      autoStart: true,
+      showBigPlayButton: false,
+      playbackRate: 1,
+      playbackRates: [1],
+      waterMark: undefined,
+      title: "",
+      sources: [
+        {
+          type: "webrtc",
+          file: `ws://${server.overServerUrl!}/app/${user.id}`,
+        },
+      ],
+    });
   }
 
   let container: HTMLDivElement | undefined = $state(undefined);
@@ -91,6 +123,7 @@
   {#if oven.state === "connected"}
     <video
       class="w-full h-full object-fit rounded-md"
+      id="oven-{user.id}"
       bind:this={video}
       autoplay
       muted
@@ -102,6 +135,7 @@
       variant="ghost"
       class="w-full h-full"
       onclick={() => {
+        cleanup();
         // TODO: also signal to the main server
         // that we are wathcing something
         oven.connect();
@@ -136,7 +170,7 @@
           class="pointer-events-auto p-0 hover:bg-destructive/50"
           variant="ghost"
           onclick={() => {
-            oven.disconnect();
+            cleanup();
           }}
         >
           <DoorOpen class="size-4" />
@@ -146,10 +180,10 @@
         data-controls
         class="flex items-center gap-2 bg-background/80 rounded-md"
       >
-        <div class="w-20 pointer-events-auto pl-2 flex items-center gap-2">
+        <div class="w-36 pointer-events-auto pl-2 flex items-center gap-2">
           <!-- TODO: make this better. the icon is tiny, slider is buggy -->
-          <Volume2 class="size-4" />
-          <GainSlider class="w-full" bind:value={oven.gain} ticks={[]} />
+          <Volume2 class="size-6" />
+          <GainSlider class="w-full" bind:value={oven.gain} ticks={[1]} />
         </div>
         <Button
           class="pointer-events-auto p-0"
