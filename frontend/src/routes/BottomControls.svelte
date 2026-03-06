@@ -17,6 +17,7 @@
   import { Label } from "$lib/components/ui/label";
   import Avatar from "$lib/components/Avatar.svelte";
   import Settings from "./Settings.svelte";
+    import { invoke, isTauri } from "@tauri-apps/api/core";
   const g = gitGud();
 
   type Props = {
@@ -74,6 +75,11 @@
                 class="size-8"
                 onclick={() => {
                   rtc.streaming = !rtc.streaming;
+                  if (!isTauri()) return;
+                  if (!rtc.streaming) return;
+                  const domain = server.overServerUrl?.split(":")[0];
+                  if (!domain) return;
+                  invoke("start_stream", { url: `rtmp://${domain}:1935/app/${server.user.id}` });
                 }}
               >
                 <MonitorUp class="size-5" />

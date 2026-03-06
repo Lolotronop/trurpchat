@@ -1,3 +1,5 @@
+use ffmpeg_rs;
+use ffmpeg_rs::video_encoder::{EncoderSettings, OutputDestination, Preset};
 use tauri::{AppHandle, Manager};
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2Profile4, ICoreWebView2_13, COREWEBVIEW2_PERMISSION_KIND_CAMERA,
@@ -8,6 +10,30 @@ use windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY as VK;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP,
 };
+
+#[tauri::command]
+fn start_stream(url: String) {
+    println!("Starting stream with url: {}", url);
+    let destination = OutputDestination::Rtmp(url);
+    let settings = EncoderSettings {
+        destination,
+        width: 1920,
+        height: 1080,
+        audio_bitrate: 192_000,
+        video_bitrate: 6 * 1000 * 1000,
+        fps: 24,
+        preset: Preset::Balanced,
+        use_hw_accel: true,
+    };
+
+    std::thread::spawn(move || {
+        let res = ffmpeg_rs::start::start(settings);
+        match res {
+            Ok(_) => println!("Stream started successfully"),
+            Err(e) => println!("Error starting stream: {}", e),
+        }
+    });
+}
 
 fn send_media_play_pause() -> Result<u32, windows::core::Error> {
     let inputs = [
@@ -96,7 +122,12 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, get_permissions, pause])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            get_permissions,
+            pause,
+            start_stream
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
