@@ -1,6 +1,8 @@
 use ffmpeg_rs;
 use ffmpeg_rs::video_encoder::{EncoderSettings, OutputDestination, Preset};
-use tauri::{AppHandle, Manager};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use tauri::{AppHandle, Manager, State};
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2Profile4, ICoreWebView2_13, COREWEBVIEW2_PERMISSION_KIND_CAMERA,
     COREWEBVIEW2_PERMISSION_KIND_MICROPHONE, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
@@ -11,28 +13,56 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
     SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP,
 };
 
+struct StreamStopSignal {
+    stop: Arc<AtomicBool>,
+}
+
 #[tauri::command]
-fn start_stream(url: String) {
+fn start_stream(
+    state: State<'_, StreamStopSignal>,
+    url: String,
+    width: u32,
+    height: u32,
+    audio_bitrate: usize,
+    video_bitrate: usize,
+    fps: u32,
+    preset_num: u32,
+    use_hw_accel: bool,
+) {
+    state.stop.store(false, Ordering::SeqCst);
     println!("Starting stream with url: {}", url);
     let destination = OutputDestination::Rtmp(url);
+    let preset = match preset_num {
+        0 => Preset::Fast,
+        1 => Preset::Balanced,
+        2 => Preset::Quality,
+        _ => Preset::Balanced,
+    };
     let settings = EncoderSettings {
         destination,
-        width: 1920,
-        height: 1080,
-        audio_bitrate: 192_000,
-        video_bitrate: 6 * 1000 * 1000,
-        fps: 24,
-        preset: Preset::Balanced,
-        use_hw_accel: true,
+        width,
+        height,
+        audio_bitrate,
+        video_bitrate,
+        fps,
+        preset,
+        use_hw_accel,
     };
 
-    std::thread::spawn(move || {
-        let res = ffmpeg_rs::start::start(settings);
-        match res {
-            Ok(_) => println!("Stream started successfully"),
-            Err(e) => println!("Error starting stream: {}", e),
+    std::thread::spawn({
+        let stop = state.stop.clone();
+        move || {
+            let res = ffmpeg_rs::start::start(settings, stop);
+            if let Err(e) = res {
+                println!("Error during stream: {}", e);
+            }
         }
     });
+}
+
+#[tauri::command]
+fn stop_stream(state: State<'_, StreamStopSignal>) {
+    state.stop.store(true, Ordering::SeqCst);
 }
 
 fn send_media_play_pause() -> Result<u32, windows::core::Error> {
@@ -126,8 +156,15 @@ pub fn run() {
             greet,
             get_permissions,
             pause,
-            start_stream
+            start_stream,
+            stop_stream,
         ])
+        .setup(|app| {
+            let stop = Arc::new(AtomicBool::new(false));
+            let stop_signal = StreamStopSignal { stop };
+            app.manage(stop_signal);
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -5,6 +5,7 @@ import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { WebRTC } from "./webrtc.svelte";
 import { sound } from "./sound.svelte";
 import { gitGud } from "./god.svelte";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 
 export type ServerDefinition = {
   name: string;
@@ -159,6 +160,9 @@ export class Server {
     this.rtc?.cleanup();
     this.rtc = undefined;
     sound.play("voice disconnected");
+    if (isTauri()) {
+      invoke("stop_stream");
+    }
     send &&
       this.gateway.send({
         type: "action.voice.leave",

@@ -1,5 +1,7 @@
 import { audioctx } from "$lib/audio/context";
 
+const DEFAULT_GAIN = 0.6;
+
 export class OvenSignaling {
   id?: string;
   pc?: RTCPeerConnection;
@@ -11,7 +13,7 @@ export class OvenSignaling {
   hasVideo = false;
   hasAudio = false;
 
-  #gain = $state(0.75);
+  #gain = $state(DEFAULT_GAIN);
   get gain() {
     return this.#gain;
   }
@@ -61,6 +63,7 @@ export class OvenSignaling {
     if (this.hasAudio) {
       let hintMs = 200;
       this.pc?.getReceivers().forEach((receiver) => {
+        // @ts-expect-error
         receiver.jitterBufferTarget = hintMs;
       });
       this.state = "connected";
@@ -117,7 +120,7 @@ export class OvenSignaling {
   connect() {
     this.disconnect();
     this.state = "connecting";
-    let secure = true;
+    let secure = false;
     if (import.meta.env.DEV) {
       secure = false;
     }
@@ -151,7 +154,11 @@ export class OvenSignaling {
   ) {
     const ctx = audioctx();
     this.gainnode = ctx.createGain();
-    this.gainnode.gain.setTargetAtTime(0.75, audioctx().currentTime, 0.01);
+    this.gainnode.gain.setTargetAtTime(
+      DEFAULT_GAIN,
+      audioctx().currentTime,
+      0.01,
+    );
     this.gainnode.connect(ctx.destination);
   }
 }

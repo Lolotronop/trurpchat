@@ -324,6 +324,7 @@ export class WebRTC {
     this.cameraStream?.getTracks().forEach((track) => {
       track.stop();
     });
+    this.camera = false;
     this.cameraStream = undefined;
     this.streaming = false;
     this.watching = null;

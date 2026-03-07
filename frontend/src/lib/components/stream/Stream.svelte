@@ -6,6 +6,7 @@
     Monitor,
     Tv,
     Volume2,
+    VolumeOff,
   } from "@lucide/svelte";
   import type { User } from "trurpchat-backend";
   import { Button } from "$lib/components/ui/button";
@@ -24,8 +25,24 @@
   };
   let { user, server }: Props = $props();
 
-  // svelte-ignore state_referenced_locally
-  const oven = $derived(new OvenSignaling(server.overServerUrl!, user.id));
+  // TODO: this is a hack to prevent oven signaling from being recreated every time
+  // figure out a better way to do this
+  let lastServerUrl: string | undefined;
+  let lastUserId: number | undefined;
+  let lastOven: OvenSignaling | undefined;
+  const oven: OvenSignaling = $derived.by(() => {
+    if (lastServerUrl !== server.overServerUrl || lastUserId !== user.id) {
+      lastServerUrl = server.overServerUrl;
+      lastUserId = user.id;
+      lastOven = new OvenSignaling(server.overServerUrl!, user.id);
+      return lastOven;
+    }
+    if (!lastOven) {
+      lastOven = new OvenSignaling(server.overServerUrl!, user.id);
+    }
+    return lastOven;
+  });
+
   $effect(() => {
     return () => {
       cleanup();
@@ -35,6 +52,7 @@
   function cleanup() {
     player?.stop();
     player?.remove();
+    player = undefined;
     const el = document.getElementById(`oven-${user.id}`);
     if (el) {
       el.remove();
@@ -42,7 +60,6 @@
     oven.disconnect();
   }
 
-  let video: HTMLVideoElement | undefined = $state(undefined);
   let player: OvenPlayerInstance | undefined = $state(undefined);
   function attachStream(el: HTMLVideoElement) {
     // if (!oven.stream) {
@@ -53,6 +70,9 @@
     // el.play()
     //   .then(() => {})
     //   .catch((e) => console.error(e));
+    if (player) {
+      return;
+    }
     player = createOvenPlayer(el.id, {
       volume: 0,
       disableSeekUI: true,
@@ -99,7 +119,11 @@
   }
 
   let isFullscreen = $state(false);
-  function toggleFullscreen() {
+  function toggleFullscreen(e: MouseEvent) {
+    if (e.target && !(e.target instanceof HTMLVideoElement)) {
+      return;
+    }
+
     if (!container || oven.state !== "connected") {
       return;
     }
@@ -112,6 +136,7 @@
       isFullscreen = false;
     }
   }
+  let prevgain = 0.75;
 </script>
 
 <div
@@ -124,7 +149,6 @@
     <video
       class="w-full h-full object-fit rounded-md"
       id="oven-{user.id}"
-      bind:this={video}
       autoplay
       muted
       preload="auto"
@@ -145,7 +169,20 @@
       Стрим {user.name}
     </Button>
   {:else if oven.state === "connecting"}
-    <Loader2 class="size-8 animate-spin" />
+    <div class="flex flex-col items-center justify-center gap-2">
+      <Loader2 class="size-8 animate-spin" />
+      <Button
+        variant="ghost"
+        class="hover:bg-destructive/20!"
+        onclick={() => {
+          cleanup();
+          oven.disconnect();
+        }}
+      >
+        <DoorOpen class="size-4" />
+        Выйти
+      </Button>
+    </div>
   {:else}
     <p>¯\_(ツ)_/¯</p>
   {/if}
@@ -167,7 +204,7 @@
         </p>
 
         <Button
-          class="pointer-events-auto p-0 hover:bg-destructive/50"
+          class="pointer-events-auto p-0 hover:bg-destructive/50!"
           variant="ghost"
           onclick={() => {
             cleanup();
@@ -182,7 +219,22 @@
       >
         <div class="w-36 pointer-events-auto pl-2 flex items-center gap-2">
           <!-- TODO: make this better. the icon is tiny, slider is buggy -->
-          <Volume2 class="size-6" />
+          <button
+            onclick={() => {
+              if (oven.gain === 0) {
+                oven.gain = prevgain;
+              } else {
+                prevgain = oven.gain;
+                oven.gain = 0;
+              }
+            }}
+          >
+            {#if oven.gain === 0}
+              <VolumeOff class="size-5" />
+            {:else}
+              <Volume2 class="size-5" />
+            {/if}
+          </button>
           <GainSlider class="w-full" bind:value={oven.gain} ticks={[1]} />
         </div>
         <Button

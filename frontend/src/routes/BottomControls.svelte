@@ -17,7 +17,8 @@
   import { Label } from "$lib/components/ui/label";
   import Avatar from "$lib/components/Avatar.svelte";
   import Settings from "./Settings.svelte";
-    import { invoke, isTauri } from "@tauri-apps/api/core";
+  import { invoke, isTauri } from "@tauri-apps/api/core";
+  import video from "@lucide/svelte/icons/video";
   const g = gitGud();
 
   type Props = {
@@ -34,6 +35,16 @@
   }
 
   let rtc = $derived(server.rtc);
+
+  let streamSettings = $state({
+    width: 1920,
+    height: 1080,
+    audioBitrate: 192_000,
+    videoBitrate: 6 * 1000 * 1000,
+    fps: 24,
+    presetNum: 1,
+    useHwAccel: true,
+  });
 </script>
 
 <div class="text-muted-foreground rounded border-t px-2 flex flex-col w-full">
@@ -74,12 +85,22 @@
                 variant={rtc.streaming ? "default" : "ghost"}
                 class="size-8"
                 onclick={() => {
+                  if (isTauri() && rtc.streaming) {
+                    invoke("stop_stream");
+                  }
+
                   rtc.streaming = !rtc.streaming;
+
                   if (!isTauri()) return;
                   if (!rtc.streaming) return;
+
                   const domain = server.overServerUrl?.split(":")[0];
                   if (!domain) return;
-                  invoke("start_stream", { url: `rtmp://${domain}:1935/app/${server.user.id}` });
+                  const options = {
+                    url: `rtmp://${domain}:1935/app/${server.user.id}`, 
+                    ...streamSettings
+                  };
+                  invoke("start_stream", options);
                 }}
               >
                 <MonitorUp class="size-5" />
@@ -113,6 +134,148 @@
                   Скопировать ссылку для ОБС
                 </Button>
               </div>
+              <div class="flex flex-row items-center gap-2">
+                <Switch
+                  id="hw-accell"
+                  bind:checked={streamSettings.useHwAccel}
+                />
+                <Label for="hw-accell">Аппаратное ускорение</Label>
+              </div>
+              <div>
+                <Label>Разрешение</Label>
+                <Button
+                  variant={streamSettings.width === 1920 && streamSettings.height === 1080 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.width = 1920;
+                    streamSettings.height = 1080;
+                  }}
+                >
+                  1920x1080
+                </Button>
+                <Button
+                  variant={streamSettings.width === 1280 && streamSettings.height === 720 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.width = 1280;
+                    streamSettings.height = 720;
+                  }}
+                >
+                  1280x720
+                </Button>
+              </div>
+              <div>
+                <Label>FPS</Label>
+                <Button
+                  variant={streamSettings.fps === 24 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.fps = 24;
+                  }}
+                >
+                  24
+                </Button>
+                <Button
+                  variant={streamSettings.fps === 30 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.fps = 30;
+                  }}
+                >
+                  30
+                </Button>
+                <Button
+                  variant={streamSettings.fps === 60 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.fps = 60;
+                  }}
+                >
+                  60
+                </Button>
+              </div>
+              <div>
+                <Label>Пресет</Label>
+                <Button
+                  variant={streamSettings.presetNum === 0 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.presetNum = 0;
+                  }}
+                >
+                  Быстрый
+                </Button>
+                <Button
+                  variant={streamSettings.presetNum === 1 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.presetNum = 1;
+                  }}
+                >
+                  Балансированный
+                </Button>
+                <Button
+                  variant={streamSettings.presetNum === 2 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.presetNum = 2;
+                  }}
+                >
+                  Качественный
+                </Button>
+              </div>
+              <div>
+                <Label>Качество</Label>
+                <Button
+                  variant={streamSettings.videoBitrate === 2 * 1000 * 1000 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.videoBitrate = 2 * 1000 * 1000;
+                  }}
+                >
+                  2 Мбит/с
+                </Button>
+                <Button
+                  variant={streamSettings.videoBitrate === 4 * 1000 * 1000 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.videoBitrate = 4 * 1000 * 1000;
+                  }}
+                >
+                  4 Мбит/с
+                </Button>
+                <Button
+                  variant={streamSettings.videoBitrate === 6 * 1000 * 1000 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.videoBitrate = 6 * 1000 * 1000;
+                  }}
+                >
+                  6 Мбит/с
+                </Button>
+                <Button
+                  variant={streamSettings.videoBitrate === 8 * 1000 * 1000 ? "default" : "ghost"}
+                  class="text-sm"
+                  onclick={() => {
+                    streamSettings.videoBitrate = 8 * 1000 * 1000;
+                  }}
+                >
+                  8 Мбит/с
+                </Button>
+              </div>
+              {#if import.meta.env.DEV}
+                <div>
+                  <Button
+                    variant="outline"
+                    class="text-sm"
+                    onclick={() => {
+                      rtc.streaming = !rtc.streaming;
+                    }}
+                  >
+                    Холостой
+                  </Button>
+                </div>
+              {/if}
             </Tooltip.Content>
           </Tooltip.Root>
         {/if}
