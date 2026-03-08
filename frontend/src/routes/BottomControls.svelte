@@ -12,6 +12,8 @@
     MonitorUp,
     PhoneOff,
   } from "@lucide/svelte";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
+
   import type { Server } from "$lib/servers.svelte";
   import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
@@ -19,6 +21,8 @@
   import Settings from "./Settings.svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
   import video from "@lucide/svelte/icons/video";
+  import { Separator } from "$lib/components/ui/separator";
+  import StreamSettings from "./StreamSettings.svelte";
   const g = gitGud();
 
   type Props = {
@@ -106,168 +110,14 @@
                 <MonitorUp class="size-5" />
               </Button>
             </Tooltip.Trigger>
-            <Tooltip.Content class="flex flex-col gap-2">
-              <div class="flex flex-row items-center gap-2">
-                <Switch id="airplane-mode" bind:checked={g.allowPause} />
-                <Label for="airplane-mode">Разрешить удаленную паузу</Label>
-              </div>
-              <div>
-                <Button
-                  variant="outline"
-                  class="text-sm"
-                  onclick={() => {
-                    const base = server.overServerUrl!;
-                    const user = server.user!;
-                    const baseUrl = new URL(base);
-                    const host = baseUrl.hostname;
-                    const port = baseUrl.port;
-                    const streamId = encodeURIComponent(
-                      `srt://${host}:${port}/app/${user.id}`,
-                    );
-                    const streamLatency = encodeURIComponent("200000");
-                    const streamUrl = `srt://${host}:${port}?streamid=${streamId}&latency=${streamLatency}`;
-
-                    // TODO: remember how the url scheme for this works
-                    navigator.clipboard.writeText(streamUrl);
-                  }}
-                >
-                  Скопировать ссылку для ОБС
-                </Button>
-              </div>
-              <div class="flex flex-row items-center gap-2">
-                <Switch
-                  id="hw-accell"
-                  bind:checked={streamSettings.useHwAccel}
-                />
-                <Label for="hw-accell">Аппаратное ускорение</Label>
-              </div>
-              <div>
-                <Label>Разрешение</Label>
-                <Button
-                  variant={streamSettings.width === 1920 && streamSettings.height === 1080 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.width = 1920;
-                    streamSettings.height = 1080;
-                  }}
-                >
-                  1920x1080
-                </Button>
-                <Button
-                  variant={streamSettings.width === 1280 && streamSettings.height === 720 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.width = 1280;
-                    streamSettings.height = 720;
-                  }}
-                >
-                  1280x720
-                </Button>
-              </div>
-              <div>
-                <Label>FPS</Label>
-                <Button
-                  variant={streamSettings.fps === 24 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.fps = 24;
-                  }}
-                >
-                  24
-                </Button>
-                <Button
-                  variant={streamSettings.fps === 30 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.fps = 30;
-                  }}
-                >
-                  30
-                </Button>
-                <Button
-                  variant={streamSettings.fps === 60 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.fps = 60;
-                  }}
-                >
-                  60
-                </Button>
-              </div>
-              <div>
-                <Label>Пресет</Label>
-                <Button
-                  variant={streamSettings.presetNum === 0 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.presetNum = 0;
-                  }}
-                >
-                  Быстрый
-                </Button>
-                <Button
-                  variant={streamSettings.presetNum === 1 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.presetNum = 1;
-                  }}
-                >
-                  Балансированный
-                </Button>
-                <Button
-                  variant={streamSettings.presetNum === 2 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.presetNum = 2;
-                  }}
-                >
-                  Качественный
-                </Button>
-              </div>
-              <div>
-                <Label>Качество</Label>
-                <Button
-                  variant={streamSettings.videoBitrate === 2 * 1000 * 1000 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.videoBitrate = 2 * 1000 * 1000;
-                  }}
-                >
-                  2 Мбит/с
-                </Button>
-                <Button
-                  variant={streamSettings.videoBitrate === 4 * 1000 * 1000 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.videoBitrate = 4 * 1000 * 1000;
-                  }}
-                >
-                  4 Мбит/с
-                </Button>
-                <Button
-                  variant={streamSettings.videoBitrate === 6 * 1000 * 1000 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.videoBitrate = 6 * 1000 * 1000;
-                  }}
-                >
-                  6 Мбит/с
-                </Button>
-                <Button
-                  variant={streamSettings.videoBitrate === 8 * 1000 * 1000 ? "default" : "ghost"}
-                  class="text-sm"
-                  onclick={() => {
-                    streamSettings.videoBitrate = 8 * 1000 * 1000;
-                  }}
-                >
-                  8 Мбит/с
-                </Button>
-              </div>
+            <Tooltip.Content
+              class="flex flex-col gap-2 bg-background border-1 pb-4"
+            >
               {#if import.meta.env.DEV}
-                <div>
+                <div class="flex flex-row items-center gap-2">
                   <Button
                     variant="outline"
-                    class="text-sm"
+                    class="text-sm w-full"
                     onclick={() => {
                       rtc.streaming = !rtc.streaming;
                     }}
@@ -276,6 +126,28 @@
                   </Button>
                 </div>
               {/if}
+              <!-- <div class="flex flex-row items-center gap-2"> -->
+              <!--   <Switch id="airplane-mode" bind:checked={g.allowPause} /> -->
+              <!--   <Label for="airplane-mode">Разрешить удаленную паузу</Label> -->
+              <!-- </div> -->
+              <!-- <div> -->
+              <!--   <Button -->
+              <!--     variant="outline" -->
+              <!--     class="text-sm" -->
+              <!--     onclick={() => { -->
+              <!--       const base = server.overServerUrl!; -->
+              <!--       const user = server.user!; -->
+              <!--       const baseUrl = new URL(base); -->
+              <!--       const host = baseUrl.hostname; -->
+              <!--       const streamUrl = `rtmp://${host}:1935/app/${user.id}`; -->
+
+              <!--       navigator.clipboard.writeText(streamUrl); -->
+              <!--     }} -->
+              <!--   > -->
+              <!--     Скопировать ссылку для ОБС -->
+              <!--   </Button> -->
+              <!-- </div> -->
+              <StreamSettings bind:settings={streamSettings} />
             </Tooltip.Content>
           </Tooltip.Root>
         {/if}
