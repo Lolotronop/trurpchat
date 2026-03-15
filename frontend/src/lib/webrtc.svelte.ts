@@ -11,11 +11,7 @@ const TURN_SERVER_IP = "45.143.95.55";
 export const ICE_CONFIG: RTCConfiguration = {
   iceServers: [
     {
-      urls: [
-        "stun:stun1.l.google.com:19302",
-        "stun:stunserver.org:3478",
-        "stun:stun.nextcloud.com:443",
-      ],
+      urls: ["stun:stun1.l.google.com:19302", "stun:stunserver.org:3478"],
     },
     {
       urls: [

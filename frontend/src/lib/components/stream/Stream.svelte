@@ -11,13 +11,14 @@
   import type { User } from "trurpchat-backend";
   import { Button } from "$lib/components/ui/button";
   import type { Server } from "$lib/servers.svelte";
-  import { OvenSignaling } from "./ovenplayer.svelte";
+  import { OvenAudioController } from "./ovenplayer.svelte";
   import { fade } from "svelte/transition";
   import GainSlider from "../GainSlider.svelte";
   import {
     type OvenPlayerInstance,
     create as createOvenPlayer,
   } from "ovenplayer";
+  import { audioctx } from "$lib/audio/context";
 
   type Props = {
     user: User;
@@ -27,18 +28,10 @@
 
   // TODO: this is a hack to prevent oven signaling from being recreated every time
   // figure out a better way to do this
-  let lastServerUrl: string | undefined;
-  let lastUserId: number | undefined;
-  let lastOven: OvenSignaling | undefined;
-  const oven: OvenSignaling = $derived.by(() => {
-    if (lastServerUrl !== server.overServerUrl || lastUserId !== user.id) {
-      lastServerUrl = server.overServerUrl;
-      lastUserId = user.id;
-      lastOven = new OvenSignaling(server.overServerUrl!, user.id);
-      return lastOven;
-    }
+  let lastOven: OvenAudioController | undefined;
+  const oven: OvenAudioController = $derived.by(() => {
     if (!lastOven) {
-      lastOven = new OvenSignaling(server.overServerUrl!, user.id);
+      lastOven = new OvenAudioController();
     }
     return lastOven;
   });
@@ -62,15 +55,6 @@
 
   let player: OvenPlayerInstance | undefined = $state(undefined);
   function attachStream(el: HTMLVideoElement) {
-    // if (!oven.stream) {
-    //   console.warn("[OVEN] attachStream called with no stream");
-    //   return;
-    // }
-    // el.srcObject = oven.stream;
-    // el.play()
-    //   .then(() => {})
-    //   .catch((e) => console.error(e));
-
     if (player) {
       return;
     }
@@ -85,6 +69,11 @@
       playbackRates: [1],
       waterMark: undefined,
       title: "",
+      webrtcConfig: {
+        playoutDelayHint: 0,
+        // @ts-ignore
+        // iceServers: ICE_CONFIG.iceServers,
+      },
       sources: [
         {
           type: "webrtc",
@@ -92,12 +81,15 @@
         },
       ],
     });
-    player.on("ready", () => {
-      let video = player?.getMediaElement();
-      setInterval(() => {
-        const q = video?.getVideoPlaybackQuality();
-        // console.log(q);
-      }, 1000);
+
+    player.on("stateChanged", async (state) => {
+      if (state.newstate != "playing") {
+        return;
+      }
+      const stream = player?.getMediaElement()?.srcObject as MediaStream;
+
+      oven.audioSource = audioctx().createMediaStreamSource(stream);
+      oven.audioSource.connect(oven.gainnode);
     });
   }
 
