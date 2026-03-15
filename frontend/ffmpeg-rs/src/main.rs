@@ -1,11 +1,3 @@
-mod audio_capture;
-mod audio_encoder;
-mod control_plane;
-mod frame_ring;
-mod scaler_shaders;
-mod start;
-mod video_capture;
-mod video_encoder;
 use std::{
     env,
     ffi::OsString,

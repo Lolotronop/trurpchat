@@ -41,7 +41,7 @@ pub struct VideoEncoderBuilder {
 }
 
 impl VideoEncoderBuilder {
-    fn get_opts(settings: EncoderSettings, codec: &codec::codec::Codec) -> Dictionary {
+    fn get_opts(settings: EncoderSettings, codec: &codec::codec::Codec) -> Dictionary<'_> {
         let mut opts = Dictionary::new();
         opts.set("profile", "main");
 

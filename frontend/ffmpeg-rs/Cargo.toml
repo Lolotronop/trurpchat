@@ -3,6 +3,14 @@ name = "ffmpeg-rs"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "ffmpeg-rs"
+path = "src/main.rs"
+
+[lib]
+name = "ffmpeg_rs"
+path = "src/lib.rs"
+
 [dependencies]
 ffmpeg-next = "8.0.0"
 hound = "3.5.1"

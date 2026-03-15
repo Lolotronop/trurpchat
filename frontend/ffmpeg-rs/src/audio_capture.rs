@@ -1,13 +1,13 @@
 use crate::{
     audio_encoder::{AUDIO_FRAME_SIZE, AUDIO_SAMPLE_RATE, SharedDeque},
-    control_plane::{self, ControlPlane},
+    control_plane::ControlPlane,
 };
 
 use std::{
     collections::VecDeque,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicI64, Ordering},
+        atomic::{AtomicI64, Ordering},
         mpsc::Receiver,
     },
     time::Instant,

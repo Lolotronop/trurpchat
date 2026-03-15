@@ -1,13 +1,6 @@
 use ffmpeg_next::{format, frame};
 use parking_lot::{Condvar, Mutex};
-use std::{
-    cell::UnsafeCell,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-    time::Duration,
-};
+use std::{cell::UnsafeCell, time::Duration};
 
 use crate::control_plane;
 

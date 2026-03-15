@@ -2,7 +2,7 @@ use std::{
     collections::VecDeque,
     sync::{
         Arc,
-        atomic::{AtomicBool, AtomicI64, Ordering},
+        atomic::{AtomicI64, Ordering},
         mpsc::Sender,
     },
     thread::JoinHandle,

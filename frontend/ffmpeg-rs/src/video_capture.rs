@@ -1,7 +1,7 @@
 use crate::{
     audio_capture::AudioCaptureTarget,
     audio_encoder::AUDIO_SAMPLE_RATE,
-    control_plane::{ControlPlane, ControlPlaneState},
+    control_plane::ControlPlane,
     frame_ring::FrameRing,
     scaler_shaders::{self, calculate_viewport},
     video_encoder::EncoderSettings,
