@@ -1,0 +1,7 @@
+/target
+/wcap
+*.mp4
+*.flv
+*.ts
+output.mp4
+output.flv
