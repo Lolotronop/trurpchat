@@ -18,6 +18,7 @@
   import Settings from "./Settings.svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
   import StreamSettings from "./StreamSettings.svelte";
+  import { listen } from "@tauri-apps/api/event";
   const g = gitGud();
 
   type Props = {
@@ -44,6 +45,16 @@
     presetNum: 1,
     useHwAccel: true,
   });
+
+  if (isTauri()) {
+    listen<boolean>("stream-status", (event) => {
+      if (!rtc) {
+        console.warn("Recieved stream-status event but rtc is not defined");
+        return;
+      }
+      rtc.streaming = event.payload;
+    });
+  }
 </script>
 
 <div class="text-muted-foreground rounded border-t px-2 flex flex-col w-full">
@@ -84,14 +95,11 @@
                 variant={rtc.streaming ? "default" : "ghost"}
                 class="size-8"
                 onclick={() => {
-                  if (isTauri() && rtc.streaming) {
-                    invoke("stop_stream");
-                  }
-
-                  rtc.streaming = !rtc.streaming;
-
                   if (!isTauri()) return;
-                  if (!rtc.streaming) return;
+                  if (rtc.streaming) {
+                    invoke("stop_stream");
+                    return;
+                  }
 
                   const domain = server.overServerUrl?.split(":")[0];
                   if (!domain) return;

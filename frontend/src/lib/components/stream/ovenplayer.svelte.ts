@@ -61,10 +61,10 @@ export class OvenSignaling {
     }
 
     if (this.hasAudio) {
-      let hintMs = 200;
-      this.pc?.getReceivers().forEach((receiver) => {
-        receiver.jitterBufferTarget = hintMs;
-      });
+      // let hintMs = 200;
+      // this.pc?.getReceivers().forEach((receiver) => {
+      //   receiver.jitterBufferTarget = hintMs;
+      // });
       this.state = "connected";
     } else {
       this.state = "disconnected";

@@ -1,8 +1,9 @@
-use ffmpeg_rs;
 use ffmpeg_rs::video_encoder::{EncoderSettings, OutputDestination, Preset};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use tauri::{AppHandle, Manager, State};
+use ffmpeg_rs::{
+    self,
+    control_plane::{ControlPlane, ControlPlaneData, ControlPlaneState},
+};
+use tauri::{AppHandle, Emitter, Manager, State};
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2Profile4, ICoreWebView2_13, COREWEBVIEW2_PERMISSION_KIND_CAMERA,
     COREWEBVIEW2_PERMISSION_KIND_MICROPHONE, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
@@ -14,11 +15,12 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
 };
 
 struct StreamStopSignal {
-    stop: Arc<AtomicBool>,
+    control_plane: ControlPlane,
 }
 
 #[tauri::command]
 fn start_stream(
+    app: AppHandle,
     state: State<'_, StreamStopSignal>,
     url: String,
     width: u32,
@@ -29,7 +31,11 @@ fn start_stream(
     preset_num: u32,
     use_hw_accel: bool,
 ) {
-    state.stop.store(false, Ordering::SeqCst);
+    if !state.control_plane.is_off() {
+        state.control_plane.stop();
+        state.control_plane.wait_off();
+    }
+    state.control_plane.set(ControlPlaneState::Starting);
     println!("Starting stream with url: {}", url);
     let destination = OutputDestination::Rtmp(url);
     let preset = match preset_num {
@@ -50,19 +56,29 @@ fn start_stream(
     };
 
     std::thread::spawn({
-        let stop = state.stop.clone();
+        let control_plane = state.control_plane.clone();
         move || {
-            let res = ffmpeg_rs::start::start(settings, stop);
+            std::thread::spawn({
+                let control_plane = control_plane.clone();
+                let app = app.clone();
+                move || {
+                    if control_plane.wait_started() {
+                        app.emit("stream-status", true).unwrap();
+                    }
+                }
+            });
+            let res = ffmpeg_rs::start::start(settings, control_plane);
             if let Err(e) = res {
                 println!("Error during stream: {}", e);
             }
+            app.emit("stream-status", false).unwrap();
         }
     });
 }
 
 #[tauri::command]
 fn stop_stream(state: State<'_, StreamStopSignal>) {
-    state.stop.store(true, Ordering::SeqCst);
+    state.control_plane.stop();
 }
 
 fn send_media_play_pause() -> Result<u32, windows::core::Error> {
@@ -160,8 +176,8 @@ pub fn run() {
             stop_stream,
         ])
         .setup(|app| {
-            let stop = Arc::new(AtomicBool::new(false));
-            let stop_signal = StreamStopSignal { stop };
+            let control_plane = ControlPlaneData::new();
+            let stop_signal = StreamStopSignal { control_plane };
             app.manage(stop_signal);
             Ok(())
         })

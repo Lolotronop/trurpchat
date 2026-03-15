@@ -70,6 +70,7 @@
     // el.play()
     //   .then(() => {})
     //   .catch((e) => console.error(e));
+
     if (player) {
       return;
     }
@@ -90,6 +91,13 @@
           file: `ws://${server.overServerUrl!}/app/${user.id}`,
         },
       ],
+    });
+    player.on("ready", () => {
+      let video = player?.getMediaElement();
+      setInterval(() => {
+        const q = video?.getVideoPlaybackQuality();
+        // console.log(q);
+      }, 1000);
     });
   }
 
@@ -112,7 +120,7 @@
 
     el.onmouseleave = () => {
       clearTimeout(timeout);
-      shouldHide = true;
+      shouldHide = false;
     };
 
     el.addEventListener("dblclick", toggleFullscreen);
@@ -120,7 +128,13 @@
 
   let isFullscreen = $state(false);
   function toggleFullscreen(e: MouseEvent) {
-    if (e.target && !(e.target instanceof HTMLVideoElement)) {
+    if (
+      e.target &&
+      !(
+        e.target instanceof HTMLVideoElement ||
+        (e.target instanceof HTMLButtonElement && e.target.id === "fullscreen")
+      )
+    ) {
       return;
     }
 
@@ -215,11 +229,12 @@
       </div>
       <div
         data-controls
-        class="flex items-center gap-2 bg-background/80 rounded-md"
+        class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
       >
-        <div class="w-36 pointer-events-auto pl-2 flex items-center gap-2">
-          <!-- TODO: make this better. the icon is tiny, slider is buggy -->
-          <button
+        <div class="w-36 flex items-center gap-2">
+          <Button
+            variant="ghost"
+            class="p-0"
             onclick={() => {
               if (oven.gain === 0) {
                 oven.gain = prevgain;
@@ -230,15 +245,16 @@
             }}
           >
             {#if oven.gain === 0}
-              <VolumeOff class="size-5" />
+              <VolumeOff class="size-4" />
             {:else}
-              <Volume2 class="size-5" />
+              <Volume2 class="size-4" />
             {/if}
-          </button>
-          <GainSlider class="w-full" bind:value={oven.gain} ticks={[1]} />
+          </Button>
+          <GainSlider class="w-full mt-1" bind:value={oven.gain} ticks={[1]} />
         </div>
         <Button
-          class="pointer-events-auto p-0"
+          id="fullscreen"
+          class="p-0"
           variant="ghost"
           onclick={toggleFullscreen}
         >
