@@ -5,7 +5,7 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
 
-  type EditingRoom = Omit<RoomData, "id">;
+  type EditingRoom = Omit<RoomData, "id" | "order">;
   type Props = {
     initial?: EditingRoom;
     onsubmit: (room: EditingRoom) => void;

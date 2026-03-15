@@ -1,5 +1,4 @@
 import { audioctx } from "./audio/context";
-import type { Mic } from "./mic.svelte";
 import { ICE_CONFIG } from "./webrtc.svelte";
 
 type DatachannelMessage = {

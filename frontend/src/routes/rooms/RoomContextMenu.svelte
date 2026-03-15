@@ -15,7 +15,7 @@
   const { server, children, room }: Props = $props();
 
   let editOpen = $state(false);
-  function onRoomSubmit(newRoom: Omit<RoomData, "id">) {
+  function onRoomSubmit(newRoom: Omit<RoomData, "id" | "order">) {
     server.gateway.send({
       type: "action.room.update",
       room: {

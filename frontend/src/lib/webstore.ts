@@ -105,12 +105,14 @@ class WebStore implements IPersistantStore {
     const keysToRemove: string[] = [];
     for (let i = 0; i < this.storage.length; i++) {
       const key = this.storage.key(i);
-      if (key && key.startsWith(`${this.prefix}:`)) {
+      if (key?.startsWith(`${this.prefix}:`)) {
         keysToRemove.push(key);
       }
     }
 
-    keysToRemove.forEach((key) => this.storage.removeItem(key));
+    keysToRemove.forEach((key) => {
+      this.storage.removeItem(key);
+    });
   }
 
   async reset(): Promise<void> {
@@ -187,7 +189,7 @@ class WebStore implements IPersistantStore {
     let count = 0;
     for (let i = 0; i < this.storage.length; i++) {
       const key = this.storage.key(i);
-      if (key && key.startsWith(`${this.prefix}:`)) {
+      if (key?.startsWith(`${this.prefix}:`)) {
         count++;
       }
     }
@@ -222,7 +224,7 @@ class WebStore implements IPersistantStore {
       window.localStorage.setItem(testKey, testKey);
       window.localStorage.removeItem(testKey);
       return true;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
   }

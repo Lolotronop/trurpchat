@@ -63,7 +63,6 @@ export class OvenSignaling {
     if (this.hasAudio) {
       let hintMs = 200;
       this.pc?.getReceivers().forEach((receiver) => {
-        // @ts-expect-error
         receiver.jitterBufferTarget = hintMs;
       });
       this.state = "connected";

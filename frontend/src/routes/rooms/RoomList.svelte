@@ -15,10 +15,14 @@
   const rtc = $derived(server.rtc);
 
   let editOpen = $state(false);
-  function onRoomSubmit(room: Omit<RoomData, "id">) {
+  function onRoomSubmit(room: Omit<RoomData, "id" | "order">) {
     server.gateway.send({
       type: "action.room.create",
-      room,
+      room: {
+        ...room,
+        // TODO: make this a server-side thing
+        order: server.rooms.length,
+      },
     });
     editOpen = false;
   }

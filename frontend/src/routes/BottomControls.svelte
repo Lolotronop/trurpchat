@@ -12,16 +12,11 @@
     MonitorUp,
     PhoneOff,
   } from "@lucide/svelte";
-  import * as ToggleGroup from "$lib/components/ui/toggle-group/index.js";
 
   import type { Server } from "$lib/servers.svelte";
-  import { Switch } from "$lib/components/ui/switch";
-  import { Label } from "$lib/components/ui/label";
   import Avatar from "$lib/components/Avatar.svelte";
   import Settings from "./Settings.svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
-  import video from "@lucide/svelte/icons/video";
-  import { Separator } from "$lib/components/ui/separator";
   import StreamSettings from "./StreamSettings.svelte";
   const g = gitGud();
 

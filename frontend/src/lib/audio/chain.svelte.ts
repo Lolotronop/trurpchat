@@ -1,4 +1,3 @@
-import { audioctx } from "./context";
 import { connect, type EffectNode } from "./shared";
 
 type EntriesArray<T extends Record<string, EffectNode>> = Array<

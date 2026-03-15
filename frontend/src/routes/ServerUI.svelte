@@ -2,7 +2,6 @@
   import { Server } from "$lib/servers.svelte";
   import BottomControls from "./BottomControls.svelte";
   import VoiceGrid from "./main/VoiceGrid.svelte";
-  import RoomForm from "./rooms/RoomForm.svelte";
   import RoomList from "./rooms/RoomList.svelte";
   import ServerSettings from "./servers/ServerSettings.svelte";
   import Users from "./Users.svelte";
@@ -20,9 +19,7 @@
       <ServerSettings {server} />
     </div>
     <RoomList {server} />
-    <div class="w-full p-0.5">
-      <BottomControls {server} />
-    </div>
+    <div class="w-full p-0.5"><BottomControls {server} /></div>
   </div>
   <div
     class="flex grow-0 h-full w-full flex-col items-center justify-center min-h-0 min-w-0"
