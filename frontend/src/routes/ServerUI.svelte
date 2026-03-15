@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Server } from "$lib/servers.svelte";
+  import { appDataDir } from "@tauri-apps/api/path";
   import BottomControls from "./BottomControls.svelte";
   import VoiceGrid from "./main/VoiceGrid.svelte";
   import RoomList from "./rooms/RoomList.svelte";

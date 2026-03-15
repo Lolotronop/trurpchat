@@ -116,17 +116,14 @@
 
               <div class="flex flex-col gap-2">
                 <h1>Усиление микрофона</h1>
-                <GainSlider
-                  min={-12}
-                  bind:value={g.mic.effects.nodes.gain.gain}
-                />
+                <GainSlider min={-12} bind:value={g.mic.gain} />
               </div>
 
               <div class="flex flex-col gap-2">
                 <h1>Чувствительность</h1>
                 <Slider
                   type="single"
-                  bind:value={g.mic.effects.nodes.gate.threshold}
+                  bind:value={g.mic.threshold}
                   min={-42}
                   max={0}
                   step={0.1}
@@ -143,7 +140,7 @@
           <div>
             <h1 class="text-foreground text-lg">Горячие клавиши</h1>
             <div class="flex flex-col gap-2">
-              {#each g.keys.bindings.entries() as [action, key] (action)}
+              {#each g.keys.bindings.entries() as [ action, key ] (action)}
                 <div class="flex flex-row items-center justify-between">
                   <p class="text-muted-foreground text-base">
                     {actions[action]}

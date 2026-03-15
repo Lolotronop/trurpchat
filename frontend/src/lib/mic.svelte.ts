@@ -84,6 +84,22 @@ export class Mic {
     return this.#muted;
   }
 
+  get gain() {
+    return this.effects.nodes.gain.gain;
+  }
+  set gain(value) {
+    this.effects.nodes.gain.gain = value;
+    this.store.set("gain", value);
+  }
+
+  get threshold() {
+    return this.effects.nodes.gate.threshold;
+  }
+  set threshold(value) {
+    this.effects.nodes.gate.threshold = value;
+    this.store.set("gateThreshold", value);
+  }
+
   speaking: boolean = $state(false);
 
   peak: number = $state(0);
