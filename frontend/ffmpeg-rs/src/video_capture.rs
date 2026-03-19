@@ -343,6 +343,7 @@ impl GraphicsCaptureApiHandler for Capture {
 
     fn on_closed(&mut self) -> Result<(), Self::Error> {
         println!("Capture session ended");
+        self.flags.control_plane.stop();
         self.cleanup();
         Ok(())
     }
