@@ -90,6 +90,9 @@
 
       oven.audioSource = audioctx().createMediaStreamSource(stream);
       oven.audioSource.connect(oven.gainnode);
+      if (server.user.id === user.id) {
+        oven.gain = 0;
+      }
     });
   }
 
