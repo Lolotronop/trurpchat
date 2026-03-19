@@ -135,24 +135,25 @@ pub fn start(
     let video_encoder_thread = video_encoder.start_detached();
 
     let threads = vec![
-        video_capture_thread,
-        audio_capture_thread,
-        video_encoder_thread,
-        audio_encoder_thread,
-        writer_thread,
+        ("video_capture", video_capture_thread),
+        ("audio_capture", audio_capture_thread),
+        ("video_encoder", video_encoder_thread),
+        ("audio_encoder", audio_encoder_thread),
+        ("writer", writer_thread),
     ];
 
     threads
         .into_iter()
-        .map(|thread| {
+        .map(|(name, thread)| {
             thread::spawn({
                 let control_plane = control_plane.clone();
                 move || {
                     let err = thread.join();
                     if let Err(e) = err {
-                        println!("Error joining thread: {:?}", e);
+                        println!("Error joining thread {name}: {:?}", e);
                         control_plane.stop();
                     }
+                    println!("Thread {name} stopped");
                 }
             })
         })
