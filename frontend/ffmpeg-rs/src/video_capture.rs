@@ -1,18 +1,14 @@
 use crate::{
     audio_capture::AudioCaptureTarget,
-    audio_encoder::AUDIO_SAMPLE_RATE,
     control_plane::ControlPlane,
     frame_ring::FrameRing,
+    pts_source::{AudioPtsSource, PtsSource},
     scaler_shaders::{self, calculate_viewport},
     video_encoder::EncoderSettings,
 };
 
 use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicI64, Ordering},
-        mpsc::Sender,
-    },
+    sync::{Arc, mpsc::Sender},
     time::{Duration, Instant},
 };
 
@@ -68,7 +64,7 @@ pub struct HandlerFlags {
     pub settings: EncoderSettings,
     pub frame_ring: Arc<FrameRing>,
     pub pid_send: Sender<AudioCaptureTarget>,
-    pub last_sample_count: Arc<AtomicI64>,
+    pub pts_source: Arc<AudioPtsSource>,
 }
 
 struct Capture {
@@ -105,6 +101,79 @@ impl Capture {
         println!("Captured frames: {} ", self.captured);
         println!("Effective FPS: {} ", fps);
         self.flags.frame_ring.ack_wrote();
+    }
+
+    fn init(&mut self, frame: &mut Frame) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let device = frame.device();
+        let context = frame.device_context();
+        let width = self.flags.settings.width;
+        let height = self.flags.settings.height;
+
+        self.start = Instant::now();
+        scaler_shaders::setup_shaders(device, context)?;
+
+        // Texture Settings
+        let cpu_texture_desc = D3D11_TEXTURE2D_DESC {
+            Width: width,
+            Height: height,
+            MipLevels: 1,
+            ArraySize: 1,
+            Format: DXGI_FORMAT(frame.color_format() as i32),
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
+            Usage: D3D11_USAGE_STAGING,
+            BindFlags: 0,
+            CPUAccessFlags: D3D11_CPU_ACCESS_READ.0 as u32 | D3D11_CPU_ACCESS_WRITE.0 as u32,
+            MiscFlags: 0,
+        };
+
+        let render_texture_desc = D3D11_TEXTURE2D_DESC {
+            Width: width,
+            Height: height,
+            MipLevels: 1,
+            ArraySize: 1,
+            Format: DXGI_FORMAT_R8G8B8A8_UNORM,
+            SampleDesc: DXGI_SAMPLE_DESC {
+                Count: 1,
+                Quality: 0,
+            },
+            Usage: D3D11_USAGE_DEFAULT,
+            BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32 | D3D11_BIND_SHADER_RESOURCE.0 as u32,
+            CPUAccessFlags: 0,
+            MiscFlags: 0,
+        };
+
+        unsafe {
+            device.CreateTexture2D(&cpu_texture_desc, None, Some(&mut self.cpu_texture))?;
+            device.CreateTexture2D(&render_texture_desc, None, Some(&mut self.render_texture))?;
+
+            let texture = self.cpu_texture.as_ref().unwrap();
+            context.Map(
+                texture,
+                0,
+                D3D11_MAP_READ_WRITE,
+                0,
+                Some(&mut self.mapped_resource),
+            )?;
+
+            // Create a video frame
+            // this needs to be done every frame
+            // because the buffer is invalidated every time
+            let buf = av_buffer_create(
+                self.mapped_resource.pData.cast::<u8>(),
+                (frame.height() * self.mapped_resource.RowPitch) as usize,
+                None,
+                context.as_raw(),
+                0,
+            );
+            (*self.video_frame.as_mut_ptr()).buf[0] = buf;
+            (*self.video_frame.as_mut_ptr()).data[0] = self.mapped_resource.pData.cast::<u8>();
+            (*self.video_frame.as_mut_ptr()).linesize[0] = self.mapped_resource.RowPitch as i32;
+        };
+
+        Ok(())
     }
 }
 
@@ -143,87 +212,23 @@ impl GraphicsCaptureApiHandler for Capture {
         capture_control: InternalCaptureControl,
     ) -> Result<(), Self::Error> {
         let start = Instant::now();
+        if self.captured == 0 {
+            match self.init(frame) {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("Failed to initialize capture: {:?}", e);
+                    self.cleanup();
+                    capture_control.stop();
+                    self.flags.frame_ring.ack_wrote();
+                    return Ok(());
+                }
+            }
+        }
+
         let device = frame.device();
         let context = frame.device_context();
         let width = self.flags.settings.width;
         let height = self.flags.settings.height;
-
-        if self.captured == 0 {
-            self.start = Instant::now();
-            let res = scaler_shaders::setup_shaders(device, context);
-            if res.is_err() {
-                println!("Failed to setup shaders {:?}", res);
-                self.cleanup();
-                capture_control.stop();
-                self.flags.frame_ring.ack_wrote();
-                return Ok(());
-            }
-
-            // Texture Settings
-            let cpu_texture_desc = D3D11_TEXTURE2D_DESC {
-                Width: width,
-                Height: height,
-                MipLevels: 1,
-                ArraySize: 1,
-                Format: DXGI_FORMAT(frame.color_format() as i32),
-                SampleDesc: DXGI_SAMPLE_DESC {
-                    Count: 1,
-                    Quality: 0,
-                },
-                Usage: D3D11_USAGE_STAGING,
-                BindFlags: 0,
-                CPUAccessFlags: D3D11_CPU_ACCESS_READ.0 as u32 | D3D11_CPU_ACCESS_WRITE.0 as u32,
-                MiscFlags: 0,
-            };
-
-            let render_texture_desc = D3D11_TEXTURE2D_DESC {
-                Width: width,
-                Height: height,
-                MipLevels: 1,
-                ArraySize: 1,
-                Format: DXGI_FORMAT_R8G8B8A8_UNORM,
-                SampleDesc: DXGI_SAMPLE_DESC {
-                    Count: 1,
-                    Quality: 0,
-                },
-                Usage: D3D11_USAGE_DEFAULT,
-                BindFlags: D3D11_BIND_RENDER_TARGET.0 as u32 | D3D11_BIND_SHADER_RESOURCE.0 as u32,
-                CPUAccessFlags: 0,
-                MiscFlags: 0,
-            };
-
-            unsafe {
-                device.CreateTexture2D(&cpu_texture_desc, None, Some(&mut self.cpu_texture))?;
-                device.CreateTexture2D(
-                    &render_texture_desc,
-                    None,
-                    Some(&mut self.render_texture),
-                )?;
-
-                let texture = self.cpu_texture.as_ref().unwrap();
-                context.Map(
-                    texture,
-                    0,
-                    D3D11_MAP_READ_WRITE,
-                    0,
-                    Some(&mut self.mapped_resource),
-                )?;
-
-                // Create a video frame
-                // this needs to be done every frame
-                // because the buffer is invalidated every time
-                let buf = av_buffer_create(
-                    self.mapped_resource.pData.cast::<u8>(),
-                    (frame.height() * self.mapped_resource.RowPitch) as usize,
-                    None,
-                    context.as_raw(),
-                    0,
-                );
-                (*self.video_frame.as_mut_ptr()).buf[0] = buf;
-                (*self.video_frame.as_mut_ptr()).data[0] = self.mapped_resource.pData.cast::<u8>();
-                (*self.video_frame.as_mut_ptr()).linesize[0] = self.mapped_resource.RowPitch as i32;
-            }
-        }
 
         if self.flags.control_plane.should_stop() {
             if let Some(tex) = self.cpu_texture.as_ref() {
@@ -238,25 +243,8 @@ impl GraphicsCaptureApiHandler for Capture {
             return Ok(());
         }
 
-        let last_sample = self.flags.last_sample_count.load(Ordering::Relaxed);
-
-        let audio_time = last_sample as f64 / AUDIO_SAMPLE_RATE as f64;
-        let pts_frac = audio_time * self.flags.settings.fps as f64;
-        let mut pts = pts_frac as i64;
-
-        let last_pts = self.flags.frame_ring.last_pts();
-
-        if pts != 0 && pts == last_pts {
-            pts = pts_frac.round() as i64;
-        }
-
-        if pts != 0 && pts <= last_pts {
-            // println!("Didcard: l {} c {}", last_pts, pts_frac,);
+        if !self.flags.pts_source.should_process_video_frame() {
             return Ok(());
-        }
-
-        if pts - last_pts >= 2 {
-            println!("Skipped: {}", pts - last_pts,);
         }
 
         // self.flags.start.notify();
@@ -322,6 +310,7 @@ impl GraphicsCaptureApiHandler for Capture {
         let res = self.format_scaler.run(&self.video_frame, back);
         let scaler_dur = scaler_start.elapsed();
 
+        let pts = self.flags.pts_source.get_pts();
         back.set_pts(Some(pts));
         self.flags.frame_ring.ack_wrote();
 

@@ -27,9 +27,9 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // let srt_uri = "srt://trurpchr.ru:9999?streamid=trurpchr.ru/app/anita".to_string();
     // let srt_uri = "srt://trurpchr.ru:9999?streamid=127.0.0.1/app/1".to_string();
-    let destination = OutputDestination::Rtmp("rtmp://trurpchr.ru:1935/app/4".to_string());
+    // let destination = OutputDestination::Rtmp("rtmp://trurpchr.ru:1935/app/4".to_string());
     // let destination = OutputDestination::Rtmp("rtmp://localhost:1935/app/4".to_string());
-    // let destination = OutputDestination::Rtmp("output.flv".to_string());
+    let destination = OutputDestination::Rtmp("output.flv".to_string());
     // let destination = OutputDestination::Srt(srt_uri);
     // let destination = OutputDestination::Srt("output.ts".to_string());
 

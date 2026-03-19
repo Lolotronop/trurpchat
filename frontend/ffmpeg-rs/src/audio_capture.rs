@@ -1,15 +1,12 @@
 use crate::{
     audio_encoder::{AUDIO_FRAME_SIZE, AUDIO_SAMPLE_RATE, SharedDeque},
     control_plane::ControlPlane,
+    pts_source::AudioPtsSource,
 };
 
 use std::{
     collections::VecDeque,
-    sync::{
-        Arc,
-        atomic::{AtomicI64, Ordering},
-        mpsc::Receiver,
-    },
+    sync::{Arc, mpsc::Receiver},
     time::Instant,
 };
 
@@ -24,7 +21,7 @@ pub fn capture_audio(
     shared_deque: Arc<SharedDeque>,
     control_plane: ControlPlane,
     pid_rec: Receiver<AudioCaptureTarget>,
-    last_sample_count: Arc<AtomicI64>,
+    pts_source: Arc<AudioPtsSource>,
 ) {
     let samplerate = AUDIO_SAMPLE_RATE;
     let bits_per_sample = 32;
@@ -109,7 +106,7 @@ pub fn capture_audio(
             }
             samples_acc += samples;
 
-            last_sample_count.store(samples_acc as i64, Ordering::Relaxed);
+            pts_source.set_last_sample_count(samples_acc as i64);
 
             if let Err(e) = capture_client.read_from_device_to_deque(&mut local_deque) {
                 eprintln!("Audio read error: {:?}", e);

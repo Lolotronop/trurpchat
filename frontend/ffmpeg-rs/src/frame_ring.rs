@@ -1,8 +1,8 @@
 use ffmpeg_next::{format, frame};
 use parking_lot::{Condvar, Mutex};
-use std::{cell::UnsafeCell, time::Duration};
+use std::{cell::UnsafeCell, sync::Arc, time::Duration};
 
-use crate::control_plane;
+use crate::{control_plane, pts_source::PtsSource};
 
 struct Indicies {
     reader: usize,
@@ -20,11 +20,10 @@ impl Default for Indicies {
 
 pub struct FrameRing {
     bufs: Vec<UnsafeCell<*mut frame::Video>>,
-    // reader, writer
+    pts_source: Arc<dyn PtsSource>,
     idx: Mutex<Indicies>,
     cond: Condvar,
     capacity: usize,
-    fps: u32,
 
     pub repeated_frames: usize,
 }
@@ -33,7 +32,13 @@ unsafe impl Send for FrameRing {}
 unsafe impl Sync for FrameRing {}
 
 impl FrameRing {
-    pub fn new(capacity: usize, format: format::Pixel, width: u32, height: u32, fps: u32) -> Self {
+    pub fn new(
+        capacity: usize,
+        format: format::Pixel,
+        width: u32,
+        height: u32,
+        pts_source: Arc<dyn PtsSource>,
+    ) -> Self {
         let mut vec = Vec::with_capacity(capacity);
         for _ in 0..capacity {
             let frame = frame::Video::new(format, width, height);
@@ -45,7 +50,7 @@ impl FrameRing {
             cond: Condvar::new(),
             repeated_frames: 0,
             capacity,
-            fps,
+            pts_source,
         }
     }
 
@@ -65,11 +70,10 @@ impl FrameRing {
         );
 
         if res.timed_out() {
-            // TODO: switch to a audio-based PtsSource
-            // even in here. should be shared with video encoder
             let frame = self.get_mut(lock.reader);
-            if let Some(pts) = frame.pts() {
-                frame.set_pts(Some(pts + (self.fps / 4) as i64));
+            let pts = self.pts_source.get_pts();
+            if let Some(_) = frame.pts() {
+                frame.set_pts(Some(pts));
             }
         }
     }

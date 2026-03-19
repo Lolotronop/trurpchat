@@ -26,13 +26,10 @@ impl OutputDestination {
 pub struct VideoEncoderBuilder {
     control_plane: ControlPlane,
     output: Sender<ffmpeg::Packet>,
+    frame_ring: Arc<FrameRing>,
 
     codec: codec::codec::Codec,
     encoder: encoder::Video,
-    format: format::Pixel,
-    width: u32,
-    height: u32,
-    fps: u32,
     timebase: Rational,
 
     output_timebase: Option<Rational>,
@@ -105,6 +102,7 @@ impl VideoEncoderBuilder {
         global_header: bool,
         control_plane: ControlPlane,
         output: Sender<ffmpeg::Packet>,
+        frame_ring: Arc<FrameRing>,
     ) -> Result<Self, ffmpeg::Error> {
         let codecs = if settings.use_hw_accel {
             vec![
@@ -166,15 +164,12 @@ impl VideoEncoderBuilder {
         println!("Using codec: {:?}", codec.name());
 
         Ok(VideoEncoderBuilder {
-            width: settings.width,
-            height: settings.height,
-            fps: settings.fps,
             encoder,
             codec,
-            format,
             control_plane,
             output,
             timebase,
+            frame_ring,
             stream_index: None,
             output_timebase: None,
             audio_pts: None,
@@ -205,19 +200,12 @@ impl VideoEncoderBuilder {
     }
 
     pub fn build(self) -> VideoEncoder {
-        let frame_ring = Arc::new(FrameRing::new(
-            4,
-            self.format,
-            self.width,
-            self.height,
-            self.fps,
-        ));
         VideoEncoder {
             output: self.output,
             control_plane: self.control_plane,
-            frame_ring,
             encoder: self.encoder,
             timebase: self.timebase,
+            frame_ring: self.frame_ring,
             output_timebase: self.output_timebase.unwrap(),
             stream_index: self.stream_index.unwrap(),
         }
