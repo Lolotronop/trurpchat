@@ -174,7 +174,6 @@ export class WebRTC {
       throw new Error("Local stream not available");
     }
 
-    // Handle ICE candidates
     peer.pc.onicecandidate = (event) => {
       if (!event.candidate) {
         console.warn("No ice candidate");
@@ -188,7 +187,6 @@ export class WebRTC {
       });
     };
 
-    // Handle connection state changes
     peer.pc.onconnectionstatechange = () => {
       if (
         peer.pc.connectionState === "disconnected" ||

@@ -37,8 +37,7 @@ export class Server {
       if (this.rtc) this.rtc.handleSignalingMessage(msg);
     });
     this.gateway.onclose(() => {
-      this.rtc?.cleanup();
-      this.rtc = undefined;
+      this.leaveRoom(false);
     });
   }
 
