@@ -89,7 +89,7 @@
         muted={g.muted}
         deafened={g.deafened}
         camera={user.camera}
-        cameraStream={server.rtc!.cameraStream}
+        cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
       />
     {:else}
       <VoiceUserCard
@@ -102,7 +102,7 @@
       />
     {/if}
     {#if user.streaming}
-      <Stream server={server} user={user} />
+      <Stream {server} {user} />
     {/if}
   {/each}
 </div>

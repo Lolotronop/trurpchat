@@ -1,6 +1,6 @@
 <script lang="ts">
   import Avatar from "$lib/components/Avatar.svelte";
-  import { HeadphoneOff, MicOff } from "@lucide/svelte";
+  import { Camera, HeadphoneOff, MicOff } from "@lucide/svelte";
 
   type Props = {
     name: string;
@@ -22,7 +22,7 @@
 </script>
 
 <div
-  class="aspect-video flex w-full justify-center items-center rounded-md relative {camera ? "bg-black" : "bg-accent"} {speaking ? "outline outline-green-500" : ""}"
+  class="aspect-video flex w-full justify-center items-center rounded-md relative {camera && cameraStream ? "bg-black" : "bg-accent"} {speaking ? "outline outline-green-500" : ""}"
 >
   {#if camera && cameraStream !== undefined}
     <video class="w-full h-full object-fit" {@attach attachCamera} autoplay muted></video>
@@ -37,6 +37,9 @@
       {/if}
       {#if deafened}
         <HeadphoneOff class="size-4" />
+      {/if}
+      {#if camera}
+        <Camera class="size-4" />
       {/if}
     </div>
   </div>

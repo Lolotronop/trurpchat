@@ -1,11 +1,11 @@
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { ConnectedUser, Message, Room, User } from "trurpchat-backend";
 import type { Key } from "trurpchat-backend/src/db";
 import { Gateway } from "./gateway.svelte";
-import { getPlatformStore, type IPersistantStore } from "./webstore";
-import { WebRTC } from "./webrtc.svelte";
-import { sound } from "./sound.svelte";
 import { gitGud } from "./god.svelte";
-import { invoke, isTauri } from "@tauri-apps/api/core";
+import { sound } from "./sound.svelte";
+import { WebRTC } from "./webrtc.svelte";
+import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export type ServerDefinition = {
   name: string;
@@ -81,7 +81,7 @@ export class Server {
         return;
       }
 
-      let index = room.users.findIndex((u) => u.id === message.user.id);
+      const index = room.users.findIndex((u) => u.id === message.user.id);
       if (index === -1) {
         console.error(
           `event.voice.left: user ${message.user.id} not found in room ${message.room}`,
@@ -121,8 +121,8 @@ export class Server {
   }
 
   findUser(id: number) {
-    let online = this.users.online.find((u) => u.id === id);
-    let offline = this.users.offline.find((u) => u.id === id);
+    const online = this.users.online.find((u) => u.id === id);
+    const offline = this.users.offline.find((u) => u.id === id);
     return online ?? offline;
   }
 
@@ -147,8 +147,7 @@ export class Server {
       this.leaveRoom();
     }
 
-    // TODO: we are still grabbing mic from the god
-    this.rtc = new WebRTC(gitGud().mic, this, room);
+    this.rtc = new WebRTC(gitGud().mic, gitGud().camera, this, room);
 
     this.gateway.send({
       type: "action.voice.join",

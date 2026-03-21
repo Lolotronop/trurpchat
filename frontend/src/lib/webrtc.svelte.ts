@@ -1,10 +1,11 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ConnectedUser, Message, VoiceChat } from "trurpchat-backend";
 import { audioctx } from "./audio/context";
-import type { Server } from "./servers.svelte";
-import { Peer } from "./webrtc-peer.svelte";
-import { sound } from "./sound.svelte";
+import type { Camera } from "./camera.svelte";
 import type { Mic } from "./mic.svelte";
+import type { Server } from "./servers.svelte";
+import { sound } from "./sound.svelte";
+import { Peer } from "./webrtc-peer.svelte";
 
 // TODO: this whould be dictated by the current server
 const TURN_SERVER_IP = "45.143.95.55";
@@ -30,7 +31,6 @@ export class WebRTC {
   peers = new SvelteMap<number, Peer>();
   connectedFor: number = $state(0);
   connectedTimeout: NodeJS.Timeout | null = null;
-  cameraStream: MediaStream | undefined = $state(undefined);
 
   #streaming: boolean = $state(false);
   get streaming() {
@@ -56,9 +56,9 @@ export class WebRTC {
     });
   }
 
-  #camera: boolean = $state(false);
+  #cameraEnabled: boolean = $state(false);
   get camera() {
-    return this.#camera;
+    return this.#cameraEnabled;
   }
   set camera(value: boolean) {
     try {
@@ -72,15 +72,20 @@ export class WebRTC {
       return;
     }
 
-    this.#camera = value;
+    this.#cameraEnabled = value;
     this.server.gateway.send({
       type: "action.voice.userstate",
       camera: value,
     });
   }
 
+  get cameraStream(): MediaStream | undefined {
+    return this.cam?.stream;
+  }
+
   constructor(
     public mic: Mic,
+    public cam: Camera,
     public server: Server,
     public room: VoiceChat,
   ) {
@@ -203,7 +208,7 @@ export class WebRTC {
 
     peer.pc.onnegotiationneeded = async (event) => {
       console.log("onnegotiationneeded", event);
-      let offer = await peer.pc.createOffer();
+      const offer = await peer.pc.createOffer();
       // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
       // offer = { ...offer, sdp };
       await peer.pc.setLocalDescription(offer);
@@ -232,7 +237,7 @@ export class WebRTC {
     const chan = peer.pc.createDataChannel("speaking");
     peer.setDatachannel(chan);
 
-    let offer = await peer.pc.createOffer();
+    const offer = await peer.pc.createOffer();
     // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
     // offer = { ...offer, sdp };
     await peer.pc.setLocalDescription(offer);
@@ -250,7 +255,7 @@ export class WebRTC {
 
     await peer.pc.setRemoteDescription(offer);
 
-    let answer = await peer.pc.createAnswer();
+    const answer = await peer.pc.createAnswer();
     // const sdp = setAudioMaxInSDP(answer.sdp, BITRATE, CHANNELS);
     // answer = { ...answer, sdp };
     await peer.pc.setLocalDescription(answer);
@@ -283,25 +288,22 @@ export class WebRTC {
   }
 
   async enableCamera() {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: false,
-    });
-    this.cameraStream = stream;
+    await this.cam.enable();
+    const stream = this.cam.stream;
+    if (!stream) {
+      return;
+    }
     for (const peer of this.peers.values()) {
-      peer.pc.addTrack(stream.getVideoTracks()[0], this.cameraStream);
+      peer.pc.addTrack(stream.getVideoTracks()[0], stream);
     }
   }
 
   disableCamera() {
-    const stream = this.cameraStream;
+    const stream = this.cam.stream;
     if (!stream) {
       return;
     }
-    this.cameraStream?.getTracks().forEach((track) => {
-      track.stop();
-    });
-    this.cameraStream = undefined;
+    this.cam.disable();
   }
 
   cleanup() {
@@ -315,11 +317,8 @@ export class WebRTC {
     this.connectedTimeout = null;
     this.peers.clear();
     this.mic.disconnect();
-    this.cameraStream?.getTracks().forEach((track) => {
-      track.stop();
-    });
+    this.cam.disable();
     this.camera = false;
-    this.cameraStream = undefined;
     this.streaming = false;
     this.watching = null;
   }

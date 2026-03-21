@@ -1,14 +1,16 @@
-import { Mic } from "./mic.svelte";
-import { Shortcuts } from "./shortcuts.svelte";
-import { Settings } from "./settings.svelte";
-import { Theme } from "./theme.svelte";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { sound } from "./sound.svelte";
-import { WakeLockContainer } from "./wakelock";
 import { audioctx } from "./audio/context";
+import { Camera } from "./camera.svelte";
+import { Mic } from "./mic.svelte";
 import { ServerManager } from "./servers.svelte";
+import { Settings } from "./settings.svelte";
+import { Shortcuts } from "./shortcuts.svelte";
+import { sound } from "./sound.svelte";
+import { Theme } from "./theme.svelte";
+import { WakeLockContainer } from "./wakelock";
 
 export class God {
+  camera: Camera;
   mic: Mic;
   lock: WakeLockContainer;
   keys: Shortcuts = new Shortcuts();
@@ -74,6 +76,7 @@ export class God {
 
   constructor() {
     this.settings = new Settings();
+    this.camera = new Camera();
     this.mic = new Mic();
     this.lock = new WakeLockContainer();
     this.lock.lock();
