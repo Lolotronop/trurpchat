@@ -55,7 +55,7 @@ export class Camera {
     const settings: MediaTrackConstraints = {};
 
     if (this.deviceId) {
-      settings.deviceId = this.deviceId;
+      settings.deviceId = { exact: this.deviceId };
     }
 
     try {

@@ -159,7 +159,7 @@ export class Mic {
     };
 
     if (this.deviceId) {
-      settings.deviceId = this.deviceId;
+      settings.deviceId = { exact: this.deviceId };
     }
 
     try {
