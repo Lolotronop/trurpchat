@@ -66,6 +66,10 @@
       g.mic.connect();
       g.mic.enableAnalyzer();
     }
+
+    if (!open) {
+      disableCameraPreview();
+    }
   }}
 >
   <Dialog.Trigger>
