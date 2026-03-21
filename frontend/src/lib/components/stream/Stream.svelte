@@ -115,7 +115,7 @@
 
     el.onmouseleave = () => {
       clearTimeout(timeout);
-      shouldHide = false;
+      shouldHide = true;
     };
 
     el.addEventListener("dblclick", toggleFullscreen);
