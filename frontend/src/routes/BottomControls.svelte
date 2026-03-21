@@ -1,7 +1,4 @@
 <script lang="ts">
-  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-  import { Button } from "$lib/components/ui/button";
-  import { gitGud } from "$lib/god.svelte";
   import {
     Camera,
     HeadphoneOff,
@@ -12,16 +9,18 @@
     MonitorUp,
     PhoneOff,
   } from "@lucide/svelte";
-
-  import type { Server } from "$lib/servers.svelte";
-  import Avatar from "$lib/components/Avatar.svelte";
-  import Settings from "./Settings.svelte";
   import { invoke, isTauri } from "@tauri-apps/api/core";
-  import StreamSettings from "./StreamSettings.svelte";
   import { listen } from "@tauri-apps/api/event";
+  import Avatar from "$lib/components/Avatar.svelte";
+  import { Button } from "$lib/components/ui/button";
   import { Label } from "$lib/components/ui/label";
   import { Switch } from "$lib/components/ui/switch";
-  import * as Select from "$lib/components/ui/select";
+  import * as Tooltip from "$lib/components/ui/tooltip";
+  import { gitGud } from "$lib/god.svelte";
+  import Settings from "./Settings.svelte";
+  import type { Server } from "$lib/servers.svelte";
+  import StreamSettings from "./StreamSettings.svelte";
+
   const g = gitGud();
 
   type Props = {
@@ -171,41 +170,11 @@
             </Button>
           </Tooltip.Trigger>
           <Tooltip.Content>
-            <div>
-              <Select.Root
-                type="single"
-                onValueChange={(value) => {
-                  let was = rtc.camera;
-                  rtc.camera = false;
-                  g.camera.deviceId = value;
-                  console.log(value);
-                  if (was) rtc.camera = true;
-                }}
-              >
-                <Select.Trigger
-                  class="w-full"
-                  onclick={() => {
-                      g.camera.updateDevices();
-                    }}
-                >
-                  {g.camera.devices.find(
-                      (device) => device.deviceId === g.camera.deviceId,
-                    )?.label ?? "Не выбрано"}
-                </Select.Trigger>
-                <Select.Content>
-                  {#each g.camera.devices as device}
-                    <Select.Item value={device.deviceId}>
-                      {device.label}
-                    </Select.Item>
-                  {/each}
-                </Select.Content>
-              </Select.Root>
-            </div>
             <div class="flex flex-row items-center justify-between gap-2">
-              <Label class="w-full" for="hw-accell">
+              <Label class="w-full" for="show-my-camera">
                 Показывать мою камеру
               </Label>
-              <Switch id="hw-accell" bind:checked={g.camera.showMyVideo} />
+              <Switch id="show-my-camera" bind:checked={g.camera.showMyVideo} />
             </div>
           </Tooltip.Content>
         </Tooltip.Root>
@@ -265,7 +234,7 @@
         {/if}
       </Button>
 
-      <Settings />
+      <Settings {server} />
     </div>
   </div>
 </div>

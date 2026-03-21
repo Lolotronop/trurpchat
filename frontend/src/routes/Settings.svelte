@@ -1,25 +1,28 @@
 <script lang="ts">
+  import { MoonIcon, Settings, SunIcon, X } from "@lucide/svelte";
+  import { mode, toggleMode } from "mode-watcher";
+  import AnalyzerDisplay from "$lib/components/AnalyzerDisplay.svelte";
+  import GainSlider from "$lib/components/GainSlider.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
-  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
-  import * as Select from "$lib/components/ui/select/index.js";
-  import { gitGud } from "$lib/god.svelte";
-  import { MoonIcon, Settings, SunIcon, X } from "@lucide/svelte";
-  import GainSlider from "$lib/components/GainSlider.svelte";
-  import AnalyzerDisplay from "$lib/components/AnalyzerDisplay.svelte";
-  import { actions } from "$lib/shortcuts.svelte";
-  import { Switch } from "$lib/components/ui/switch";
   import { Label } from "$lib/components/ui/label";
-  import { Slider } from "$lib/components/ui/slider";
-  import { toggleMode } from "mode-watcher";
   import ScrollArea from "$lib/components/ui/scroll-area/scroll-area.svelte";
+  import * as Select from "$lib/components/ui/select/index.js";
+  import { Slider } from "$lib/components/ui/slider";
+  import { Switch } from "$lib/components/ui/switch";
   import Textarea from "$lib/components/ui/textarea/textarea.svelte";
-  import { mode } from "mode-watcher";
+  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
+  import { gitGud } from "$lib/god.svelte";
+  import { actions } from "$lib/shortcuts.svelte";
   import { themes } from "$lib/theme.svelte";
+  import type { Server } from "$lib/servers.svelte";
 
   const g = gitGud();
 
-  // TODO: redo this with the selected server context
+  type Props = {
+    server: Server;
+  };
+  const { server }: Props = $props();
 
   let copied = $state(false);
   $effect(() => {
@@ -132,6 +135,50 @@
                   class={`transition-[filter] duration-50 ${g.mic.speaking ? "" : "saturate-0"}`}
                 >
                   <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
+            <h1 class="text-foreground text-lg">Камера</h1>
+            <div class="flex w-full flex-col gap-6">
+              <div class="flex flex-col gap-2">
+                <h1>Выбор устройства</h1>
+                <Select.Root
+                  type="single"
+                  onValueChange={(value) => {
+                    const was = server.rtc?.camera;
+                    if (server.rtc) server.rtc.camera = false;
+                    g.camera.deviceId = value;
+                    if (was && server.rtc) server.rtc.camera = true;
+                  }}
+                >
+                  <Select.Trigger
+                    class="w-full"
+                    onclick={() => {
+                      g.camera.updateDevices();
+                    }}
+                  >
+                    {g.camera.devices.find(
+                      (device) => device.deviceId === g.camera.deviceId,
+                    )?.label ?? "Не выбрано"}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each g.camera.devices as device}
+                      <Select.Item value={device.deviceId}>
+                        {device.label}
+                      </Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+
+                <div class="flex items-center space-x-2">
+                  <Switch
+                    id="show-my-camera"
+                    bind:checked={g.camera.showMyVideo}
+                  />
+                  <Label for="show-my-camera">Показывать мою камеру</Label>
                 </div>
               </div>
             </div>
