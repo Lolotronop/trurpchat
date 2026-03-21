@@ -5,6 +5,7 @@ export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
   connected: boolean = $state(false);
   private callbacks: Array<(data: Message) => void> = $state([]);
+  oncloseCallback = () => {};
   constructor() {
     super();
   }
@@ -45,11 +46,13 @@ export class Gateway extends EventTarget {
 
     socket.addEventListener("close", () => {
       this.connected = false;
+      this.oncloseCallback();
     });
 
     socket.addEventListener("error", (error) => {
       console.error("Error connecting to Gateway:", error);
       this.connected = false;
+      this.oncloseCallback();
     });
 
     socket.addEventListener("message", (_) => {
@@ -79,6 +82,10 @@ export class Gateway extends EventTarget {
       }
       callback(data);
     });
+  }
+
+  onclose(callback: () => void) {
+    this.oncloseCallback = callback;
   }
 
   send(data: ClientAction) {
