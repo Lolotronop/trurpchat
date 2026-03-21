@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MoonIcon, Settings, SunIcon, X } from "@lucide/svelte";
+  import { Eye, EyeOff, MoonIcon, Settings, SunIcon, X } from "@lucide/svelte";
   import { mode, toggleMode } from "mode-watcher";
   import AnalyzerDisplay from "$lib/components/AnalyzerDisplay.svelte";
   import GainSlider from "$lib/components/GainSlider.svelte";
@@ -13,9 +13,9 @@
   import Textarea from "$lib/components/ui/textarea/textarea.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
   import { gitGud } from "$lib/god.svelte";
+  import type { Server } from "$lib/servers.svelte";
   import { actions } from "$lib/shortcuts.svelte";
   import { themes } from "$lib/theme.svelte";
-  import type { Server } from "$lib/servers.svelte";
 
   const g = gitGud();
 
@@ -25,6 +25,8 @@
   const { server }: Props = $props();
 
   let copied = $state(false);
+  let cameraPreviewOpen = $state(false);
+
   $effect(() => {
     if (copied) {
       setTimeout(() => {
@@ -32,6 +34,27 @@
       }, 2000);
     }
   });
+
+  function enableCameraPreview() {
+    if (server.rtc === undefined || !server.rtc.camera) {
+      g.camera.enable();
+    }
+  }
+
+  function disableCameraPreview() {
+    if (server.rtc === undefined || !server.rtc.camera) {
+      g.camera.disable();
+    }
+  }
+
+  function toggleCameraPreview() {
+    cameraPreviewOpen = !cameraPreviewOpen;
+    if (cameraPreviewOpen) {
+      enableCameraPreview();
+    } else {
+      disableCameraPreview();
+    }
+  }
 </script>
 
 <Dialog.Root
@@ -143,15 +166,44 @@
           <div class="flex flex-col gap-2">
             <h1 class="text-foreground text-lg">Камера</h1>
             <div class="flex w-full flex-col gap-6">
+              {#if cameraPreviewOpen && g.camera.stream}
+                <div
+                  class="aspect-video w-full overflow-hidden rounded-md bg-black"
+                >
+                  <video
+                    class="h-full w-full object-fit"
+                    srcObject={g.camera.stream}
+                    autoplay
+                    muted
+                  ></video>
+                </div>
+              {/if}
+
               <div class="flex flex-col gap-2">
-                <h1>Выбор устройства</h1>
+                <div class="flex items-center justify-between">
+                  <h1>Выбор устройства</h1>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onclick={toggleCameraPreview}
+                  >
+                    {#if cameraPreviewOpen}
+                      <EyeOff class="size-4" />
+                    {:else}
+                      <Eye class="size-4" />
+                    {/if}
+                  </Button>
+                </div>
                 <Select.Root
                   type="single"
                   onValueChange={(value) => {
-                    const was = server.rtc?.camera;
+                    const wasRtc = server.rtc?.camera;
+                    const wasPreviewOpen = cameraPreviewOpen;
                     if (server.rtc) server.rtc.camera = false;
+                    if (cameraPreviewOpen) disableCameraPreview();
                     g.camera.deviceId = value;
-                    if (was && server.rtc) server.rtc.camera = true;
+                    if (wasRtc && server.rtc) server.rtc.camera = true;
+                    if (wasPreviewOpen) enableCameraPreview();
                   }}
                 >
                   <Select.Trigger
