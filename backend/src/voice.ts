@@ -32,7 +32,9 @@ export class VoiceChatInstance {
   send(message: Message) {
     try {
       const json = JSON.stringify(message);
-      this.clients.forEach((ws) => ws.send(json));
+      this.clients.forEach((ws) => {
+        ws.send(json);
+      });
     } catch (error) {
       console.error(`Error sending message to room ${this.data.name}:`, error);
     }
@@ -76,7 +78,9 @@ export class Hotel {
       console.log(`Room ${id} is not a voice room`);
       return;
     }
-    this.rooms.forEach(() => room.remove(client));
+    this.rooms.forEach(() => {
+      room.remove(client);
+    });
     room.add(client);
   }
 

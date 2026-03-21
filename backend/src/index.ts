@@ -6,6 +6,7 @@ import { handleMessage, type HandlerContext } from "./handler";
 import { send, sendAll } from "./send";
 import { db, keys, rooms, users } from "./db";
 import { seed } from "./devseed";
+import { voiceHandlers } from "./handler/voice";
 
 await seed();
 
@@ -138,7 +139,14 @@ Bun.serve<ConnectedUser, never>({
     },
 
     async close(ws) {
-      ctx.hotel.remove(ws);
+      let room = ctx.hotel.roomByClient(ws);
+      if (room) {
+        voiceHandlers["action.voice.leave"](ctx, ws, {
+          type: "action.voice.leave",
+          room: room.data.id,
+        });
+      }
+
       ctx.clients.delete(ws.data.id);
       ctx.clients.forEach((client) => {
         send(client, {
