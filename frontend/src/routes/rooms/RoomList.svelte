@@ -6,6 +6,7 @@
   import VoiceRoom from "./VoiceRoom.svelte";
   import RoomForm from "./RoomForm.svelte";
   import type { EditingRoom } from "./RoomForm.svelte";
+  import TextRoom from "./TextRoom.svelte";
 
   type Props = {
     server: Server;
@@ -22,12 +23,17 @@
     });
     editOpen = false;
   }
+
+  $inspect(server.rooms);
 </script>
 
 <div class="h-full p-2">
   {#each server.rooms as room (room.id)}
     {#if room.type === "voice"}
       <VoiceRoom {room} server={server!} {rtc} />
+    {/if}
+    {#if room.type === "text"}
+      <TextRoom {room} server={server!} />
     {/if}
   {/each}
   {#if server.user.permissions === 1}

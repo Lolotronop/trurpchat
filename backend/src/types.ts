@@ -151,6 +151,7 @@ export type RoomAction =
 
 export type RoomEvent =
   | {
+      // TODO: fix other places where voice is assumed
       type: "event.room.list";
       rooms: Room[];
     }

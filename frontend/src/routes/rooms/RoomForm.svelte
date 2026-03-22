@@ -38,15 +38,6 @@
   <div class="flex flex-row gap-8">
     <Label for="type">Тип</Label>
     <ButtonGroup.Root id="type" class="w-full">
-      <Button
-        type="button"
-        variant="secondary"
-        onclick={() => room.type = "voice"}
-      >
-        Голосовая
-      </Button>
-      <Button type="button" variant="outline">Текстовая</Button>
-
       <ToggleGroup.Root type="single" variant="outline" bind:value={room.type}>
         <ToggleGroup.Item value="voice" class="text-sm">
           Голосовая
