@@ -17,8 +17,9 @@
   import { Switch } from "$lib/components/ui/switch";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
-  import Settings from "./Settings.svelte";
   import type { Server } from "$lib/servers.svelte";
+  import { StreamSettings as StreamSettingsClass } from "$lib/stream-settings.svelte";
+  import Settings from "./Settings.svelte";
   import StreamSettings from "./StreamSettings.svelte";
 
   const g = gitGud();
@@ -38,15 +39,7 @@
 
   let rtc = $derived(server.rtc);
 
-  let streamSettings = $state({
-    width: 1920,
-    height: 1080,
-    audioBitrate: 192_000,
-    videoBitrate: 6 * 1000 * 1000,
-    fps: 24,
-    presetNum: 1,
-    useHwAccel: true,
-  });
+  let streamSettings = $state(new StreamSettingsClass());
 
   if (isTauri()) {
     listen<boolean>("stream-status", (event) => {
@@ -107,7 +100,13 @@
                   if (!domain) return;
                   const options = {
                     url: `rtmp://${domain}:1935/app/${server.user.id}`, 
-                    ...streamSettings
+                    width: streamSettings.width,
+                    height: streamSettings.height,
+                    audioBitrate: streamSettings.audioBitrate,
+                    videoBitrate: streamSettings.videoBitrate,
+                    fps: streamSettings.fps,
+                    presetNum: streamSettings.presetNum,
+                    useHwAccel: streamSettings.useHwAccel
                   };
                   invoke("start_stream", options);
                 }}

@@ -4,16 +4,10 @@
   import { Switch } from "$lib/components/ui/switch";
   import * as ToggleGroup from "$lib/components/ui/toggle-group";
 
+  import type { StreamSettings } from "$lib/stream-settings.svelte";
+
   type Props = {
-    settings: {
-      width: number;
-      height: number;
-      audioBitrate: number;
-      videoBitrate: number;
-      fps: number;
-      presetNum: number;
-      useHwAccel: boolean;
-    };
+    settings: StreamSettings;
   };
 
   const { settings = $bindable() }: Props = $props();
@@ -28,7 +22,6 @@
     (v) => {
       if (!v) return;
       settings.height = parseInt(v);
-      settings.width = settings.height / 9 * 16;
     }}
   >
     <ToggleGroup.Item value="720" class="text-sm"> 720p </ToggleGroup.Item>
@@ -78,8 +71,7 @@
     bind:value={() => ((settings.videoBitrate / 1000).toString()), 
     (v) => {
       if (!v) return;
-      settings.videoBitrate = parseInt(v);
-      settings.videoBitrate = settings.videoBitrate * 1000;
+      settings.videoBitrate = parseInt(v) * 1000;
     }}
   >
     <ToggleGroup.Item value="2000" class="text-sm"> 2000 </ToggleGroup.Item>
