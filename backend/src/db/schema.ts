@@ -1,6 +1,6 @@
 import { defineRelations, sql } from "drizzle-orm";
-import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import * as t from "drizzle-orm/sqlite-core";
+import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 
 export const users = table("users", {
   id: t.integer({ mode: "number" }).primaryKey(),
@@ -40,6 +40,7 @@ export const rooms = table("rooms", {
   name: t.text({ length: 255 }).notNull(),
   type: t.text({ mode: "text", enum: CHANNEL_TYPES }).notNull(),
   order: t.real().notNull(),
+  nextMessageId: t.integer().notNull().default(0),
   deletedAt: t.integer({ mode: "timestamp_ms" }),
 });
 
@@ -100,10 +101,7 @@ export const messages = table(
   (tb) => [t.primaryKey({ columns: [tb.id, tb.roomId] })],
 );
 
-export const room_last_id = table("room_last_id", {
-  roomId: t.integer({ mode: "number" }).primaryKey(),
-  lastId: t.integer().notNull(),
-});
+export type Message = typeof messages.$inferSelect;
 
 export const relations = defineRelations(
   { users, keys, messages, rooms },

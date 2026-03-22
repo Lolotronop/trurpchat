@@ -1,4 +1,10 @@
-import type { Key, Room as RoomData, User } from "./db/schema";
+import type {
+  Key,
+  Message as MessageData,
+  Room as RoomData,
+  User,
+} from "./db/schema";
+
 export type { Room as RoomData, User } from "./db/schema";
 
 type Flatten<T> = { [K in keyof T]: T[K] } & {};
@@ -150,6 +156,51 @@ export type RoomEvent =
       room: Room;
     };
 
+export type MessageAction =
+  | {
+      type: "action.message.create";
+      roomId: number;
+      text: string;
+      replyTo?: number;
+    }
+  | {
+      type: "action.message.edit";
+      roomId: number;
+      id: number;
+      text: string;
+    }
+  | {
+      type: "action.message.delete";
+      roomId: number;
+      id: number;
+    }
+  | {
+      type: "action.message.list";
+      roomId: number;
+      /** the 50-aligned block number */
+      block: number;
+    };
+
+export type MessageEvent =
+  | {
+      type: "event.message.created";
+      message: MessageData;
+    }
+  | {
+      type: "event.message.edited";
+      message: MessageData;
+    }
+  | {
+      type: "event.message.deleted";
+      roomId: number;
+      id: number;
+    }
+  | {
+      type: "event.message.list";
+      roomId: number;
+      messages: MessageData[];
+    };
+
 export type OtherEvent =
   | {
       type: "event.oven";
@@ -166,6 +217,7 @@ export type ClientAction =
   | KeyAction
   | UserAction
   | RoomAction
+  | MessageAction
   | RtcMessage;
 export type ServerEvent =
   | VoiceEvent
@@ -173,6 +225,7 @@ export type ServerEvent =
   | UserEvent
   | RtcMessage
   | RoomEvent
+  | MessageEvent
   | OtherEvent;
 
 export type Message = ClientAction | ServerEvent;

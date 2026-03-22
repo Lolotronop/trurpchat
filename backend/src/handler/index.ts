@@ -1,12 +1,13 @@
 import { err } from "neverthrow";
-import type { Message, ClientAction } from "$src/types";
-import { type WsClient } from "$src/voice";
-import type { HandlerContext } from "./types";
-import { rtcHandlers } from "./rtc";
-import { voiceHandlers } from "./voice";
+import type { ClientAction, Message } from "$src/types";
+import type { WsClient } from "$src/voice";
 import { keyHandlers } from "./key";
-import { userHandlers } from "./user";
+import { messageHandlers } from "./message";
 import { roomHandlers } from "./room";
+import { rtcHandlers } from "./rtc";
+import type { HandlerContext } from "./types";
+import { userHandlers } from "./user";
+import { voiceHandlers } from "./voice";
 
 export type { HandlerContext } from "./types";
 
@@ -16,6 +17,7 @@ const handlers = {
   ...keyHandlers,
   ...userHandlers,
   ...roomHandlers,
+  ...messageHandlers,
 } as const;
 
 // TODO: maybe rename rtc to actions too?

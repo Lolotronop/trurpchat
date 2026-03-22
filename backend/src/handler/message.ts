@@ -1,0 +1,159 @@
+import { and, eq, gte, lte } from "drizzle-orm";
+import { err, ok } from "neverthrow";
+import { db, messages, rooms } from "$src/db";
+import { send, sendAll } from "$src/send";
+import type { MessageAction } from "$src/types";
+import type { Handlers } from "./types";
+
+export const messageHandlers: Handlers<MessageAction> = {
+  "action.message.create": async (ctx, ws, { roomId, text, replyTo }) => {
+    const userId = ws.data.id;
+
+    if (replyTo) {
+      const replyToMessage = await db
+        .select()
+        .from(messages)
+        .where(and(eq(messages.id, replyTo), eq(messages.roomId, roomId)))
+        .limit(1);
+
+      if (!replyToMessage) {
+        return err(new Error("Reply to message not found"));
+      }
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const [lastIdRow] = await tx
+        .select({ nextMessageId: rooms.nextMessageId })
+        .from(rooms)
+        .where(eq(rooms.id, roomId))
+        .limit(1);
+
+      if (!lastIdRow) {
+        return;
+      }
+
+      const id = lastIdRow.nextMessageId;
+
+      await tx
+        .update(rooms)
+        .set({ nextMessageId: id + 1 })
+        .where(eq(rooms.id, roomId));
+
+      return tx
+        .insert(messages)
+        .values({
+          id,
+          roomId,
+          userId,
+          text,
+          replyTo,
+        })
+        .returning();
+    });
+
+    if (!result) {
+      return err(new Error("Failed to create message. Room doens't exist"));
+    }
+
+    const message = result[0]!;
+
+    sendAll(ctx.clients.values(), {
+      type: "event.message.created",
+      message,
+    });
+
+    return ok();
+  },
+
+  "action.message.edit": async (ctx, ws, { roomId, id, text }) => {
+    const userId = ws.data.id;
+
+    const updated = await db
+      .update(messages)
+      .set({ text, editedAt: new Date() })
+      .where(
+        and(
+          eq(messages.id, id),
+          eq(messages.roomId, roomId),
+          eq(messages.userId, userId),
+        ),
+      )
+      .returning();
+
+    if (updated.length === 0) {
+      return err(
+        new Error("Message not found or you don't have permission to edit it"),
+      );
+    }
+
+    sendAll(ctx.clients.values(), {
+      type: "event.message.edited",
+      message: updated[0]!,
+    });
+
+    return ok();
+  },
+
+  "action.message.delete": async (ctx, ws, { roomId, id }) => {
+    const userId = ws.data.id;
+    const isAdmin = ws.data.permissions === 1;
+
+    const [existing] = await db
+      .select()
+      .from(messages)
+      .where(and(eq(messages.id, id), eq(messages.roomId, roomId)))
+      .limit(1);
+
+    if (!existing) {
+      return err(new Error("Message not found"));
+    }
+
+    if (existing.userId !== userId && !isAdmin) {
+      return err(new Error("You can only delete your own messages"));
+    }
+
+    await db
+      .update(messages)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(messages.id, id), eq(messages.roomId, roomId)));
+
+    sendAll(ctx.clients.values(), {
+      type: "event.message.deleted",
+      roomId,
+      id,
+    });
+
+    return ok();
+  },
+
+  "action.message.list": async (ctx, ws, { roomId, block }) => {
+    const BLOCK_SIZE = 50;
+    const msg = await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.roomId, roomId),
+          gte(messages.id, block),
+          lte(messages.id, block + BLOCK_SIZE),
+        ),
+      )
+      .orderBy(messages.id);
+
+    for (const m of msg) {
+      if (m.deletedAt) {
+        m.text = "";
+        m.attachments = null;
+        m.replyTo = null;
+      }
+    }
+
+    send(ws, {
+      type: "event.message.list",
+      roomId,
+      messages: msg,
+    });
+
+    return ok();
+  },
+};
