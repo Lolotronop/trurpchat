@@ -1,6 +1,12 @@
 import { env } from "bun";
 import { eq, getColumns } from "drizzle-orm";
-import type { Message, ConnectedUser, ConnectedUserState, User } from "./types";
+import type {
+  Message,
+  ConnectedUser,
+  ConnectedUserState,
+  User,
+  Room,
+} from "./types";
 import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
 import { handleMessage, type HandlerContext } from "./handler";
 import { send, sendAll } from "./send";
@@ -99,9 +105,16 @@ Bun.serve<ConnectedUser, never>({
         type: "event.connected",
         user: ws.data,
       });
+
+      const textRooms = (await db
+        .select()
+        .from(rooms)
+        .where(eq(rooms.type, "text"))) as Extract<Room, { type: "text" }>[];
+
+      const thing = [...ctx.hotel.toJson(), ...textRooms];
       send(ws, {
         type: "event.room.list",
-        rooms: ctx.hotel.toJson(),
+        rooms: thing,
       });
 
       const ovenServerUrl = env.OVEN_SERVER_URL;
