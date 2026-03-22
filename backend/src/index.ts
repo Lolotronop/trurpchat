@@ -21,7 +21,11 @@ const ctx: HandlerContext = {
   hotel: new Hotel(),
 };
 const existingRooms = await db.select().from(rooms);
-ctx.hotel.rooms.push(...existingRooms.map((r) => new VoiceChatInstance(r)));
+for (const r of existingRooms) {
+  if (r.type === "voice") {
+    ctx.hotel.rooms.push(new VoiceChatInstance(r));
+  }
+}
 
 const PORT = +(env.PORT ?? 3000);
 
