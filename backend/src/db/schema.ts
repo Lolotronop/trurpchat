@@ -11,6 +11,7 @@ export const users = table("users", {
    * as a bit mask. The "catchall" admin wil stay at 1, I guess
    */
   permissions: t.integer({ mode: "number" }).notNull(),
+  deletedAt: t.integer({ mode: "timestamp_ms" }),
 });
 
 export type User = typeof users.$inferSelect;
@@ -39,6 +40,7 @@ export const rooms = table("rooms", {
   name: t.text({ length: 255 }).notNull(),
   type: t.text({ mode: "text", enum: CHANNEL_TYPES }).notNull(),
   order: t.real().notNull(),
+  deletedAt: t.integer({ mode: "timestamp_ms" }),
 });
 
 export type Room = typeof rooms.$inferSelect;
