@@ -135,7 +135,10 @@ export type UserEvent =
 export type RoomAction =
   | {
       type: "action.room.create";
-      room: Omit<RoomData, "id">;
+      room: Omit<
+        RoomData,
+        "id" | "createdAt" | "deletedAt" | "nextMessageId" | "order"
+      >;
     }
   | {
       type: "action.room.delete";
@@ -143,7 +146,7 @@ export type RoomAction =
     }
   | {
       type: "action.room.update";
-      room: RoomData;
+      room: Partial<RoomData> & Pick<RoomData, "id">;
     };
 
 export type RoomEvent =

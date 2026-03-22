@@ -1,11 +1,15 @@
 <script lang="ts">
   import type { RoomData } from "trurpchat-backend";
   import * as ButtonGroup from "$lib/components/ui/button-group";
+  import * as ToggleGroup from "$lib/components/ui/toggle-group";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
 
-  type EditingRoom = Omit<RoomData, "id" | "order">;
+  export type EditingRoom = Omit<
+    RoomData,
+    "id" | "order" | "nextMessageId" | "deletedAt"
+  >;
   type Props = {
     initial?: EditingRoom;
     onsubmit: (room: EditingRoom) => void;
@@ -41,7 +45,16 @@
       >
         Голосовая
       </Button>
-      <Button type="button" disabled variant="outline">Текстовая</Button>
+      <Button type="button" variant="outline">Текстовая</Button>
+
+      <ToggleGroup.Root type="single" variant="outline" bind:value={room.type}>
+        <ToggleGroup.Item value="voice" class="text-sm">
+          Голосовая
+        </ToggleGroup.Item>
+        <ToggleGroup.Item value="text" class="text-sm">
+          Текстовая
+        </ToggleGroup.Item>
+      </ToggleGroup.Root>
     </ButtonGroup.Root>
   </div>
   <div class="flex flex-col gap-2">

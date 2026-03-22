@@ -5,7 +5,7 @@
   import { PlusIcon } from "@lucide/svelte";
   import VoiceRoom from "./VoiceRoom.svelte";
   import RoomForm from "./RoomForm.svelte";
-  import type { RoomData } from "trurpchat-backend";
+  import type { EditingRoom } from "./RoomForm.svelte";
 
   type Props = {
     server: Server;
@@ -15,14 +15,10 @@
   const rtc = $derived(server.rtc);
 
   let editOpen = $state(false);
-  function onRoomSubmit(room: Omit<RoomData, "id" | "order">) {
+  function onRoomSubmit(room: EditingRoom) {
     server.gateway.send({
       type: "action.room.create",
-      room: {
-        ...room,
-        // TODO: make this a server-side thing
-        order: server.rooms.length,
-      },
+      room,
     });
     editOpen = false;
   }

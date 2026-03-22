@@ -1,20 +1,20 @@
 import { err, ok } from "neverthrow";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import type { Room, RoomAction, RoomData } from "$src/types";
 import { db, rooms } from "$src/db";
 import { VoiceChatInstance, type WsClient } from "$src/voice";
 import { send, sendAll } from "$src/send";
 import type { HandlerContext, Handlers } from "./types";
 
-function cheks(ws: WsClient, room: Omit<RoomData, "id">) {
+function cheks(ws: WsClient, room: Partial<RoomData>) {
   if (ws.data.permissions !== 1) {
     return err(new Error("Only admins can create rooms"));
   }
 
-  if (room.name.length < 3) {
+  if (room.name && room.name.length < 3) {
     return err(new Error(`Room name must be at least 3 characters`));
   }
-  if (room.name.length > 50) {
+  if (room.name && room.name.length > 50) {
     return err(new Error(`Room name must be at most 50 characters`));
   }
 
@@ -42,7 +42,23 @@ export const roomHandlers: Handlers<RoomAction> = {
       return result;
     }
 
-    const created = (await db.insert(rooms).values([room]).returning())[0];
+    const [roomOrderRow] = await db
+      .select({ order: rooms.order })
+      .from(rooms)
+      .orderBy(desc(rooms.order))
+      .limit(1);
+
+    let order = 0;
+    if (roomOrderRow) {
+      order = roomOrderRow.order + 1;
+    }
+
+    const row = {
+      ...room,
+      order,
+    };
+
+    const created = (await db.insert(rooms).values([row]).returning())[0];
 
     if (!created) {
       return err(new Error(`Failed to crate room ${room.name}`));
@@ -93,7 +109,7 @@ export const roomHandlers: Handlers<RoomAction> = {
 
     const voice = ctx.hotel.find(room.id);
     if (voice) {
-      voice.data = room;
+      voice.data = { ...voice.data, ...room };
       sendRoom(ctx, voice.toJson());
     } else {
       // TODO: handle text rooms properly
