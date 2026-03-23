@@ -1,17 +1,16 @@
 <script lang="ts">
-  import type { Message, User } from "trurpchat-backend";
+  import type { TextMessage, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";
 
   type Props = {
     user: User;
-    message: Message;
+    message: TextMessage;
   };
 
   const { user, message }: Props = $props();
 
-  function formatTime(timestamp: number): string {
-    const date = new Date(timestamp);
+  function formatTime(date: Date): string {
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
 
@@ -33,8 +32,8 @@
     return `${time} ${dateStr}`;
   }
 
-  function formatFullDate(timestamp: number): string {
-    return new Date(timestamp).toLocaleString([], {
+  function formatFullDate(date: Date): string {
+    return date.toLocaleString([], {
       dateStyle: "full",
       timeStyle: "short",
     });

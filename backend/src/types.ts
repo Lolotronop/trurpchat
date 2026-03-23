@@ -5,7 +5,11 @@ import type {
   User,
 } from "./db/schema";
 
-export type { Room as RoomData, User } from "./db/schema";
+export type {
+  Room as RoomData,
+  User,
+  Message as TextMessage,
+} from "./db/schema";
 
 type Flatten<T> = { [K in keyof T]: T[K] } & {};
 

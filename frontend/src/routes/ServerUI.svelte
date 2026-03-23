@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { appDataDir } from "@tauri-apps/api/path";
-  import type { Message as MessageData, User } from "trurpchat-backend";
+  import type { User, TextMessage as TMessage } from "trurpchat-backend";
   import TextMessage from "$lib/components/TextMessage.svelte";
   import type { Server } from "$lib/servers.svelte";
   import BottomControls from "./BottomControls.svelte";
@@ -20,7 +19,7 @@
     { id: 3, name: "Charlie", permissions: 0, deletedAt: null },
   ];
 
-  const mockMessages: { user: User; message: MessageData }[] = [
+  const mockMessages: { user: User; message: TMessage }[] = [
     {
       user: mockUsers[0],
       message: {
@@ -29,10 +28,11 @@
         userId: 1,
         text: "Hey everyone! Welcome to the server!",
         replyTo: null,
-        createdAt: Date.now() - 3600000,
+        createdAt: new Date(Date.now() - 3600000),
         editedAt: null,
         deletedAt: null,
-      } as Message,
+        attachments: null,
+      },
     },
     {
       user: mockUsers[1],
@@ -42,10 +42,11 @@
         userId: 2,
         text: "Thanks Alice! This place looks great!",
         replyTo: null,
-        createdAt: Date.now() - 3000000,
+        createdAt: new Date(Date.now() - 3000000),
         editedAt: null,
         deletedAt: null,
-      } as Message,
+        attachments: null,
+      },
     },
     {
       user: mockUsers[2],
@@ -55,10 +56,11 @@
         userId: 3,
         text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Also here's a second paragraph to make it even longer and test how the message wraps across multiple lines when there's a lot of text in a single message.",
         replyTo: null,
-        createdAt: Date.now() - 2700000,
+        createdAt: new Date(Date.now() - 2700000),
         editedAt: null,
         deletedAt: null,
-      } as Message,
+        attachments: null,
+      },
     },
     {
       user: mockUsers[2],
@@ -68,10 +70,11 @@
         userId: 3,
         text: "Agreed! Can't wait to chat with you all.",
         replyTo: null,
-        createdAt: Date.now() - 2400000,
+        createdAt: new Date(Date.now() - 2400000),
         editedAt: null,
         deletedAt: null,
-      } as Message,
+        attachments: null,
+      },
     },
     {
       user: mockUsers[0],
@@ -81,10 +84,11 @@
         userId: 1,
         text: "Feel free to join a voice channel whenever you want!",
         replyTo: null,
-        createdAt: Date.now() - 1800000,
+        createdAt: new Date(Date.now() - 1800000),
         editedAt: null,
         deletedAt: null,
-      } as Message,
+        attachments: null,
+      },
     },
   ];
 </script>
