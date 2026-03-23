@@ -11,10 +11,11 @@ import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
 import { handleMessage, type HandlerContext } from "./handler";
 import { send, sendAll } from "./send";
 import { db, keys, rooms, users } from "./db";
-import { seed } from "./devseed";
+import { getKeys, seed } from "./devseed";
 import { voiceHandlers } from "./handler/voice";
 
 await seed();
+console.log(await getKeys());
 
 const ctx: HandlerContext = {
   clients: new Map<number, WsClient>(),
@@ -165,12 +166,6 @@ Bun.serve<ConnectedUser, never>({
       }
 
       ctx.clients.delete(ws.data.id);
-      ctx.clients.forEach((client) => {
-        send(client, {
-          type: "event.room.list",
-          rooms: Array.from(ctx.hotel.toJson()),
-        });
-      });
 
       const { online, offline } = await getAllUsers();
       sendAll(ctx.clients.values(), {

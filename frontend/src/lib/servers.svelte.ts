@@ -22,7 +22,13 @@ export class Server {
   gateway: Gateway;
   rooms: Room[] = $state([]);
   rtc: WebRTC | undefined = $state(undefined);
-  user: User = $state({ id: -1, name: "T", type: "text", permissions: 0 });
+  user: User = $state({
+    id: -1,
+    name: "T",
+    type: "text",
+    permissions: 0,
+    deletedAt: null,
+  });
   users: {
     online: ConnectedUser[];
     offline: User[];
@@ -38,6 +44,12 @@ export class Server {
     });
     this.gateway.onclose(() => {
       this.leaveRoom(false);
+    });
+    this.gateway.onopen(() => {
+      this.gateway.send({
+        type: "action.voice.userstate",
+        muted: gitGud().mic.muted,
+      });
     });
   }
 

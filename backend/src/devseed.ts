@@ -1,5 +1,20 @@
 import { count } from "drizzle-orm";
-import { db, keys, rooms, users, type Key } from "./db";
+import { db, type Key, keys, rooms, users } from "./db";
+
+export async function getKeys() {
+  return await db.query.keys.findMany({
+    columns: {
+      key: true,
+    },
+    with: {
+      user: {
+        columns: {
+          name: true,
+        },
+      },
+    },
+  });
+}
 
 export async function seed() {
   await Promise.all([seedRooms(), seedUsers()]);

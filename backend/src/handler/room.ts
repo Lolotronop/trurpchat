@@ -21,10 +21,17 @@ function cheks(ws: WsClient, room: Partial<RoomData>) {
   return ok();
 }
 
-function sendRooms(ctx: HandlerContext) {
+async function sendRooms(ctx: HandlerContext) {
+  // TODO: make this a separate function?
+  const voice = ctx.hotel.toJson();
+  const text = (await db
+    .select()
+    .from(rooms)
+    .where(eq(rooms.type, "text"))) as Extract<Room, { type: "text" }>[];
+  const r = [...voice, ...text];
   sendAll(ctx.clients.values(), {
     type: "event.room.list",
-    rooms: ctx.hotel.toJson(),
+    rooms: r,
   });
 }
 

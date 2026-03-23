@@ -6,6 +6,7 @@ export class Gateway extends EventTarget {
   connected: boolean = $state(false);
   private callbacks: Array<(data: Message) => void> = $state([]);
   oncloseCallback = () => {};
+  onopenCallback = () => {};
   constructor() {
     super();
   }
@@ -30,6 +31,7 @@ export class Gateway extends EventTarget {
       // sooo it sets to false after a reconnect
       // oh well
       setTimeout(() => (this.connected = true), 500);
+      this.onopenCallback();
       for (const callback of this.callbacks) {
         socket.addEventListener("message", (event) => {
           let data: Message;
@@ -86,6 +88,10 @@ export class Gateway extends EventTarget {
 
   onclose(callback: () => void) {
     this.oncloseCallback = callback;
+  }
+
+  onopen(callback: () => void) {
+    this.onopenCallback = callback;
   }
 
   send(data: ClientAction) {

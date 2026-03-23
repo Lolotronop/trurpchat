@@ -29,7 +29,7 @@ export class Mic {
     mute: new GainEffect(),
   });
   analyzer = new AnalyzerEffect();
-  destination = this.ctx.createMediaStreamDestination();
+  output = this.ctx.createMediaStreamDestination();
 
   #monitoring: boolean = $state(false);
   get monitoring() {
@@ -47,6 +47,7 @@ export class Mic {
       node.disconnect(this.ctx.destination);
     } catch (err) {
       err;
+      // TODO: filter out the "not connected" error,
       // we just silence the error because we blanket disconnect
       // it with no regard for whether it was connected previosly
       // or not. and if it wasnt it would error out
@@ -117,7 +118,7 @@ export class Mic {
       this.rms = rms;
     });
 
-    this.effects.addSink(this.destination);
+    this.effects.addSink(this.output);
 
     this.init();
   }
@@ -152,8 +153,8 @@ export class Mic {
     await this.ctx.resume();
 
     const settings: MediaTrackConstraints = {
-      noiseSuppression: (await this.store.get("noiseSuppression")) || true,
-      echoCancellation: (await this.store.get("echoCancellation")) || false,
+      noiseSuppression: (await this.store.get("noiseSuppression")) ?? true,
+      echoCancellation: (await this.store.get("echoCancellation")) ?? false,
       autoGainControl: false,
       channelCount: 1,
     };
@@ -206,7 +207,9 @@ export class Mic {
     try {
       this.effects.nodes.limiter.node.disconnect(this.analyzer.node);
     } catch (err) {
-      err;
+      // TODO: filter out the "not connected" error,
+      // log the rest
+      console.warn("Could not disconnect analyzer", err);
     }
   }
 }
