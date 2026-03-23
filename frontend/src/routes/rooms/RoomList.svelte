@@ -23,8 +23,6 @@
     });
     editOpen = false;
   }
-
-  $inspect(server.rooms);
 </script>
 
 <div class="h-full p-2">

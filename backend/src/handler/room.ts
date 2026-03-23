@@ -21,23 +21,9 @@ function cheks(ws: WsClient, room: Partial<RoomData>) {
   return ok();
 }
 
-async function sendRooms(ctx: HandlerContext) {
-  // TODO: make this a separate function?
-  const voice = ctx.hotel.toJson();
-  const text = (await db
-    .select()
-    .from(rooms)
-    .where(eq(rooms.type, "text"))) as Extract<Room, { type: "text" }>[];
-  const r = [...voice, ...text];
-  sendAll(ctx.clients.values(), {
-    type: "event.room.list",
-    rooms: r,
-  });
-}
-
 function sendRoom(ctx: HandlerContext, room: Room) {
   sendAll(ctx.clients.values(), {
-    type: "event.room.update",
+    type: "event.room.updated",
     room: room,
   });
 }
@@ -102,7 +88,10 @@ export const roomHandlers: Handlers<RoomAction> = {
       ctx.hotel.rooms.splice(ctx.hotel.rooms.indexOf(room), 1);
     }
     // TODO: don't resent the entire list on delete
-    sendRooms(ctx);
+    sendAll(ctx.clients.values(), {
+      type: "event.room.deleted",
+      roomId: id,
+    });
     return ok();
   },
 

@@ -155,13 +155,16 @@ export type RoomAction =
 
 export type RoomEvent =
   | {
-      // TODO: fix other places where voice is assumed
       type: "event.room.list";
       rooms: Room[];
     }
   | {
-      type: "event.room.update";
+      type: "event.room.updated";
       room: Room;
+    }
+  | {
+      type: "event.room.deleted";
+      roomId: number;
     };
 
 export type MessageAction =

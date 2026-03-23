@@ -105,14 +105,13 @@ export const userHandlers: Handlers<UserAction> = {
     }
 
     const room = ctx.hotel.roomByClient(client);
-    if (!room) {
+    if (room) {
+      sendAll(ctx.clients.values(), {
+        type: "event.room.updated",
+        room: room.toJson(),
+      });
       return ok();
     }
-
-    sendAll(ctx.clients.values(), {
-      type: "event.room.list",
-      rooms: ctx.hotel.toJson(),
-    });
 
     return ok();
   },

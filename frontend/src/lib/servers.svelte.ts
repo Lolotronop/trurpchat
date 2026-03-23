@@ -55,17 +55,32 @@ export class Server {
 
   handleMessage(message: Message) {
     if (message.type === "event.room.list") {
+      message.rooms.sort((a, b) => a.order - b.order);
       this.rooms = message.rooms;
-      this.rooms.sort((a, b) => a.order - b.order);
-    } else if (message.type === "event.room.update") {
+    } else if (message.type === "event.room.updated") {
       const roomIndex = this.rooms.findIndex((r) => r.id === message.room.id);
       if (roomIndex === -1) {
         this.rooms.push(message.room);
+        this.rooms.sort((a, b) => a.order - b.order);
       } else {
         const room = this.rooms[roomIndex];
         this.rooms[roomIndex] = { ...room, ...message.room };
       }
       this.rooms.sort((a, b) => a.order - b.order);
+    } else if (message.type === "event.room.deleted") {
+      const roomIndex = this.rooms.findIndex((r) => r.id === message.roomId);
+      if (roomIndex === -1) {
+        console.error(
+          `event.room.deleted: room ${message.roomId} not found in rooms`,
+        );
+        return;
+      }
+
+      if (this.rtc?.room.id === message.roomId) {
+        this.leaveRoom();
+      }
+
+      this.rooms.splice(roomIndex, 1);
     } else if (message.type === "event.connected") {
       this.user = message.user;
     } else if (message.type === "event.user.list") {
