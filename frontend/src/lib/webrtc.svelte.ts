@@ -167,7 +167,7 @@ export class WebRTC {
       console.log(`Peer connection with ${targetId} already exists`);
       return peer;
     }
-    peer = new Peer(targetId, this.mic.destination.stream, this.deafenNode);
+    peer = new Peer(targetId, this.mic.output.stream, this.deafenNode);
     this.peers.set(targetId, peer);
 
     if (this.cameraStream) {
