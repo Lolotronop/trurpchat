@@ -210,6 +210,9 @@ export class ServerManager {
     if (!value.connected) {
       value.reconnect();
     }
+
+    const index = Math.max(0, this.values.indexOf(value));
+    this.store.set("selectedServerIndex", index);
   }
 
   constructor() {
@@ -223,7 +226,11 @@ export class ServerManager {
     }
     this.values = definitions.map((d) => new Server(d));
     if (this.values.length > 0) {
-      this.selected = this.values[0];
+      let selectedIndex =
+        (await this.store.get<number>("selectedServerIndex")) ?? 0;
+      selectedIndex = Math.min(selectedIndex, this.values.length - 1);
+      selectedIndex = Math.max(selectedIndex, 0);
+      this.selected = this.values[selectedIndex];
     }
   }
 

@@ -17,6 +17,7 @@
 
 <div class="flex shrink flex-col items-center gap-1">
   {#each servers.values as server (server.definition.name + server.definition.url)}
+    {@const isSelected = servers.selected === server}
     <Tooltip.Root delayDuration={100}>
       <Tooltip.Trigger class="max-w-28">
         <button
@@ -24,7 +25,14 @@
             servers.selected = server;
           }}
         >
-          <Avatar class="size-10" name={server.definition.name}></Avatar>
+          <Avatar
+            class="
+            {isSelected
+              ? 'ring-2 ring-accent'
+              : ''}
+            size-10"
+            name={server.definition.name}
+          ></Avatar>
         </button>
       </Tooltip.Trigger>
       <Tooltip.Content side="right">

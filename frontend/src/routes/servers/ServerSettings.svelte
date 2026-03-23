@@ -1,9 +1,9 @@
 <script lang="ts">
+  import { Settings } from "@lucide/svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import type { Server } from "$lib/servers.svelte";
-  import { Settings } from "@lucide/svelte";
   import KeySetting from "./KeySetting.svelte";
 
   // TODO:
@@ -28,9 +28,7 @@
           <p>Настройки сервера</p>
         </Dialog.Title>
         <Dialog.Description class="flex flex-col gap-8 px-6 pb-6">
-          <div class="flex flex-col gap-2">
-            <KeySetting {server} />
-          </div>
+          <div class="flex flex-col gap-2"><KeySetting {server} /></div>
         </Dialog.Description>
       </Dialog.Header>
     </ScrollArea>
