@@ -138,8 +138,9 @@ export const userHandlers: Handlers<UserAction> = {
         room.remove(client);
 
         sendAll(ctx.clients.values(), {
-          type: "event.room.list",
-          rooms: ctx.hotel.toJson(),
+          type: "event.voice.left",
+          room: room.data.id,
+          user: client.data,
         });
       }
       client.close();
