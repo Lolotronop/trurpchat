@@ -61,8 +61,6 @@ export class Settings {
       if (keys.includes(key)) {
         // @ts-ignore
         this.values[key] = value;
-      } else {
-        console.warn(`Unknown setting key: ${key}: ${value}`);
       }
     });
   }

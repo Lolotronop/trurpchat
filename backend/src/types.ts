@@ -128,8 +128,7 @@ export type UserAction =
 export type UserEvent =
   | {
       type: "event.user.list";
-      online: ConnectedUser[];
-      offline: User[];
+      users: (User | ConnectedUser)[];
     }
   | {
       type: "event.user.me";

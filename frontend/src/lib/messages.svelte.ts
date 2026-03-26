@@ -89,15 +89,18 @@ export class TextMessageCache {
     const blockId = message.id - (message.id % this.BLOCK_SIZE);
     this.checkBlockId(blockId);
     let block = this.get(channelId, blockId, false);
+
+    // handles the case where a new message creates a new block
+    // when the previous block is already full, or
+    // when the current block is the first block of the channel.
+    // this means that we can safely create an empty alive block
+    // and append the message to it
     const prevBlockId = Math.max(0, blockId - this.BLOCK_SIZE);
     const prevBlock = this.get(channelId, prevBlockId, false);
-    if (
-      !block &&
-      blockId >= this.BLOCK_SIZE &&
-      message.id % this.BLOCK_SIZE === 0 &&
-      prevBlock?.alive &&
-      prevBlock?.messages.length == this.BLOCK_SIZE
-    ) {
+    const isFirstBlock = blockId === 0;
+    const prevBlockFull = prevBlock?.messages.length === this.BLOCK_SIZE;
+
+    if (!block && (isFirstBlock || prevBlockFull)) {
       block = { messages: [], alive: true };
     }
 

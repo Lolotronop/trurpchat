@@ -45,7 +45,7 @@ export class Sound {
         const path = await resolveResource(`resources/sound/${sound}.mp3`);
         file = await readFile(path);
       } catch (error) {
-        console.error(`Failed to load sound from resource ${sound}:`, error);
+        // console.error(`Failed to load sound from resource ${sound}:`, error);
         continue;
       }
 
@@ -54,7 +54,7 @@ export class Sound {
           baseDir: BaseDirectory.AppConfig,
         });
       } catch (error) {
-        console.warn(`Failed to load sound from config ${sound}:`, error);
+        // console.warn(`Failed to load sound from config ${sound}:`, error);
       }
       const buffer = new ArrayBuffer(file.length);
       const view = new Uint8Array(buffer);

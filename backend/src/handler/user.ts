@@ -4,6 +4,7 @@ import { send, sendAll } from "$src/send";
 import { createKey, db, keys, users } from "$src/db";
 import type { UserAction } from "$src/types";
 import type { Handlers } from "./types";
+import { getAllUsers } from "..";
 
 export const userHandlers: Handlers<UserAction> = {
   "action.user.create": async (ctx, ws, msg) => {
@@ -25,18 +26,10 @@ export const userHandlers: Handlers<UserAction> = {
       .returning();
     await createKey(user[0]!.id);
 
-    const allUsers = await db.select().from(users);
-
-    const offline = allUsers.filter((u) => !ctx.clients.has(u.id));
-    const online = ctx.clients
-      .values()
-      .map((c) => c.data)
-      .toArray();
-
+    const u = await getAllUsers(ctx);
     sendAll(ctx.clients.values(), {
       type: "event.user.list",
-      online,
-      offline,
+      users: u,
     });
 
     const admins = ctx.clients.values().filter((c) => c.data.permissions === 1);
@@ -86,18 +79,10 @@ export const userHandlers: Handlers<UserAction> = {
       });
     }
 
-    const allUsers = await db.select().from(users);
-
-    const offline = allUsers.filter((u) => !ctx.clients.has(u.id));
-    const online = ctx.clients
-      .values()
-      .map((c) => c.data)
-      .toArray();
-
+    const u = await getAllUsers(ctx);
     sendAll(ctx.clients.values(), {
       type: "event.user.list",
-      online,
-      offline,
+      users: u,
     });
 
     if (!client) {
@@ -148,18 +133,10 @@ export const userHandlers: Handlers<UserAction> = {
 
     await db.delete(users).where(eq(users.id, msg.id));
 
-    const allUsers = await db.select().from(users);
-
-    const offline = allUsers.filter((u) => !ctx.clients.has(u.id));
-    const online = ctx.clients
-      .values()
-      .map((c) => c.data)
-      .toArray();
-
+    const u = await getAllUsers(ctx);
     sendAll(ctx.clients.values(), {
       type: "event.user.list",
-      online,
-      offline,
+      users: u,
     });
 
     return ok();

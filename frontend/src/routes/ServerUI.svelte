@@ -104,7 +104,7 @@
 
   let mockMessages: TMessage[] = [];
 
-  const COUNT = 1000;
+  const COUNT = 200;
   for (let i = 0; i < COUNT; i++) {
     mockMessages.push({
       id: i,
@@ -218,18 +218,18 @@
       <!-- <div class="flex w-full flex-row justify-between px-16"></div> -->
       <VoiceGrid {server} />
     {:else}
-      <div class="flex flex-col gap-2 items-center fixed z-100 w-full top-0">
+      <div class="flex flex-col gap-2 items-center w-full">
         <div class="flex flex-row gap-2">
           {#each cache.cache.get(channelId)?.keys().toArray().toSorted((a, b) => a - b) ?? [] as blockId}
             <Button
               variant={loadedBlocks.includes(blockId) ? 'default' : 'secondary'}
               onclick={() => {
-                    if (loadedBlocks.includes(blockId)) {
-                      loadedBlocks = loadedBlocks.filter((id) => id !== blockId);
-                    } else {
-                      loadedBlocks = [...loadedBlocks, blockId];
-                    }
-                  }}
+                if (loadedBlocks.includes(blockId)) {
+                  loadedBlocks = loadedBlocks.filter((id) => id !== blockId);
+                } else {
+                  loadedBlocks = [...loadedBlocks, blockId];
+                }
+              }}
             >
               {blockId}
             </Button>
@@ -237,20 +237,20 @@
         </div>
         <Button
           onclick={() => {
-                    const rnd = Math.random();
+            const rnd = Math.random();
             const id = nextId++;
-                  cache.append(channelId, {
-                    id,
-                    roomId: channelId,
-                    userId: 1,
-                    text: id + " " + mockMessageBase[id % mockMessageBase.length].text,
-                    replyTo: null,
-                    createdAt: new Date(),
-                    editedAt: null,
-                    deletedAt: null,
-                    attachments: null,
-                  })
-                }}
+            cache.append(channelId, {
+              id,
+              roomId: channelId,
+              userId: 1,
+              text: id + " " + mockMessageBase[id % mockMessageBase.length].text,
+              replyTo: null,
+              createdAt: new Date(),
+              editedAt: null,
+              deletedAt: null,
+              attachments: null,
+            })
+          }}
         >
           Add msg
         </Button>
@@ -260,8 +260,7 @@
         class="h-full w-full flex overflow-y-scroll flex-col"
         bind:this={scrollElement}
       >
-        <div bind:this={contentElement}>
-          <div class="mt-auto" aria-hidden={true}></div>
+        <div class="mt-auto" bind:this={contentElement}>
           {#each loadedBlocks as blockId (blockId)}
             {@const block = cache.get(channelId, blockId)}
             {#if block && block.alive}
@@ -270,11 +269,13 @@
                 class="display-content"
                 {@attach (e) => {
                 observer.observe(e);
-              }}
+                }}
               >
                 {#each block.messages as message (message.id)}
-                  {@const user = mockUsers.find((u) => u.id === message.userId)}
-                  <TextMessage {user} {message} />
+                  {#if message.deletedAt === null}
+                    {@const user = mockUsers.find((u) => u.id === message.userId)}
+                    <TextMessage {user} {message} />
+                  {/if}
                 {/each}
               </div>
             {:else}
@@ -287,8 +288,8 @@
   </div>
   <div class="flex h-full border-l p-2">
     <Users
-      online={server.users.online ?? []}
-      offline={server.users.offline ?? []}
+      online={server.onlineUsers ?? []}
+      offline={server.offlineUsers ?? []}
     />
   </div>
 </div>

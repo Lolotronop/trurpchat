@@ -29,10 +29,11 @@ export class Server {
     permissions: 0,
     deletedAt: null,
   });
-  users: {
-    online: ConnectedUser[];
-    offline: User[];
-  } = $state({ online: [], offline: [] });
+  users: (User | ConnectedUser)[] = $state([]);
+  onlineUsers: ConnectedUser[] = $derived(
+    this.users.filter((u) => "online" in u),
+  );
+  offlineUsers: User[] = $derived(this.users.filter((u) => !("online" in u)));
   keys: Key[] = $state([]);
 
   constructor(definition: ServerDefinition) {
@@ -84,8 +85,7 @@ export class Server {
     } else if (message.type === "event.connected") {
       this.user = message.user;
     } else if (message.type === "event.user.list") {
-      this.users.online = message.online;
-      this.users.offline = message.offline;
+      this.users = message.users;
     } else if (message.type === "event.oven") {
       this.overServerUrl = message.ovenServerUrl;
     } else if (message.type === "event.key.list") {
@@ -148,9 +148,8 @@ export class Server {
   }
 
   findUser(id: number) {
-    const online = this.users.online.find((u) => u.id === id);
-    const offline = this.users.offline.find((u) => u.id === id);
-    return online ?? offline;
+    const user = this.users.find((u) => u.id === id);
+    return user;
   }
 
   findRoom(id: number) {
@@ -267,7 +266,7 @@ export class ServerManager {
 
     value.gateway.disconnect();
 
-    this.values = this.values.filter((v) => v != value);
+    this.values = this.values.filter((v) => v !== value);
 
     if (this.selected === value) {
       this.selected = this.values[0] || undefined;

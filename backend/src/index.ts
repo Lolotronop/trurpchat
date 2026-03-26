@@ -41,10 +41,9 @@ function createDefaultTalkingUserState(): ConnectedUserState {
   };
 }
 
-async function getAllUsers(): Promise<{
-  online: ConnectedUser[];
-  offline: User[];
-}> {
+export async function getAllUsers(
+  ctx: HandlerContext,
+): Promise<(User | ConnectedUser)[]> {
   const allUsers = await db.query.users.findMany();
   const onlineUsers = ctx.clients
     .values()
@@ -53,7 +52,7 @@ async function getAllUsers(): Promise<{
 
   const offlineUsers = allUsers.filter((u) => !ctx.clients.has(u.id));
 
-  return { online: onlineUsers, offline: offlineUsers };
+  return [...onlineUsers, ...offlineUsers];
 }
 
 Bun.serve<ConnectedUser, never>({
@@ -130,11 +129,10 @@ Bun.serve<ConnectedUser, never>({
         });
       }
 
-      const { online, offline } = await getAllUsers();
+      const users = await getAllUsers(ctx);
       sendAll(ctx.clients.values(), {
         type: "event.user.list",
-        online,
-        offline,
+        users,
       });
     },
 
@@ -167,11 +165,10 @@ Bun.serve<ConnectedUser, never>({
 
       ctx.clients.delete(ws.data.id);
 
-      const { online, offline } = await getAllUsers();
+      const users = await getAllUsers(ctx);
       sendAll(ctx.clients.values(), {
         type: "event.user.list",
-        online,
-        offline,
+        users,
       });
     },
   },

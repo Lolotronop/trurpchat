@@ -27,10 +27,7 @@
 
   function groupById(items: Key[]): Map<User, Key[]> {
     const map = new Map<User, Key[]>();
-    for (const user of server.users.online) {
-      map.set(user, []);
-    }
-    for (const user of server.users.offline) {
+    for (const user of server.users) {
       map.set(user, []);
     }
     for (const key of items) {
@@ -78,7 +75,7 @@
   {#if server.keys.length === 0}
     <Loader2 class="animate-spin" />
   {/if}
-  {#each keyByUser.entries() as [user, keys] (user.id)}
+  {#each keyByUser.entries() as [ user, keys ] (user.id)}
     <UsernameFeild {server} {user} />
     {#each keys as key}
       <div class="flex flex-row items-center justify-between gap-2">
