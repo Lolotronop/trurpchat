@@ -35,23 +35,26 @@ export const roomHandlers: Handlers<RoomAction> = {
       return result;
     }
 
-    const [roomOrderRow] = await db
-      .select({ order: rooms.order })
-      .from(rooms)
-      .orderBy(desc(rooms.order))
-      .limit(1);
+    const created = await db.transaction(async (tx) => {
+      const [roomOrderRow] = await tx
+        .select({ order: rooms.order })
+        .from(rooms)
+        .orderBy(desc(rooms.order))
+        .limit(1);
 
-    let order = 0;
-    if (roomOrderRow) {
-      order = roomOrderRow.order + 1;
-    }
+      let order = 0;
+      if (roomOrderRow) {
+        order = roomOrderRow.order + 1;
+      }
 
-    const row = {
-      ...room,
-      order,
-    };
+      const row = {
+        ...room,
+        order,
+      };
 
-    const created = (await db.insert(rooms).values([row]).returning())[0];
+      const created = (await tx.insert(rooms).values([row]).returning())[0];
+      return created;
+    });
 
     if (!created) {
       return err(new Error(`Failed to crate room ${room.name}`));
