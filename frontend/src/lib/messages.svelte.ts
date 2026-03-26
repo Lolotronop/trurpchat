@@ -13,7 +13,7 @@ type TextMessageBlock = {
 };
 
 export class TextMessageCache {
-  BLOCK_SIZE = 50;
+  BLOCK_SIZE = 10;
   /** Map of channel ID to map of block ID's to messages in that block */
   cache: SvelteMap<number, SvelteMap<number, TextMessageBlock>> =
     new SvelteMap();

@@ -43,11 +43,11 @@
 </script>
 
 <div class="flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors msg">
-  <div class="w-9 flex">
+  <div class="w-9 flex justify-center">
     {#if showHeader}
       <Avatar name={user?.name ?? "?"} class="mt-1 shrink-0 size-9" />
     {:else}
-      <div style="opacity: 0" class="time transition-opacity">
+      <div class="time transition-opacity opacity-0 flex">
         <Tooltip.Root>
           <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
             {formatTime(message.createdAt, false)}
@@ -83,6 +83,6 @@
 
 <style>
   .msg:hover * > .time {
-    opacity: 1 !important;
+    opacity: 1;
   }
 </style>

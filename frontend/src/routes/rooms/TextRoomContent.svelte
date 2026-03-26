@@ -162,13 +162,15 @@
           {/each}
         </div>
       {:else}
-        <p>Loading...</p>
+        <p class="h-20">Loading...</p>
       {/if}
     {/each}
+
+    <div class="h-6"></div>
   </div>
 </div>
 
-<div class="flex flex-row w-full p-2">
+<div class="flex flex-row w-full pb-2 px-2">
   <InputGroup.Root
     class="min-h-12 cursor-text"
     onclick={() => {
@@ -179,8 +181,8 @@
   >
     <textarea
       data-slot="input-group-control"
-      class="flex field-sizing-content w-full px-2 py-2 resize-none rounded-md bg-transparent text-base transition-[color,box-shadow] outline-none md:text-sm"
-      placeholder="Autoresize textarea..."
+      class="flex field-sizing-content w-full px-3 py-2 resize-none rounded-md bg-transparent text-base transition-[color,box-shadow] outline-none md:text-sm"
+      placeholder={`#${room.name}`}
       bind:value={text}
       bind:this={textarea}
       onkeydown={(e) => {
