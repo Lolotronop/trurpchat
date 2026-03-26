@@ -4,7 +4,7 @@
   import * as Tooltip from "$lib/components/ui/tooltip";
 
   type Props = {
-    user: User;
+    user?: User;
     message: TextMessage;
   };
 
@@ -40,11 +40,13 @@
   }
 </script>
 
-<div class="flex gap-3 px-2 py-1 hover:bg-accent/50">
-  <Avatar name={user.name} class="mt-1 size-9 shrink-0" />
+<div class="flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors">
+  <Avatar name={user?.name ?? "?"} class="mt-1 size-9 shrink-0" />
   <div class="flex flex-col min-w-0">
     <div class="flex items-baseline gap-2">
-      <p class="font-medium text-sm text-foreground">{user.name}</p>
+      <p class="font-medium text-sm text-foreground">
+        {user?.name ?? "Deleted"}
+      </p>
       <Tooltip.Root>
         <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
           {formatTime(message.createdAt)}

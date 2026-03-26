@@ -1,4 +1,4 @@
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import { db, messages, rooms } from "$src/db";
 import { send, sendAll } from "$src/send";
@@ -126,16 +126,27 @@ export const messageHandlers: Handlers<MessageAction> = {
     return ok();
   },
 
-  "action.message.list": async (ctx, ws, { roomId, block }) => {
-    const BLOCK_SIZE = 50;
+  "action.message.list": async (ctx, ws, { roomId, fromId, toId }) => {
+    if (fromId > toId) {
+      return err(new Error("fromId must be less than toId"));
+    }
+
+    if (fromId < 0) {
+      return err(new Error("fromId must be greater than or equal to 0"));
+    }
+
+    if (toId - fromId > 100) {
+      return err(new Error("toId must be less than 100"));
+    }
+
     const msg = await db
       .select()
       .from(messages)
       .where(
         and(
           eq(messages.roomId, roomId),
-          gte(messages.id, block),
-          lte(messages.id, block + BLOCK_SIZE),
+          gte(messages.id, fromId),
+          lt(messages.id, toId),
         ),
       )
       .orderBy(messages.id);

@@ -22,7 +22,7 @@ export class God {
     return this.mic.muted;
   }
   set muted(value) {
-    if (value == false) {
+    if (value === false) {
       this.deafened = false;
       sound.play("unmute");
     } else {

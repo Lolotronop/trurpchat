@@ -188,8 +188,9 @@ export type MessageAction =
   | {
       type: "action.message.list";
       roomId: number;
-      /** the 50-aligned block number */
-      block: number;
+      fromId: number;
+      /** Non-inclusive */
+      toId: number;
     };
 
 export type MessageEvent =

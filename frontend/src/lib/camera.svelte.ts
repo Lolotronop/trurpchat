@@ -33,20 +33,6 @@ export class Camera {
     this.#showMyVideo = (await this.store.get<boolean>("showMyVideo")) ?? true;
     this.#deviceId = await this.store.get("deviceId");
 
-    try {
-      let media = await navigator.mediaDevices.getUserMedia({
-        video: true,
-      });
-      media.getTracks().forEach((track) => {
-        track.stop();
-      });
-      // @ts-expect-error
-      media = null;
-    } catch (error) {
-      console.error("Error getting permissions:", error);
-      this.hasPermissions = false;
-    }
-
     this.hasPermissions = true;
     this.updateDevices();
   }

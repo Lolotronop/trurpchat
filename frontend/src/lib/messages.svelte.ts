@@ -1,0 +1,141 @@
+import { tick } from "svelte";
+import { SvelteMap } from "svelte/reactivity";
+import type { TextMessage } from "trurpchat-backend";
+
+type TextMessageBlock = {
+  messages: TextMessage[];
+  /** Whether the block is in sync with the server
+   * This is set to false when the block loads from cache
+   * on startup, and only becomes true when it is re-fetched
+   * from the server
+   */
+  alive: boolean;
+};
+
+export class TextMessageCache {
+  BLOCK_SIZE = 50;
+  /** Map of channel ID to map of block ID's to messages in that block */
+  cache: SvelteMap<number, SvelteMap<number, TextMessageBlock>> =
+    new SvelteMap();
+
+  checkBlockId(blockId: number) {
+    if (blockId < 0) {
+      throw new Error("Block ID cannot be negative");
+    }
+
+    if (blockId % this.BLOCK_SIZE !== 0) {
+      throw new Error("Block ID must be a aligned multiple of BLOCK_SIZE");
+    }
+  }
+
+  onfetchrequest: (channelId: number, blockId: number) => void = () => {};
+
+  inFlightBlocks = new Set<number>();
+
+  fetch(channelId: number, blockId: number) {
+    if (this.inFlightBlocks.has(blockId)) {
+      return;
+    }
+    this.inFlightBlocks.add(blockId);
+    tick().then(() => {
+      this.onfetchrequest(channelId, blockId);
+    });
+  }
+
+  getChannel(channelId: number, create = true) {
+    let channel = this.cache.get(channelId);
+    if (!channel && create) {
+      tick().then(() => {
+        this.cache.set(channelId, new SvelteMap());
+      });
+    }
+    return channel;
+  }
+
+  get(channelId: number, blockId: number, fetch = true) {
+    this.checkBlockId(blockId);
+
+    const channel = this.getChannel(channelId);
+    if (!channel) return;
+
+    let block = channel.get(blockId);
+    if (!block) {
+      if (fetch) this.fetch(channelId, blockId);
+    }
+    return block;
+  }
+
+  /** Sets the block to be alive by default */
+  set(
+    channelId: number,
+    blockId: number,
+    messages: TextMessage[],
+    alive: boolean = true,
+  ) {
+    this.checkBlockId(blockId);
+    this.inFlightBlocks.delete(blockId);
+
+    let channel = this.getChannel(channelId, false);
+    tick().then(() => {
+      if (!channel) {
+        channel = new SvelteMap();
+        this.cache.set(channelId, channel);
+      }
+      channel.set(blockId, { messages, alive });
+    });
+  }
+
+  append(channelId: number, message: TextMessage) {
+    const blockId = message.id - (message.id % this.BLOCK_SIZE);
+    this.checkBlockId(blockId);
+    let block = this.get(channelId, blockId, false);
+    const prevBlockId = Math.max(0, blockId - this.BLOCK_SIZE);
+    const prevBlock = this.get(channelId, prevBlockId, false);
+    if (
+      !block &&
+      blockId >= this.BLOCK_SIZE &&
+      message.id % this.BLOCK_SIZE === 0 &&
+      prevBlock?.alive &&
+      prevBlock?.messages.length == this.BLOCK_SIZE
+    ) {
+      block = { messages: [], alive: true };
+    }
+
+    if (!block?.alive) {
+      this.fetch(channelId, blockId);
+      return;
+    }
+
+    block.messages.push(message);
+    this.set(channelId, blockId, block.messages);
+  }
+
+  lastMessageId(channelId: number) {
+    const channel = this.getChannel(channelId);
+
+    if (!channel) return 0;
+
+    const lastBlockId = channel.keys().toArray().pop();
+    if (!lastBlockId) return 0;
+
+    const lastBlock = channel.get(lastBlockId);
+
+    if (!lastBlock) return 0;
+
+    return lastBlock.messages[lastBlock.messages.length - 1]?.id ?? 0;
+  }
+
+  lastBlockId(channelId: number) {
+    const channel = this.getChannel(channelId);
+
+    if (!channel) return 0;
+
+    const lastBlockId = channel
+      .keys()
+      .toArray()
+      .sort((a, b) => b - a)[0];
+    if (!lastBlockId) return 0;
+
+    return lastBlockId;
+  }
+}
