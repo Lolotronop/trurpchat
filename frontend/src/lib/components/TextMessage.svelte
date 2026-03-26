@@ -6,11 +6,13 @@
   type Props = {
     user?: User;
     message: TextMessage;
+    showHeader?: boolean;
   };
 
-  const { user, message }: Props = $props();
+  let { user, message, showHeader }: Props = $props();
+  showHeader ??= true;
 
-  function formatTime(date: Date): string {
+  function formatTime(date: Date, showDate = true): string {
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
 
@@ -20,7 +22,7 @@
       hour12: false,
     });
 
-    if (isToday) {
+    if (!showDate || isToday) {
       return time;
     }
 
@@ -40,24 +42,47 @@
   }
 </script>
 
-<div class="flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors">
-  <Avatar name={user?.name ?? "?"} class="mt-1 size-9 shrink-0" />
+<div class="flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors msg">
+  <div class="w-9 flex">
+    {#if showHeader}
+      <Avatar name={user?.name ?? "?"} class="mt-1 shrink-0 size-9" />
+    {:else}
+      <div style="opacity: 0" class="time transition-opacity">
+        <Tooltip.Root>
+          <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
+            {formatTime(message.createdAt, false)}
+          </Tooltip.Trigger>
+          <Tooltip.Content sideOffset={4}>
+            {formatFullDate(message.createdAt)}
+          </Tooltip.Content>
+        </Tooltip.Root>
+      </div>
+    {/if}
+  </div>
   <div class="flex flex-col min-w-0">
-    <div class="flex items-baseline gap-2">
-      <p class="font-medium text-sm text-foreground">
-        {user?.name ?? "Deleted"}
-      </p>
-      <Tooltip.Root>
-        <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
-          {formatTime(message.createdAt)}
-        </Tooltip.Trigger>
-        <Tooltip.Content sideOffset={4}>
-          {formatFullDate(message.createdAt)}
-        </Tooltip.Content>
-      </Tooltip.Root>
-    </div>
-    <p class="text-sm text-foreground break-words whitespace-pre-wrap">
+    {#if showHeader}
+      <div class="flex items-baseline gap-2">
+        <p class="font-medium text-sm text-foreground">
+          {user?.name ?? "Deleted"}
+        </p>
+        <Tooltip.Root>
+          <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
+            {formatTime(message.createdAt, false)}
+          </Tooltip.Trigger>
+          <Tooltip.Content sideOffset={4}>
+            {formatFullDate(message.createdAt)}
+          </Tooltip.Content>
+        </Tooltip.Root>
+      </div>
+    {/if}
+    <p class="text-sm text-foreground wrap-break-word whitespace-pre-wrap">
       {message.text}
     </p>
   </div>
 </div>
+
+<style>
+  .msg:hover * > .time {
+    opacity: 1 !important;
+  }
+</style>

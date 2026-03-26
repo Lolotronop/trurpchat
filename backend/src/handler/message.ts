@@ -9,6 +9,14 @@ export const messageHandlers: Handlers<MessageAction> = {
   "action.message.create": async (ctx, ws, { roomId, text, replyTo }) => {
     const userId = ws.data.id;
 
+    if (text.length === 0) {
+      return err(new Error("Message text is empty"));
+    }
+
+    if (text.length > 1000) {
+      return err(new Error("Message text is too long"));
+    }
+
     if (replyTo) {
       const replyToMessage = await db
         .select()
@@ -163,6 +171,8 @@ export const messageHandlers: Handlers<MessageAction> = {
       type: "event.message.list",
       roomId,
       messages: msg,
+      fromId,
+      toId,
     });
 
     return ok();

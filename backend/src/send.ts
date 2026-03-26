@@ -1,11 +1,12 @@
 import { err, ok } from "neverthrow";
 import type { Message, ServerEvent } from "./types";
 import type { WsClient } from "./voice";
+import { stringify } from "devalue";
 
 export function safeSend(client: WsClient, message: Message) {
   let str: string;
   try {
-    str = JSON.stringify(message);
+    str = stringify(message);
   } catch (error) {
     return err(new Error(`Failed to serialize some data: ${error}`));
   }

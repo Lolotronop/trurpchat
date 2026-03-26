@@ -10,8 +10,9 @@
 
   type Props = {
     server: Server;
+    selectedRoomId: number | undefined;
   };
-  const { server }: Props = $props();
+  let { server, selectedRoomId = $bindable(undefined) }: Props = $props();
 
   const rtc = $derived(server.rtc);
 
@@ -28,10 +29,14 @@
 <div class="h-full p-2">
   {#each server.rooms as room (room.id)}
     {#if room.type === "voice"}
-      <VoiceRoom {room} server={server!} {rtc} />
+      <button class="contents" onclick={() => selectedRoomId = room.id}>
+        <VoiceRoom {room} server={server!} {rtc} />
+      </button>
     {/if}
     {#if room.type === "text"}
-      <TextRoom {room} server={server!} />
+      <button class="contents" onclick={() => selectedRoomId = room.id}>
+        <TextRoom {room} server={server!} />
+      </button>
     {/if}
   {/each}
   {#if server.user.permissions === 1}

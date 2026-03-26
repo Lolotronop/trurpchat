@@ -209,6 +209,8 @@ export type MessageEvent =
   | {
       type: "event.message.list";
       roomId: number;
+      fromId: number;
+      toId: number;
       messages: MessageData[];
     };
 

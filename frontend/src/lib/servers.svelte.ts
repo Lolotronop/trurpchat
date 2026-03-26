@@ -6,6 +6,7 @@ import { gitGud } from "./god.svelte";
 import { sound } from "./sound.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
+import { TextMessageCache } from "./messages.svelte";
 
 export type ServerDefinition = {
   name: string;
@@ -30,11 +31,9 @@ export class Server {
     deletedAt: null,
   });
   users: (User | ConnectedUser)[] = $state([]);
-  onlineUsers: ConnectedUser[] = $derived(
-    this.users.filter((u) => "online" in u),
-  );
-  offlineUsers: User[] = $derived(this.users.filter((u) => !("online" in u)));
   keys: Key[] = $state([]);
+
+  messages: TextMessageCache = new TextMessageCache();
 
   constructor(definition: ServerDefinition) {
     this.definition = definition;
@@ -52,6 +51,15 @@ export class Server {
         muted: gitGud().mic.muted,
       });
     });
+
+    this.messages.onfetchrequest = (channelId, blockId) => {
+      this.gateway.send({
+        type: "action.message.list",
+        roomId: channelId,
+        fromId: blockId,
+        toId: blockId + this.messages.BLOCK_SIZE,
+      });
+    };
   }
 
   handleMessage(message: Message) {
@@ -135,6 +143,14 @@ export class Server {
         return;
       }
       room.users[userIndex] = message.user;
+    } else if (message.type === "event.message.list") {
+      this.messages.set(message.roomId, message.fromId, message.messages);
+    } else if (message.type === "event.message.edited") {
+      this.messages.edit(message.message);
+    } else if (message.type === "event.message.deleted") {
+      this.messages.delete(message.roomId, message.id);
+    } else if (message.type === "event.message.created") {
+      this.messages.append(message.message);
     }
   }
 

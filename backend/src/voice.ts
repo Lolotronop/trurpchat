@@ -29,17 +29,6 @@ export class VoiceChatInstance {
     };
   }
 
-  send(message: Message) {
-    try {
-      const json = JSON.stringify(message);
-      this.clients.forEach((ws) => {
-        ws.send(json);
-      });
-    } catch (error) {
-      console.error(`Error sending message to room ${this.data.name}:`, error);
-    }
-  }
-
   get users() {
     return Array.from(this.clients).map((ws) => ws.data);
   }

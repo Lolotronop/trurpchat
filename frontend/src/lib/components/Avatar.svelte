@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as Avatar from "$lib/components/ui/avatar";
+
   type Props = {
     class?: string;
     src?: string;
@@ -14,9 +15,7 @@
     <div
       class="cont w-full h-full rounded-full flex justify-center items-center"
     >
-      <p class="letter">
-        {name[0].toUpperCase()}
-      </p>
+      <p class="letter">{name[0].toUpperCase()}</p>
     </div>
   </Avatar.Fallback>
 </Avatar.Root>

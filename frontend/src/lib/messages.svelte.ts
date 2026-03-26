@@ -28,6 +28,12 @@ export class TextMessageCache {
     }
   }
 
+  getBlockId(messageId: number) {
+    const id = messageId - (messageId % this.BLOCK_SIZE);
+    this.checkBlockId(id);
+    return id;
+  }
+
   onfetchrequest: (channelId: number, blockId: number) => void = () => {};
 
   inFlightBlocks = new Set<number>();
@@ -85,10 +91,11 @@ export class TextMessageCache {
     });
   }
 
-  append(channelId: number, message: TextMessage) {
+  append(message: TextMessage) {
+    const roomId = message.roomId;
     const blockId = message.id - (message.id % this.BLOCK_SIZE);
     this.checkBlockId(blockId);
-    let block = this.get(channelId, blockId, false);
+    let block = this.get(roomId, blockId, false);
 
     // handles the case where a new message creates a new block
     // when the previous block is already full, or
@@ -96,7 +103,7 @@ export class TextMessageCache {
     // this means that we can safely create an empty alive block
     // and append the message to it
     const prevBlockId = Math.max(0, blockId - this.BLOCK_SIZE);
-    const prevBlock = this.get(channelId, prevBlockId, false);
+    const prevBlock = this.get(roomId, prevBlockId, false);
     const isFirstBlock = blockId === 0;
     const prevBlockFull = prevBlock?.messages.length === this.BLOCK_SIZE;
 
@@ -105,12 +112,37 @@ export class TextMessageCache {
     }
 
     if (!block?.alive) {
-      this.fetch(channelId, blockId);
+      this.fetch(roomId, blockId);
       return;
     }
 
     block.messages.push(message);
-    this.set(channelId, blockId, block.messages);
+    this.set(roomId, blockId, block.messages);
+  }
+
+  edit(message: TextMessage) {
+    const room = this.getChannel(message.roomId, false);
+    if (!room) return;
+    const blockId = this.getBlockId(message.id);
+    const block = room.get(blockId);
+    if (!block) return;
+    const index = block.messages.findIndex((m) => m.id === message.id);
+    if (index === -1) return;
+    block.messages[index] = message;
+  }
+
+  delete(roomId: number, messageId: number) {
+    const room = this.getChannel(roomId, false);
+    if (!room) return;
+    const blockId = this.getBlockId(messageId);
+    const block = room.get(blockId);
+    if (!block) return;
+    const index = block.messages.findIndex((m) => m.id === messageId);
+    if (index === -1) return;
+    block.messages[index].deletedAt = new Date();
+    block.messages[index].text = "";
+    block.messages[index].replyTo = null;
+    block.messages[index].attachments = null;
   }
 
   lastMessageId(channelId: number) {

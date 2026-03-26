@@ -1,5 +1,6 @@
 import ReconnectingWebSocket from "reconnecting-websocket";
 import type { ClientAction, Message } from "trurpchat-backend";
+import { parse } from "devalue";
 
 export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
@@ -36,7 +37,7 @@ export class Gateway extends EventTarget {
         socket.addEventListener("message", (event) => {
           let data: Message;
           try {
-            data = JSON.parse(event.data);
+            data = parse(event.data);
           } catch (error) {
             console.error("Error parsing", event.data, "message:", error);
             return;
@@ -74,7 +75,7 @@ export class Gateway extends EventTarget {
     this.socket?.addEventListener("message", (event) => {
       let data: Message;
       try {
-        data = JSON.parse(event.data);
+        data = parse(event.data);
       } catch (error) {
         console.error("Error parsing", event.data, "message:", error);
         return;
