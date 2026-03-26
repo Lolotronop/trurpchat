@@ -49,7 +49,7 @@ export class TextMessageCache {
   }
 
   getChannel(channelId: number, create = true) {
-    let channel = this.cache.get(channelId);
+    const channel = this.cache.get(channelId);
     if (!channel && create) {
       tick().then(() => {
         this.cache.set(channelId, new SvelteMap());
@@ -64,7 +64,7 @@ export class TextMessageCache {
     const channel = this.getChannel(channelId);
     if (!channel) return;
 
-    let block = channel.get(blockId);
+    const block = channel.get(blockId);
     if (!block) {
       if (fetch) this.fetch(channelId, blockId);
     }

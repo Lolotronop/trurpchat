@@ -1,21 +1,18 @@
 <script lang="ts">
   import { Volume2 } from "@lucide/svelte";
   import type { VoiceChat } from "trurpchat-backend";
-  import { Button } from "$lib/components/ui/button";
-  import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
-  import { Checkbox } from "$lib/components/ui/checkbox";
-  import { toDb } from "$lib/utils.svelte";
-  import { gitGud } from "$lib/god.svelte";
   import GainSlider from "$lib/components/GainSlider.svelte";
-  import type { WebRTC } from "$lib/webrtc.svelte";
+  import { Button } from "$lib/components/ui/button";
+  import { Checkbox } from "$lib/components/ui/checkbox";
+  import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
+  import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
-  import VoiceUser from "./VoiceUser.svelte";
+  import { toDb } from "$lib/utils.svelte";
+  import type { WebRTC } from "$lib/webrtc.svelte";
   import RoomContextMenu from "./RoomContextMenu.svelte";
+  import VoiceUser from "./VoiceUser.svelte";
 
   const g = gitGud();
-  // TODO: this needs to be removed with proper
-  // "speaking" sending
-  g.mic.enableAnalyzer();
 
   type Props = {
     rtc: WebRTC | undefined;
@@ -26,7 +23,7 @@
   const { rtc, room, server }: Props = $props();
 </script>
 
-<RoomContextMenu room={room} server={server}>
+<RoomContextMenu {room} {server}>
   <Button
     variant="ghost"
     class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {rtc

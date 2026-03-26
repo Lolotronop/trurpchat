@@ -5,6 +5,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 const browser = typeof window !== "undefined";
+
 import { createSubscriber } from "svelte/reactivity";
 
 export interface StickToBottomAnimationState {

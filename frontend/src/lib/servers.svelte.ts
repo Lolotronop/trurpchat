@@ -53,6 +53,16 @@ export class Server {
     });
 
     this.messages.onfetchrequest = (channelId, blockId) => {
+      const room = this.findRoom(channelId);
+      if (!room) return;
+      if (room.type !== "text") return;
+      if (blockId > room.nextMessageId - 1) {
+        // TODO: figure out why this happens in the first place
+        console.error(
+          `onfetchrequest: blockId ${blockId} is greater than nextMessageId ${room.nextMessageId}`,
+        );
+        return;
+      }
       this.gateway.send({
         type: "action.message.list",
         roomId: channelId,
@@ -150,6 +160,8 @@ export class Server {
     } else if (message.type === "event.message.deleted") {
       this.messages.delete(message.roomId, message.id);
     } else if (message.type === "event.message.created") {
+      const room = this.findRoom(message.message.roomId);
+      if (room) room.nextMessageId = message.message.id + 1;
       this.messages.append(message.message);
     }
   }

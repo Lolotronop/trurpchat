@@ -34,7 +34,10 @@
       </button>
     {/if}
     {#if room.type === "text"}
-      <button class="contents" onclick={() => selectedRoomId = room.id}>
+      <button
+        class="contents {(selectedRoomId !== room.id) && 'text-muted-foreground'}"
+        onclick={() => selectedRoomId = room.id}
+      >
         <TextRoom {room} server={server!} />
       </button>
     {/if}

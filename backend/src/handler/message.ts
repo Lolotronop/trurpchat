@@ -147,6 +147,32 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("toId must be less than 100"));
     }
 
+    const [room] = await db
+      .select()
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1);
+
+    if (!room) {
+      return err(new Error("Room not found"));
+    }
+
+    if (room.type !== "text") {
+      return err(new Error("Room is not a text room"));
+    }
+
+    if (room.deletedAt) {
+      return err(new Error("Room is deleted"));
+    }
+
+    if (fromId > room.nextMessageId - 1) {
+      return err(
+        new Error(
+          `Requesting messages that don't exist. Max is ${room.nextMessageId}`,
+        ),
+      );
+    }
+
     const msg = await db
       .select()
       .from(messages)
