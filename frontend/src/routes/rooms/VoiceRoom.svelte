@@ -68,18 +68,17 @@
                 variant="ghost"
                 class="flex w-full flex-row justify-between"
                 onclick={() => {
-                    peer.mute = !peer.mute;
-                  }}
+                  peer.mute = !peer.mute;
+                }}
               >
                 <p>Замутить</p>
                 <Checkbox checked={peer.mute} />
               </Button>
 
-              <div class="w-full px-2">
+              <div class="flex flex-col gap-2 w-full px-2">
                 <p class="pl-2 text-sm font-normal">Громкость</p>
                 <GainSlider
                   bind:value={peer.volume}
-                  min={-32}
                   max={toDb(2)}
                   ticks={[0]}
                 />

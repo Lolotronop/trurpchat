@@ -146,7 +146,7 @@
 
               <div class="flex flex-col gap-2">
                 <h1>Усиление микрофона</h1>
-                <GainSlider min={-12} bind:value={g.mic.gain} />
+                <GainSlider max={24} bind:value={g.mic.gain} />
               </div>
 
               <div class="flex flex-col gap-2">
@@ -185,7 +185,8 @@
                     }}
                   >
                     {g.headphones.devices.find(
-                      (device) => device.deviceId === g.headphones.outputDeviceId,
+                      (device) =>
+                        device.deviceId === g.headphones.outputDeviceId,
                     )?.label ?? "Не выбрано"}
                   </Select.Trigger>
                   <Select.Content>
@@ -200,7 +201,7 @@
 
               <div class="flex flex-col gap-2">
                 <h1>Громкость наушников</h1>
-                <GainSlider min={-12} max={6} bind:value={g.headphones.gain} />
+                <GainSlider max={6} bind:value={g.headphones.gain} />
               </div>
             </div>
           </div>
@@ -281,7 +282,7 @@
           <div>
             <h1 class="text-foreground text-lg">Горячие клавиши</h1>
             <div class="flex flex-col gap-2">
-              {#each g.keys.bindings.entries() as [ action, key ] (action)}
+              {#each g.keys.bindings.entries() as [action, key] (action)}
                 <div class="flex flex-row items-center justify-between">
                   <p class="text-muted-foreground text-base">
                     {actions[action]}

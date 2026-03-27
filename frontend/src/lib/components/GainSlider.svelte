@@ -1,8 +1,6 @@
 <script lang="ts">
-  import { Slider } from "$lib/components/ui/slider";
-  import { fromDb, toDb } from "$lib/utils.svelte";
   import { fly } from "svelte/transition";
-  import Ticks from "./Ticks.svelte";
+  import { Slider } from "$lib/components/ui/slider";
 
   type Props = {
     value: number;
@@ -13,68 +11,83 @@
     class?: string;
   };
 
-  let {
-    value = $bindable(),
-    min = -42,
-    max = 10,
-    toInfinite = true,
-    ticks = true,
-    class: className,
-  }: Props = $props();
+  let { value = $bindable(), max = 10, class: className }: Props = $props();
 
-  const steps = $derived.by((): number[] => {
-    if (Array.isArray(ticks)) {
-      return [...ticks];
+  const SLIDER_MIN = 0;
+  const SLIDER_MAX = 100;
+  const SLIDER_MID = 50;
+  const FLOOR_DB = -36;
+  const floorGain = dbToGain(FLOOR_DB);
+
+  function dbToGain(db: number) {
+    return db === -Infinity ? 0 : 10 ** (db / 20);
+  }
+
+  function gainToDb(gain: number) {
+    return gain === 0 ? -Infinity : 20 * Math.log10(gain);
+  }
+
+  function clamp(value: number, low: number, high: number) {
+    return Math.min(high, Math.max(low, value));
+  }
+
+  function sliderToGain(position: number) {
+    const clamped = clamp(position, SLIDER_MIN, SLIDER_MAX);
+
+    if (clamped <= SLIDER_MID) {
+      const unit = clamped / SLIDER_MID;
+      const curved = dbToGain(FLOOR_DB * (1 - unit));
+      return (curved - floorGain) / (1 - floorGain);
     }
 
-    if (!ticks) {
-      return [];
+    const unit = (clamped - SLIDER_MID) / SLIDER_MID;
+    return dbToGain(max * unit);
+  }
+
+  function gainToSlider(gain: number) {
+    const clamped = Math.max(0, gain);
+
+    if (clamped <= 1) {
+      const normalized = floorGain + clamped * (1 - floorGain);
+      const unit = 1 - gainToDb(normalized) / FLOOR_DB;
+      return clamp(unit * SLIDER_MID, SLIDER_MIN, SLIDER_MID);
     }
 
-    const result: number[] = [];
-
-    for (let i = -6; i >= min; i -= 6) {
-      result.push(i);
+    if (max <= 0) {
+      return SLIDER_MAX;
     }
 
-    for (let i = 0; i <= max; i += 6) {
-      result.push(i);
-    }
-
-    return result;
-  });
-
-  const pct = (raw: number) => {
-    const v = toDb(raw);
-    return ((v - min) / (max - min)) * 100;
-  };
+    const unit = clamp(gainToDb(clamped) / max, 0, 1);
+    return SLIDER_MID + unit * SLIDER_MID;
+  }
 
   let hovering = $state(false);
   let active = $state(false);
-  let intervalId: NodeJS.Timeout | null = null;
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
   function setActive() {
     active = true;
-    if (intervalId) {
-      clearInterval(intervalId);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
     }
-    intervalId = setInterval(() => {
+    timeoutId = setTimeout(() => {
       active = false;
     }, 300);
   }
 </script>
 
 {#snippet slider()}
-  <div class={className}>
+  <div class="relative {className}">
     {#if hovering || active}
-      {@const db = toDb(value)}
+      {@const db = gainToDb(value)}
       <div
         class="bg-muted absolute -top-9 flex w-28 -translate-x-1/2 justify-center gap-1 rounded text-center select-none"
-        style="left: {pct(value)}%"
+        style="left: {gainToSlider(value)}%"
         transition:fly={{ duration: 200, y: 10 }}
       >
-        <!-- left side: text-right + small right padding, no margin -->
         <span class="w-full text-right">
-          {Number.isFinite(db) ? db.toFixed(0) : "-∞"} db
+          {Number.isFinite(db) ? db.toFixed(0) : "-∞"}
+          db
         </span>
 
         <span class="pointer-events-none"> | </span>
@@ -87,8 +100,8 @@
       type="single"
       class="w-full"
       step={0.1}
-      {min}
-      {max}
+      min={SLIDER_MIN}
+      max={SLIDER_MAX}
       ondblclick={() => {
         value = 1;
       }}
@@ -98,21 +111,15 @@
       onmouseleave={() => {
         hovering = false;
       }}
-      bind:value={() => (value == 0 ? min : toDb(value)),
+      bind:value={
+        () => gainToSlider(value),
         (v) => {
           setActive();
-          if (v === min && toInfinite) {
-            value = 0;
-          } else {
-            value = fromDb(v);
-          }
-        }}
+          value = sliderToGain(v);
+        }
+      }
     />
   </div>
 {/snippet}
 
-{#if steps.length > 0}
-  <Ticks {max} {min} ticks={steps}>{@render slider()}</Ticks>
-{:else}
-  {@render slider()}
-{/if}
+{@render slider()}
