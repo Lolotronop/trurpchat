@@ -1,4 +1,5 @@
 import { audioctx } from "$lib/audio/context";
+import type { Headphones } from "$lib/headphones.svelte";
 
 const DEFAULT_GAIN = 0.6;
 
@@ -24,9 +25,10 @@ export class OvenAudioController {
   disconnect() {
     this.state = "disconnected";
     this.audioSource?.disconnect();
+    this.headphones.removeSource(this.gainnode);
   }
 
-  constructor() {
+  constructor(public headphones: Headphones) {
     const ctx = audioctx();
     this.gainnode = ctx.createGain();
     this.gainnode.gain.setTargetAtTime(
@@ -34,6 +36,6 @@ export class OvenAudioController {
       audioctx().currentTime,
       0.01,
     );
-    this.gainnode.connect(ctx.destination);
+    headphones.addSource(this.gainnode);
   }
 }

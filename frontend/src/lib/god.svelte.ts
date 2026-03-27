@@ -1,6 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { audioctx } from "./audio/context";
 import { Camera } from "./camera.svelte";
+import { Headphones } from "./headphones.svelte";
 import { Mic } from "./mic.svelte";
 import { ServerManager } from "./servers.svelte";
 import { Settings } from "./settings.svelte";
@@ -11,6 +11,7 @@ import { WakeLockContainer } from "./wakelock";
 
 export class God {
   camera: Camera;
+  headphones: Headphones;
   mic: Mic;
   lock: WakeLockContainer;
   keys: Shortcuts = new Shortcuts();
@@ -55,14 +56,7 @@ export class God {
       sound.play("undeafen");
     }
 
-    // TODO: this should probably work by having a separate output in the
-    // mic or somethig that I can mute with the button
-    // this way it doesn't actually depend on global state or smth?
-    this.servers.selected?.rtc?.deafenNode.gain.setTargetAtTime(
-      value ? 0 : 1,
-      audioctx().currentTime,
-      0.01,
-    );
+    this.headphones.muted = value;
   }
 
   #allowPause: boolean = $state(false);
@@ -77,6 +71,7 @@ export class God {
   constructor() {
     this.settings = new Settings();
     this.camera = new Camera();
+    this.headphones = new Headphones();
     this.mic = new Mic();
     this.lock = new WakeLockContainer();
     this.lock.lock();

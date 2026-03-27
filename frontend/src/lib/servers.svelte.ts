@@ -10,10 +10,10 @@ import type {
 import type { Key } from "trurpchat-backend/src/db";
 import { Gateway } from "./gateway.svelte";
 import { gitGud } from "./god.svelte";
+import { TextMessageCache } from "./messages.svelte";
 import { sound } from "./sound.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
-import { TextMessageCache } from "./messages.svelte";
 
 export type ServerDefinition = {
   name: string;
@@ -143,7 +143,9 @@ export class Server {
     } else if (message.type === "event.user.list") {
       this.users = message.users;
     } else if (message.type === "event.user.online") {
-      const userIndex = this.users.findIndex((user) => user.id === message.userId);
+      const userIndex = this.users.findIndex(
+        (user) => user.id === message.userId,
+      );
       if (userIndex === -1) {
         return;
       }
@@ -158,7 +160,9 @@ export class Server {
         ...createDefaultConnectedUserState(),
       };
     } else if (message.type === "event.user.offline") {
-      const userIndex = this.users.findIndex((user) => user.id === message.userId);
+      const userIndex = this.users.findIndex(
+        (user) => user.id === message.userId,
+      );
       if (userIndex === -1) {
         return;
       }
@@ -170,27 +174,35 @@ export class Server {
 
       this.users[userIndex] = toOfflineUser(user);
     } else if (message.type === "event.user.created") {
-      const userIndex = this.users.findIndex((user) => user.id === message.user.id);
+      const userIndex = this.users.findIndex(
+        (user) => user.id === message.user.id,
+      );
       if (userIndex === -1) {
         this.users.push(message.user);
       } else {
         this.users[userIndex] = message.user;
       }
     } else if (message.type === "event.user.updated") {
-      const userIndex = this.users.findIndex((user) => user.id === message.user.id);
+      const userIndex = this.users.findIndex(
+        (user) => user.id === message.user.id,
+      );
       if (userIndex === -1) {
         this.users.push(toOfflineUser(message.user));
       } else {
         this.users[userIndex] = patchUser(this.users[userIndex]!, message.user);
       }
     } else if (message.type === "event.user.deleted") {
-      const userIndex = this.users.findIndex((user) => user.id === message.userId);
+      const userIndex = this.users.findIndex(
+        (user) => user.id === message.userId,
+      );
       if (userIndex === -1) {
         return;
       }
       this.users.splice(userIndex, 1);
     } else if (message.type === "event.user.state") {
-      const userIndex = this.users.findIndex((user) => user.id === message.user.id);
+      const userIndex = this.users.findIndex(
+        (user) => user.id === message.user.id,
+      );
       if (userIndex === -1) {
         this.users.push(message.user);
       } else {
@@ -280,7 +292,13 @@ export class Server {
       this.leaveRoom();
     }
 
-    this.rtc = new WebRTC(gitGud().mic, gitGud().camera, this, room);
+    this.rtc = new WebRTC(
+      gitGud().mic,
+      gitGud().headphones,
+      gitGud().camera,
+      this,
+      room,
+    );
 
     this.gateway.send({
       type: "action.voice.join",

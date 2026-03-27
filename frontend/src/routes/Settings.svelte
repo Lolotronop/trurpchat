@@ -168,6 +168,44 @@
           </div>
 
           <div class="flex flex-col gap-2">
+            <h1 class="text-foreground text-lg">Наушники</h1>
+            <div class="flex w-full flex-col gap-6">
+              <div class="flex flex-col gap-2">
+                <h1>Выбор устройства</h1>
+                <Select.Root
+                  type="single"
+                  onValueChange={(value) => {
+                    g.headphones.outputDeviceId = value;
+                  }}
+                >
+                  <Select.Trigger
+                    class="w-full"
+                    onclick={() => {
+                      g.headphones.updateDevices();
+                    }}
+                  >
+                    {g.headphones.devices.find(
+                      (device) => device.deviceId === g.headphones.outputDeviceId,
+                    )?.label ?? "Не выбрано"}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each g.headphones.devices as device}
+                      <Select.Item value={device.deviceId}>
+                        {device.label}
+                      </Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+              </div>
+
+              <div class="flex flex-col gap-2">
+                <h1>Громкость наушников</h1>
+                <GainSlider min={-12} max={6} bind:value={g.headphones.gain} />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-2">
             <h1 class="text-foreground text-lg">Камера</h1>
             <div class="flex w-full flex-col gap-6">
               {#if cameraPreviewOpen && g.camera.stream}

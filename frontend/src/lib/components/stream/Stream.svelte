@@ -8,17 +8,18 @@
     Volume2,
     VolumeOff,
   } from "@lucide/svelte";
-  import type { User } from "trurpchat-backend";
-  import { Button } from "$lib/components/ui/button";
-  import type { Server } from "$lib/servers.svelte";
-  import { OvenAudioController } from "./ovenplayer.svelte";
-  import { fade } from "svelte/transition";
-  import GainSlider from "../GainSlider.svelte";
   import {
-    type OvenPlayerInstance,
     create as createOvenPlayer,
+    type OvenPlayerInstance,
   } from "ovenplayer";
+  import { fade } from "svelte/transition";
+  import type { User } from "trurpchat-backend";
   import { audioctx } from "$lib/audio/context";
+  import { Button } from "$lib/components/ui/button";
+  import { gitGud } from "$lib/god.svelte";
+  import type { Server } from "$lib/servers.svelte";
+  import GainSlider from "../GainSlider.svelte";
+  import { OvenAudioController } from "./ovenplayer.svelte";
 
   type Props = {
     user: User;
@@ -31,7 +32,7 @@
   let lastOven: OvenAudioController | undefined;
   const oven: OvenAudioController = $derived.by(() => {
     if (!lastOven) {
-      lastOven = new OvenAudioController();
+      lastOven = new OvenAudioController(gitGud().headphones);
     }
     return lastOven;
   });
@@ -71,7 +72,7 @@
       title: "",
       webrtcConfig: {
         playoutDelayHint: 0,
-        // @ts-ignore
+        // @ts-expect-error
         // iceServers: ICE_CONFIG.iceServers,
       },
       sources: [

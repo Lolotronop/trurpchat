@@ -1,7 +1,7 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { ConnectedUser, Message, VoiceChat } from "trurpchat-backend";
-import { audioctx } from "./audio/context";
 import type { Camera } from "./camera.svelte";
+import type { Headphones } from "./headphones.svelte";
 import type { Mic } from "./mic.svelte";
 import type { Server } from "./servers.svelte";
 import { sound } from "./sound.svelte";
@@ -27,7 +27,6 @@ export const ICE_CONFIG: RTCConfiguration = {
 };
 
 export class WebRTC {
-  deafenNode: GainNode;
   peers = new SvelteMap<number, Peer>();
   connectedFor: number = $state(0);
   connectedTimeout: NodeJS.Timeout | null = null;
@@ -85,13 +84,11 @@ export class WebRTC {
 
   constructor(
     public mic: Mic,
+    public headphones: Headphones,
     public cam: Camera,
     public server: Server,
     public room: VoiceChat,
   ) {
-    this.deafenNode = audioctx().createGain();
-    this.deafenNode.connect(audioctx().destination);
-
     this.mic.effects.nodes.gate.onmessage(({ isOpen }) => {
       for (const peer of this.peers.values()) {
         peer.datachannel?.send(
@@ -167,7 +164,7 @@ export class WebRTC {
       console.log(`Peer connection with ${targetId} already exists`);
       return peer;
     }
-    peer = new Peer(targetId, this.mic.output.stream, this.deafenNode);
+    peer = new Peer(targetId, this.mic.output.stream, this.headphones);
     this.peers.set(targetId, peer);
 
     if (this.cameraStream) {

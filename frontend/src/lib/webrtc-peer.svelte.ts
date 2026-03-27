@@ -1,4 +1,5 @@
 import { audioctx } from "./audio/context";
+import type { Headphones } from "./headphones.svelte";
 import { ICE_CONFIG } from "./webrtc.svelte";
 
 type DatachannelMessage = {
@@ -13,6 +14,7 @@ export class Peer {
 
   gainNode: GainNode;
   muteNode: GainNode;
+  source: MediaStreamAudioSourceNode | null = null;
   #volume: number = $state(1);
   get volume(): number {
     return this.#volume;
@@ -45,14 +47,14 @@ export class Peer {
   constructor(
     public targetId: number,
     audioStream: MediaStream,
-    output: GainNode,
+    public headphones: Headphones,
   ) {
     this.pc = new RTCPeerConnection(ICE_CONFIG);
     this.gainNode = audioctx().createGain();
     this.muteNode = audioctx().createGain();
 
     this.gainNode.connect(this.muteNode);
-    this.muteNode.connect(output);
+    this.headphones.addSource(this.muteNode);
 
     this.interval = setInterval(() => this.updatePing(), 1000);
 
@@ -107,8 +109,8 @@ export class Peer {
   }
 
   handleAudioTrack(stream: MediaStream) {
-    const source = audioctx().createMediaStreamSource(stream);
-    source.connect(this.gainNode);
+    this.source = audioctx().createMediaStreamSource(stream);
+    this.source.connect(this.gainNode);
     attachDomAudio(this.targetId, stream);
     audioctx().resume();
   }
@@ -160,6 +162,11 @@ export class Peer {
   cleanup() {
     this.datachannel?.close();
     this.pc.close();
+    this.headphones.removeSource(this.muteNode);
+    if (this.source) {
+      this.source.disconnect(this.gainNode);
+      this.source = null;
+    }
     this.gainNode.disconnect();
     this.muteNode.disconnect();
     clearInterval(this.interval as number);
