@@ -7,7 +7,6 @@
   import { StickToBottom } from "$lib/StickToBottom.svelte";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import { ArrowRight } from "@lucide/svelte";
-  import { untrack } from "svelte";
 
   type Props = {
     server: Server;
@@ -15,65 +14,10 @@
   };
   const { server, room }: Props = $props();
   const cache = $derived(server.messages);
-
-  let visibleBlocks = $state<number[]>([]);
-
-  let observer: IntersectionObserver;
+  const roomCache = $derived(cache.getRoom(room.id));
   $effect(() => {
-    observer = new IntersectionObserver(
-      (entries, obs) => {
-        entries.forEach((entry) => {
-          const el = entry.target;
-          const block = +el.getAttribute("data-block")!;
-          if (entry.isIntersecting && !visibleBlocks.includes(block)) {
-            visibleBlocks.push(block);
-          } else if (!entry.isIntersecting && visibleBlocks.includes(block)) {
-            const index = visibleBlocks.indexOf(block);
-            if (index !== -1) {
-              visibleBlocks.splice(index, 1);
-            }
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: "0px",
-        threshold: 0.1,
-      },
-    );
-    console.log("effect");
-    room;
-    const lastMessageId = Math.max(0, untrack(() => room.nextMessageId) - 1);
-    const lastBlockId = cache.getBlockId(lastMessageId);
-    visibleBlocks = [lastBlockId];
-
-    return () => {
-      console.log("destroy");
-      observer.disconnect();
-    };
+    roomCache?.initialize(room.nextMessageId);
   });
-
-  let loadedBlocks = $derived.by(() => {
-    const blocks: number[] = visibleBlocks.toSorted((a, b) => a - b);
-    if (blocks.length == 0) {
-      return blocks;
-    }
-
-    if (blocks[0] > 0) {
-      const prev = blocks[0] - cache.BLOCK_SIZE;
-      blocks.unshift(prev);
-    }
-
-    const lastVisibleBlock = blocks[blocks.length - 1];
-    if (lastVisibleBlock < cache.lastBlockId(room.id)) {
-      const next = lastVisibleBlock + cache.BLOCK_SIZE;
-      blocks.push(next);
-    }
-
-    return blocks.sort((a, b) => a - b);
-  });
-
-  // $inspect(visibleBlocks, loadedBlocks);
 
   let scrollElement = $state<HTMLElement>();
   let contentElement = $state<HTMLElement>();
@@ -131,22 +75,19 @@
 <div class="flex flex-col gap-2 items-center w-full">
   <Button
     onclick={() => {
-    console.dir(cache.cache.get(room.id)?.entries().toArray());
-  }}
-    >log</Button
+      console.dir(roomCache?.blocks.entries().toArray());
+    }}>log</Button
   >
 
   <div class="flex flex-row gap-2">
-    {#each cache.cache.get(room.id)?.keys().toArray().toSorted((a, b) => a - b) ?? [] as blockId}
+    {#each roomCache?.blocks
+      .keys()
+      .toArray()
+      .toSorted((a, b) => a - b) as blockId}
       <Button
-        variant={loadedBlocks.includes(blockId) ? 'default' : 'secondary'}
-        onclick={() => {
-          if (loadedBlocks.includes(blockId)) {
-            loadedBlocks = loadedBlocks.filter((id) => id !== blockId);
-          } else {
-            loadedBlocks = [...loadedBlocks, blockId];
-          }
-        }}
+        variant={roomCache?.loadedBlocks.includes(blockId)
+          ? "default"
+          : "secondary"}
       >
         {blockId}
       </Button>
@@ -159,16 +100,10 @@
   bind:this={scrollElement}
 >
   <div class="mt-auto" bind:this={contentElement}>
-    {#each loadedBlocks as blockId (blockId)}
-      {@const block = cache.get(room.id, blockId)}
+    {#each roomCache?.loadedBlocks as blockId (blockId)}
+      {@const block = roomCache?.get(blockId)}
       {#if block && block.alive}
-        <div
-          data-block={blockId}
-          {@attach (e) => {
-          console.log("attach");
-          observer.observe(e);
-          }}
-        >
+        <div data-block={blockId} {@attach roomCache?.attachBlock}>
           {#each partition(block.messages) as part (part[0]?.id)}
             {#each part as message (message.id)}
               {#if message.deletedAt === null}

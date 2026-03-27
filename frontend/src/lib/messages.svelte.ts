@@ -12,11 +12,179 @@ type TextMessageBlock = {
   alive: boolean;
 };
 
+export class TextRoomCache {
+  blocks: SvelteMap<number, TextMessageBlock> = new SvelteMap();
+  visibleBlocks: number[] = $state([]);
+  loadedBlocks = $derived.by(() => {
+    const blocks = this.visibleBlocks.toSorted((a, b) => a - b);
+    if (blocks.length === 0) {
+      return blocks;
+    }
+
+    if (blocks[0] > 0) {
+      blocks.unshift(blocks[0] - this.parent.BLOCK_SIZE);
+    }
+
+    const lastVisibleBlock = blocks[blocks.length - 1];
+    if (lastVisibleBlock < this.lastBlockId()) {
+      blocks.push(lastVisibleBlock + this.parent.BLOCK_SIZE);
+    }
+
+    return blocks.toSorted((a, b) => a - b);
+  });
+
+  inFlightBlocks = new Set<number>();
+  observer: IntersectionObserver;
+
+  constructor(
+    readonly parent: TextMessageCache,
+    readonly roomId: number,
+  ) {
+    this.observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const blockId = Number(entry.target.getAttribute("data-block"));
+          if (Number.isNaN(blockId)) {
+            continue;
+          }
+
+          if (entry.isIntersecting) {
+            if (!this.visibleBlocks.includes(blockId)) {
+              this.visibleBlocks.push(blockId);
+            }
+          } else {
+            const index = this.visibleBlocks.indexOf(blockId);
+            if (index !== -1) {
+              this.visibleBlocks.splice(index, 1);
+            }
+          }
+        }
+      },
+      {
+        root: null,
+        rootMargin: "0px",
+        threshold: 0.1,
+      },
+    );
+  }
+
+  initialize(nextMessageId: number) {
+    if (this.visibleBlocks.length > 0) {
+      return;
+    }
+
+    const lastMessageId = Math.max(0, nextMessageId - 1);
+    this.visibleBlocks = [this.parent.getBlockId(lastMessageId)];
+  }
+
+  attachBlock = (element: Element) => {
+    this.observer.observe(element);
+    return () => {
+      this.observer.unobserve(element);
+      const blockId = Number(element.getAttribute("data-block"));
+      const index = this.visibleBlocks.indexOf(blockId);
+      if (index !== -1) {
+        this.visibleBlocks.splice(index, 1);
+      }
+    };
+  };
+
+  fetch(blockId: number) {
+    if (this.inFlightBlocks.has(blockId)) {
+      return;
+    }
+
+    this.inFlightBlocks.add(blockId);
+    tick().then(() => {
+      this.parent.onfetchrequest(this.roomId, blockId);
+    });
+  }
+
+  get(blockId: number, fetch = true) {
+    this.parent.checkBlockId(blockId);
+
+    const block = this.blocks.get(blockId);
+    if (!block && fetch) {
+      this.fetch(blockId);
+    }
+    return block;
+  }
+
+  /** Sets the block to be alive by default */
+  set(blockId: number, messages: TextMessage[], alive: boolean = true) {
+    this.parent.checkBlockId(blockId);
+    this.inFlightBlocks.delete(blockId);
+    this.blocks.set(blockId, { messages, alive });
+  }
+
+  append(message: TextMessage) {
+    const blockId = this.parent.getBlockId(message.id);
+    let block = this.get(blockId, false);
+
+    const prevBlockId = Math.max(0, blockId - this.parent.BLOCK_SIZE);
+    const prevBlock = this.get(prevBlockId, false);
+    const isFirstBlock = blockId === 0;
+    const prevBlockFull = prevBlock?.messages.length === this.parent.BLOCK_SIZE;
+
+    if (!block && (isFirstBlock || prevBlockFull)) {
+      block = { messages: [], alive: true };
+    }
+
+    if (!block?.alive) {
+      this.fetch(blockId);
+      return;
+    }
+
+    block.messages.push(message);
+    this.set(blockId, block.messages);
+  }
+
+  edit(message: TextMessage) {
+    const blockId = this.parent.getBlockId(message.id);
+    const block = this.blocks.get(blockId);
+    if (!block) return;
+    const index = block.messages.findIndex((m) => m.id === message.id);
+    if (index === -1) return;
+    block.messages[index] = message;
+  }
+
+  delete(messageId: number) {
+    const blockId = this.parent.getBlockId(messageId);
+    const block = this.blocks.get(blockId);
+    if (!block) return;
+    const index = block.messages.findIndex((m) => m.id === messageId);
+    if (index === -1) return;
+    block.messages[index].deletedAt = new Date();
+    block.messages[index].text = "";
+    block.messages[index].replyTo = null;
+    block.messages[index].attachments = null;
+  }
+
+  lastMessageId() {
+    const lastBlockId = this.lastBlockId();
+    const lastBlock = this.blocks.get(lastBlockId);
+    if (!lastBlock) return 0;
+    return lastBlock.messages[lastBlock.messages.length - 1]?.id ?? 0;
+  }
+
+  lastBlockId() {
+    const lastBlockId = this.blocks
+      .keys()
+      .toArray()
+      .sort((a, b) => b - a)[0];
+    if (lastBlockId === undefined) return 0;
+    return lastBlockId;
+  }
+
+  destroy() {
+    this.observer.disconnect();
+  }
+}
+
 export class TextMessageCache {
   BLOCK_SIZE = 10;
-  /** Map of channel ID to map of block ID's to messages in that block */
-  cache: SvelteMap<number, SvelteMap<number, TextMessageBlock>> =
-    new SvelteMap();
+  /** Map of channel ID to room cache */
+  cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
 
   checkBlockId(blockId: number) {
     if (blockId < 0) {
@@ -34,41 +202,25 @@ export class TextMessageCache {
     return id;
   }
 
-  onfetchrequest: (channelId: number, blockId: number) => void = () => {};
+  onfetchrequest: (channelId: number, blockId: number) => void = () => { };
 
-  inFlightBlocks = new Set<number>();
-
-  fetch(channelId: number, blockId: number) {
-    if (this.inFlightBlocks.has(blockId)) {
-      return;
-    }
-    this.inFlightBlocks.add(blockId);
-    tick().then(() => {
-      this.onfetchrequest(channelId, blockId);
-    });
-  }
-
-  getChannel(channelId: number, create = true) {
-    const channel = this.cache.get(channelId);
-    if (!channel && create) {
+  getRoom(channelId: number, create = true) {
+    let room = this.cache.get(channelId);
+    if (!room && create) {
       tick().then(() => {
-        this.cache.set(channelId, new SvelteMap());
-      });
+        room = new TextRoomCache(this, channelId);
+        this.cache.set(channelId, room);
+      })
     }
-    return channel;
+    return room;
   }
 
   get(channelId: number, blockId: number, fetch = true) {
-    this.checkBlockId(blockId);
+    return this.getRoom(channelId)?.get(blockId, fetch);
+  }
 
-    const channel = this.getChannel(channelId);
-    if (!channel) return;
-
-    const block = channel.get(blockId);
-    if (!block) {
-      if (fetch) this.fetch(channelId, blockId);
-    }
-    return block;
+  initializeRoom(channelId: number, nextMessageId: number) {
+    this.getRoom(channelId)?.initialize(nextMessageId);
   }
 
   /** Sets the block to be alive by default */
@@ -78,99 +230,26 @@ export class TextMessageCache {
     messages: TextMessage[],
     alive: boolean = true,
   ) {
-    this.checkBlockId(blockId);
-    this.inFlightBlocks.delete(blockId);
-
-    let channel = this.getChannel(channelId, false);
-    tick().then(() => {
-      if (!channel) {
-        channel = new SvelteMap();
-        this.cache.set(channelId, channel);
-      }
-      channel.set(blockId, { messages, alive });
-    });
+    this.getRoom(channelId)?.set(blockId, messages, alive);
   }
 
   append(message: TextMessage) {
-    const roomId = message.roomId;
-    const blockId = message.id - (message.id % this.BLOCK_SIZE);
-    this.checkBlockId(blockId);
-    let block = this.get(roomId, blockId, false);
-
-    // handles the case where a new message creates a new block
-    // when the previous block is already full, or
-    // when the current block is the first block of the channel.
-    // this means that we can safely create an empty alive block
-    // and append the message to it
-    const prevBlockId = Math.max(0, blockId - this.BLOCK_SIZE);
-    const prevBlock = this.get(roomId, prevBlockId, false);
-    const isFirstBlock = blockId === 0;
-    const prevBlockFull = prevBlock?.messages.length === this.BLOCK_SIZE;
-
-    if (!block && (isFirstBlock || prevBlockFull)) {
-      block = { messages: [], alive: true };
-    }
-
-    if (!block?.alive) {
-      this.fetch(roomId, blockId);
-      return;
-    }
-
-    block.messages.push(message);
-    this.set(roomId, blockId, block.messages);
+    this.getRoom(message.roomId)?.append(message);
   }
 
   edit(message: TextMessage) {
-    const room = this.getChannel(message.roomId, false);
-    if (!room) return;
-    const blockId = this.getBlockId(message.id);
-    const block = room.get(blockId);
-    if (!block) return;
-    const index = block.messages.findIndex((m) => m.id === message.id);
-    if (index === -1) return;
-    block.messages[index] = message;
+    this.getRoom(message.roomId, false)?.edit(message);
   }
 
   delete(roomId: number, messageId: number) {
-    const room = this.getChannel(roomId, false);
-    if (!room) return;
-    const blockId = this.getBlockId(messageId);
-    const block = room.get(blockId);
-    if (!block) return;
-    const index = block.messages.findIndex((m) => m.id === messageId);
-    if (index === -1) return;
-    block.messages[index].deletedAt = new Date();
-    block.messages[index].text = "";
-    block.messages[index].replyTo = null;
-    block.messages[index].attachments = null;
+    this.getRoom(roomId, false)?.delete(messageId);
   }
 
   lastMessageId(channelId: number) {
-    const channel = this.getChannel(channelId);
-
-    if (!channel) return 0;
-
-    const lastBlockId = channel.keys().toArray().pop();
-    if (!lastBlockId) return 0;
-
-    const lastBlock = channel.get(lastBlockId);
-
-    if (!lastBlock) return 0;
-
-    return lastBlock.messages[lastBlock.messages.length - 1]?.id ?? 0;
+    return this.getRoom(channelId)?.lastMessageId() ?? 0;
   }
 
   lastBlockId(channelId: number) {
-    const channel = this.getChannel(channelId);
-
-    if (!channel) return 0;
-
-    const lastBlockId = channel
-      .keys()
-      .toArray()
-      .sort((a, b) => b - a)[0];
-    if (!lastBlockId) return 0;
-
-    return lastBlockId;
+    return this.getRoom(channelId)?.lastBlockId() ?? 0;
   }
 }
