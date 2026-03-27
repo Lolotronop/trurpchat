@@ -25,7 +25,8 @@ export class OvenAudioController {
   disconnect() {
     this.state = "disconnected";
     this.audioSource?.disconnect();
-    this.headphones.removeSource(this.gainnode);
+    // TODO: this just breaks the audio always?
+    // this.headphones.removeSource(this.gainnode);
   }
 
   constructor(public headphones: Headphones) {

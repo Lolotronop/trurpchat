@@ -3,11 +3,13 @@ import { EffectChain } from "./audio/chain.svelte";
 import { CompressorEffect } from "./audio/compressor.svelte";
 import { audioctx } from "./audio/context";
 import { GainEffect } from "./audio/gain.svelte";
+import { debounce } from "./utils.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Headphones {
   ctx: AudioContext = audioctx();
   store: IPersistantStore = getPlatformStore("headphones.json");
+  persistGain = debounce((value: number) => this.store.set("gain", value));
   deviceId: string | undefined = $state(undefined);
   devices: MediaDeviceInfo[] = $state([]);
   effects = new EffectChain({
@@ -37,7 +39,7 @@ export class Headphones {
   }
   set gain(value: number) {
     this.effects.nodes.gain.gain = value;
-    this.store.set("gain", value);
+    this.persistGain(value);
   }
 
   get supportsDeviceSelection() {

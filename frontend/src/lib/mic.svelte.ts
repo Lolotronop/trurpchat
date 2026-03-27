@@ -5,11 +5,13 @@ import { audioctx } from "./audio/context";
 import { GainEffect } from "./audio/gain.svelte";
 import { GateEffect } from "./audio/gate.svelte";
 import { ChannelMergerEffect } from "./audio/merger.svelte";
+import { debounce } from "./utils.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Mic {
   ctx: AudioContext = audioctx();
   store: IPersistantStore = getPlatformStore("mic.json");
+  persistGain = debounce((value) => this.store.set("gain", value));
   hasPermissions: boolean = $state(false);
   stream: MediaStream | undefined = undefined;
   deviceId: string | undefined = $state(undefined);
@@ -90,7 +92,7 @@ export class Mic {
   }
   set gain(value) {
     this.effects.nodes.gain.gain = value;
-    this.store.set("gain", value);
+    this.persistGain(value);
   }
 
   get threshold() {
@@ -137,7 +139,7 @@ export class Mic {
       media.getTracks().forEach((track) => {
         track.stop();
       });
-      // @ts-ignore
+      // @ts-expect-error
       media = null;
     } catch (error) {
       console.error("Error getting permissions:", error);
