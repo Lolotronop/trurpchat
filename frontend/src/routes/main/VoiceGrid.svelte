@@ -80,29 +80,32 @@
         observer.observe(el);
         }}
 >
-  {#each server.rtc?.room.users || [] as user (user.id)}
-    {@const peer = server.rtc?.peers.get(user.id)}
-    {#if user.id === server.user.id}
-      <VoiceUserCard
-        name={user.name}
-        speaking={g.mic.speaking && !g.muted}
-        muted={g.muted}
-        deafened={g.deafened}
-        camera={user.camera}
-        cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
-      />
-    {:else}
-      <VoiceUserCard
-        name={user.name}
-        speaking={peer?.speaking || false}
-        muted={peer?.mute || user.muted || false}
-        deafened={user.deafened || false}
-        camera={user.camera}
-        cameraStream={peer?.cameraStream}
-      />
-    {/if}
-    {#if user.streaming}
-      <Stream {server} {user} />
+  {#each server.rtc?.room.users || [] as userId (userId)}
+    {@const user = server.findUser(userId)}
+    {#if user && "online" in user}
+      {@const peer = server.rtc?.peers.get(user.id)}
+      {#if user.id === server.user.id}
+        <VoiceUserCard
+          name={user.name}
+          speaking={g.mic.speaking && !g.muted}
+          muted={g.muted}
+          deafened={g.deafened}
+          camera={user.camera}
+          cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
+        />
+      {:else}
+        <VoiceUserCard
+          name={user.name}
+          speaking={peer?.speaking || false}
+          muted={peer?.mute || user.muted || false}
+          deafened={user.deafened || false}
+          camera={user.camera}
+          cameraStream={peer?.cameraStream}
+        />
+      {/if}
+      {#if user.streaming}
+        <Stream {server} {user} />
+      {/if}
     {/if}
   {/each}
 </div>

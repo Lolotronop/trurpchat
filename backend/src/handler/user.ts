@@ -41,6 +41,18 @@ export const userHandlers: Handlers<UserAction> = {
     return ok();
   },
 
+  "action.user.state": async (_ctx, ws, msg) => {
+    const { type: _type, ...data } = msg;
+    ws.data = { ...ws.data, ...data };
+
+    sendAll(_ctx.clients.values(), {
+      type: "event.user.state",
+      user: ws.data,
+    });
+
+    return ok();
+  },
+
   "action.user.update": async (ctx, ws, msg) => {
     const isAdmin = ws.data.permissions === 1;
     if (!isAdmin && ws.data.id !== msg.id) {
@@ -124,7 +136,7 @@ export const userHandlers: Handlers<UserAction> = {
         sendAll(ctx.clients.values(), {
           type: "event.voice.left",
           room: room.data.id,
-          user: client.data,
+          userId: client.data.id,
         });
       }
       client.close();

@@ -85,7 +85,7 @@ export const roomHandlers: Handlers<RoomAction> = {
         send(client, {
           type: "event.voice.left",
           room: room.data.id,
-          user: client.data,
+          userId: client.data.id,
         });
       }
       ctx.hotel.rooms.splice(ctx.hotel.rooms.indexOf(room), 1);

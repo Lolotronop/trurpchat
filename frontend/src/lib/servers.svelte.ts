@@ -47,7 +47,7 @@ export class Server {
     });
     this.gateway.onopen(() => {
       this.gateway.send({
-        type: "action.voice.userstate",
+        type: "action.user.state",
         muted: gitGud().mic.muted,
       });
     });
@@ -104,6 +104,13 @@ export class Server {
       this.user = message.user;
     } else if (message.type === "event.user.list") {
       this.users = message.users;
+    } else if (message.type === "event.user.state") {
+      const userIndex = this.users.findIndex((user) => user.id === message.user.id);
+      if (userIndex === -1) {
+        this.users.push(message.user);
+      } else {
+        this.users[userIndex] = message.user;
+      }
     } else if (message.type === "event.oven") {
       this.overServerUrl = message.ovenServerUrl;
     } else if (message.type === "event.key.list") {
@@ -115,44 +122,31 @@ export class Server {
       if (!room || room.type !== "voice") {
         return;
       }
-      const has = room.users.find((u) => u.id === message.user.id);
+      const has = room.users.includes(message.userId);
       if (has) {
         return;
       }
-      room.users.push(message.user);
+      room.users.push(message.userId);
     } else if (message.type === "event.voice.left") {
       const room = this.findRoom(message.room);
       if (!room || room.type !== "voice") {
         return;
       }
 
-      const index = room.users.findIndex((u) => u.id === message.user.id);
+      const index = room.users.indexOf(message.userId);
       if (index === -1) {
         console.error(
-          `event.voice.left: user ${message.user.id} not found in room ${message.room}`,
+          `event.voice.left: user ${message.userId} not found in room ${message.room}`,
         );
         return;
       }
       room.users.splice(index, 1);
 
-      const isMe = message.user.id === this.user.id;
+      const isMe = message.userId === this.user.id;
       const inRoom = this.rtc?.room.id === room.id;
       if (isMe && inRoom) {
         this.leaveRoom(false);
       }
-    } else if (message.type === "event.voice.userstate") {
-      const room = this.findRoom(message.room);
-      if (!room || room.type !== "voice") {
-        return;
-      }
-      const userIndex = room.users.findIndex((u) => u.id === message.user.id);
-      if (userIndex === -1) {
-        console.error(
-          `event.voice.userstate: user ${message.user.id} not found in room ${message.room}`,
-        );
-        return;
-      }
-      room.users[userIndex] = message.user;
     } else if (message.type === "event.message.list") {
       this.messages.set(message.roomId, message.fromId, message.messages);
     } else if (message.type === "event.message.edited") {

@@ -39,54 +39,57 @@
   </Button>
 </RoomContextMenu>
 <div class="flex flex-col pl-8">
-  {#each room.users as user (user.id)}
-    {@const peer = rtc?.peers.get(user.id)}
-    {#if user.id === server?.user.id}
-      <VoiceUser
-        {user}
-        {rtc}
-        {room}
-        mutedByMe={false}
-        speaking={g.mic.speaking && !g.muted}
-      />
-    {:else}
-      <ContextMenu.Root>
-        <ContextMenu.Trigger>
-          <VoiceUser
-            {user}
-            {rtc}
-            {room}
-            mutedByMe={peer?.mute ?? false}
-            speaking={peer?.speaking ?? false}
-          />
-        </ContextMenu.Trigger>
-        <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">
-          {#if peer}
-            <Button
-              variant="ghost"
-              class="flex w-full flex-row justify-between"
-              onclick={() => {
-                  peer.mute = !peer.mute;
-                }}
-            >
-              <p>Замутить</p>
-              <Checkbox checked={peer.mute} />
-            </Button>
+  {#each room.users as userId (userId)}
+    {@const user = server.findUser(userId)}
+    {#if user && "online" in user}
+      {@const peer = rtc?.peers.get(user.id)}
+      {#if user.id === server?.user.id}
+        <VoiceUser
+          {user}
+          {rtc}
+          {room}
+          mutedByMe={false}
+          speaking={g.mic.speaking && !g.muted}
+        />
+      {:else}
+        <ContextMenu.Root>
+          <ContextMenu.Trigger>
+            <VoiceUser
+              {user}
+              {rtc}
+              {room}
+              mutedByMe={peer?.mute ?? false}
+              speaking={peer?.speaking ?? false}
+            />
+          </ContextMenu.Trigger>
+          <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">
+            {#if peer}
+              <Button
+                variant="ghost"
+                class="flex w-full flex-row justify-between"
+                onclick={() => {
+                    peer.mute = !peer.mute;
+                  }}
+              >
+                <p>Замутить</p>
+                <Checkbox checked={peer.mute} />
+              </Button>
 
-            <div class="w-full px-2">
-              <p class="pl-2 text-sm font-normal">Громкость</p>
-              <GainSlider
-                bind:value={peer.volume}
-                min={-32}
-                max={toDb(2)}
-                ticks={[0]}
-              />
-            </div>
-          {:else}
-            <p>:(</p>
-          {/if}
-        </ContextMenu.Content>
-      </ContextMenu.Root>
+              <div class="w-full px-2">
+                <p class="pl-2 text-sm font-normal">Громкость</p>
+                <GainSlider
+                  bind:value={peer.volume}
+                  min={-32}
+                  max={toDb(2)}
+                  ticks={[0]}
+                />
+              </div>
+            {:else}
+              <p>:(</p>
+            {/if}
+          </ContextMenu.Content>
+        </ContextMenu.Root>
+      {/if}
     {/if}
   {/each}
 </div>

@@ -25,7 +25,7 @@ export class VoiceChatInstance {
     rest.sort((a, b) => a.name.localeCompare(b.name));
     return {
       ...this.data,
-      users: [...streaming, ...rest],
+      users: [...streaming, ...rest].map((user) => user.id),
     };
   }
 

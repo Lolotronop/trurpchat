@@ -69,8 +69,9 @@
             </p>
           </div>
           <div>
-            {#each rtc.room.users as user}
-              {#if user.id !== server.user.id}
+            {#each rtc.room.users as userId}
+              {@const user = server.findUser(userId)}
+              {#if user && "online" in user && user.id !== server.user.id}
                 {@const peer = rtc.peers.get(user.id)}
                 <div class="flex w-full flex-row justify-between">
                   <p>{user.name}</p>

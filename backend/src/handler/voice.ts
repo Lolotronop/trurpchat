@@ -13,7 +13,7 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     sendAll(ctx.clients.values(), {
       type: "event.voice.joined",
       room: msg.room,
-      user: ws.data,
+      userId: ws.data.id,
     });
     return ok();
   },
@@ -29,22 +29,8 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     sendAll(ctx.clients.values(), {
       type: "event.voice.left",
       room: msg.room,
-      user: ws.data,
+      userId: ws.data.id,
     });
-    return ok();
-  },
-
-  "action.voice.userstate": (ctx, ws, msg) => {
-    const { type: _type, ...data } = msg;
-    ws.data = { ...ws.data, ...data };
-    const room = ctx.hotel.roomByClient(ws);
-    if (room) {
-      sendAll(ctx.clients.values(), {
-        type: "event.voice.userstate",
-        room: room.data.id,
-        user: ws.data,
-      });
-    }
     return ok();
   },
 

@@ -26,7 +26,7 @@ export type ConnectedUser = User & ConnectedUserState;
 
 export type VoiceChat = Flatten<
   RoomData & { type: "voice" } & {
-    users: ConnectedUser[];
+    users: number[];
   }
 >;
 
@@ -64,9 +64,6 @@ export type VoiceAction =
       type: "action.voice.leave";
       room: number;
     }
-  | ({
-      type: "action.voice.userstate";
-    } & Partial<Omit<ConnectedUserState, "online">>)
   | {
       type: "action.voice.pause";
       userId: number;
@@ -76,17 +73,12 @@ export type VoiceEvent =
   | {
       type: "event.voice.joined";
       room: number;
-      user: ConnectedUser;
+      userId: number;
     }
   | {
       type: "event.voice.left";
       room: number;
-      user: ConnectedUser;
-    }
-  | {
-      type: "event.voice.userstate";
-      room: number;
-      user: ConnectedUser;
+      userId: number;
     }
   | {
       type: "event.voice.pause";
@@ -117,6 +109,9 @@ export type UserAction =
       name: string;
     }
   | ({
+      type: "action.user.state";
+    } & Partial<Omit<ConnectedUserState, "online">>)
+  | ({
       type: "action.user.update";
       id: number;
     } & Partial<User>)
@@ -129,6 +124,10 @@ export type UserEvent =
   | {
       type: "event.user.list";
       users: (User | ConnectedUser)[];
+    }
+  | {
+      type: "event.user.state";
+      user: ConnectedUser;
     }
   | {
       type: "event.user.me";

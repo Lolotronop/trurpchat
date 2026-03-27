@@ -39,7 +39,7 @@ export class WebRTC {
   set streaming(value: boolean) {
     this.#streaming = value;
     this.server.gateway.send({
-      type: "action.voice.userstate",
+      type: "action.user.state",
       streaming: value,
     });
   }
@@ -51,7 +51,7 @@ export class WebRTC {
   set watching(value: number | null) {
     this.#watching = value;
     this.server.gateway.send({
-      type: "action.voice.userstate",
+      type: "action.user.state",
       watching: value,
     });
   }
@@ -74,7 +74,7 @@ export class WebRTC {
 
     this.#cameraEnabled = value;
     this.server.gateway.send({
-      type: "action.voice.userstate",
+      type: "action.user.state",
       camera: value,
     });
   }
@@ -106,9 +106,9 @@ export class WebRTC {
 
   async handleSignalingMessage(msg: Message) {
     if (msg.type === "event.voice.joined") {
-      this.handleUserJoined(msg.user, msg.room);
+      this.handleUserJoined(msg.userId, msg.room);
     } else if (msg.type === "event.voice.left") {
-      this.handleUserLeft(msg.user, msg.room);
+      this.handleUserLeft(msg.userId, msg.room);
     } else if (msg.type === "rtc.offer") {
       await this.acceptCall(msg.offer, msg.sender);
     } else if (msg.type === "rtc.answer") {
@@ -118,12 +118,12 @@ export class WebRTC {
     }
   }
 
-  async handleUserJoined(user: ConnectedUser, roomId: number) {
+  async handleUserJoined(userId: number, roomId: number) {
     if (this.room.id !== roomId) {
       return;
     }
 
-    if (user.id !== this.server.user.id) {
+    if (userId !== this.server.user.id) {
       sound.play("user join");
       return;
     }
@@ -140,23 +140,23 @@ export class WebRTC {
 
     await this.mic.connect();
     // Initiate calls to existing users
-    for (const user of this.room.users) {
-      if (user.id === this.server.user.id) continue;
-      await this.initiateCall(user.id);
+    for (const userId of this.room.users) {
+      if (userId === this.server.user.id) continue;
+      await this.initiateCall(userId);
     }
   }
 
-  async handleUserLeft(user: ConnectedUser, roomId: number) {
-    if (user.id === this.server.user.id) {
+  async handleUserLeft(userId: number, roomId: number) {
+    if (userId === this.server.user.id) {
       this.cleanup();
       return;
     } else if (roomId === this.room.id) {
-      const peer = this.peers.get(user.id);
+      const peer = this.peers.get(userId);
       if (!peer) {
         return;
       }
       peer.cleanup();
-      this.peers.delete(user.id);
+      this.peers.delete(userId);
       sound.play("user leave");
     }
   }
@@ -225,7 +225,7 @@ export class WebRTC {
   }
 
   async initiateCall(targetId: number) {
-    if (!this.room?.users.find((user) => user.id === targetId)) {
+    if (!this.room?.users.includes(targetId)) {
       console.error(`User ${targetId} not found`);
       return;
     }

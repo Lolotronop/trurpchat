@@ -31,7 +31,7 @@ export class God {
     this.mic.muted = value;
     // TODO: think about where and when this shoud actually happen
     this.servers.selected?.gateway.send({
-      type: "action.voice.userstate",
+      type: "action.user.state",
       muted: value,
     });
   }
@@ -45,7 +45,7 @@ export class God {
     this.#deafened = value;
     // TODO: think about where and when this should actually happen
     this.servers.selected?.gateway?.send({
-      type: "action.voice.userstate",
+      type: "action.user.state",
       deafened: value,
     });
     if (value) {
