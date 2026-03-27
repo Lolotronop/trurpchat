@@ -41,7 +41,7 @@
 <div class="flex flex-col pl-8">
   {#each room.users as userId (userId)}
     {@const user = server.findUser(userId)}
-    {#if user && "online" in user}
+    {#if user?.online}
       {@const peer = rtc?.peers.get(user.id)}
       {#if user.id === server?.user.id}
         <VoiceUser

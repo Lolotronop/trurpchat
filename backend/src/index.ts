@@ -4,6 +4,7 @@ import type {
   Message,
   ConnectedUser,
   ConnectedUserState,
+  OfflineUser,
   User,
   Room,
 } from "./types";
@@ -43,14 +44,16 @@ function createDefaultTalkingUserState(): ConnectedUserState {
 
 export async function getAllUsers(
   ctx: HandlerContext,
-): Promise<(User | ConnectedUser)[]> {
+): Promise<User[]> {
   const allUsers = await db.query.users.findMany();
   const onlineUsers = ctx.clients
     .values()
     .map((c) => c.data)
     .toArray();
 
-  const offlineUsers = allUsers.filter((u) => !ctx.clients.has(u.id));
+  const offlineUsers: OfflineUser[] = allUsers
+    .filter((u) => !ctx.clients.has(u.id))
+    .map((u) => ({ ...u, online: false }));
 
   return [...onlineUsers, ...offlineUsers];
 }
@@ -130,9 +133,14 @@ Bun.serve<ConnectedUser, never>({
       }
 
       const users = await getAllUsers(ctx);
-      sendAll(ctx.clients.values(), {
+      send(ws, {
         type: "event.user.list",
         users,
+      });
+
+      sendAll(ctx.clients.values().filter((client) => client !== ws), {
+        type: "event.user.online",
+        userId: ws.data.id,
       });
     },
 
@@ -165,10 +173,9 @@ Bun.serve<ConnectedUser, never>({
 
       ctx.clients.delete(ws.data.id);
 
-      const users = await getAllUsers(ctx);
       sendAll(ctx.clients.values(), {
-        type: "event.user.list",
-        users,
+        type: "event.user.offline",
+        userId: ws.data.id,
       });
     },
   },

@@ -1,5 +1,10 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import type { ConnectedUser, Message, Room, User } from "trurpchat-backend";
+import type {
+  ConnectedUserState,
+  Message,
+  Room,
+  User,
+} from "trurpchat-backend";
 import type { Key } from "trurpchat-backend/src/db";
 import { Gateway } from "./gateway.svelte";
 import { gitGud } from "./god.svelte";
@@ -12,6 +17,17 @@ export type ServerDefinition = {
   name: string;
   url: string;
 };
+
+function createDefaultConnectedUserState(): ConnectedUserState {
+  return {
+    muted: false,
+    deafened: false,
+    camera: false,
+    streaming: false,
+    watching: null,
+    online: true,
+  };
+}
 
 export class Server {
   definition: ServerDefinition;
@@ -29,8 +45,9 @@ export class Server {
     type: "text",
     permissions: 0,
     deletedAt: null,
+    online: false,
   });
-  users: (User | ConnectedUser)[] = $state([]);
+  users: User[] = $state([]);
   keys: Key[] = $state([]);
 
   messages: TextMessageCache = new TextMessageCache();
@@ -104,6 +121,36 @@ export class Server {
       this.user = message.user;
     } else if (message.type === "event.user.list") {
       this.users = message.users;
+    } else if (message.type === "event.user.online") {
+      const userIndex = this.users.findIndex((user) => user.id === message.userId);
+      if (userIndex === -1) {
+        return;
+      }
+
+      const user = this.users[userIndex];
+      if (user.online) {
+        return;
+      }
+
+      this.users[userIndex] = {
+        ...user,
+        ...createDefaultConnectedUserState(),
+      };
+    } else if (message.type === "event.user.offline") {
+      const userIndex = this.users.findIndex((user) => user.id === message.userId);
+      if (userIndex === -1) {
+        return;
+      }
+
+      const user = this.users[userIndex];
+      if (!user.online) {
+        return;
+      }
+
+      this.users[userIndex] = {
+        ...user,
+        online: false,
+      };
     } else if (message.type === "event.user.state") {
       const userIndex = this.users.findIndex((user) => user.id === message.user.id);
       if (userIndex === -1) {

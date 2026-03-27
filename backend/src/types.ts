@@ -2,12 +2,11 @@ import type {
   Key,
   Message as MessageData,
   Room as RoomData,
-  User,
+  User as DbUser,
 } from "./db/schema";
 
 export type {
   Room as RoomData,
-  User,
   Message as TextMessage,
 } from "./db/schema";
 
@@ -22,7 +21,13 @@ export type ConnectedUserState = {
   online: true;
 };
 
-export type ConnectedUser = User & ConnectedUserState;
+export type OfflineUser = DbUser & {
+  online: false;
+};
+
+export type ConnectedUser = DbUser & ConnectedUserState;
+
+export type User = OfflineUser | ConnectedUser;
 
 export type VoiceChat = Flatten<
   RoomData & { type: "voice" } & {
@@ -114,7 +119,7 @@ export type UserAction =
   | ({
       type: "action.user.update";
       id: number;
-    } & Partial<User>)
+    } & Partial<DbUser>)
   | {
       type: "action.user.delete";
       id: number;
@@ -123,11 +128,19 @@ export type UserAction =
 export type UserEvent =
   | {
       type: "event.user.list";
-      users: (User | ConnectedUser)[];
+      users: User[];
     }
   | {
       type: "event.user.state";
       user: ConnectedUser;
+    }
+  | {
+      type: "event.user.online";
+      userId: number;
+    }
+  | {
+      type: "event.user.offline";
+      userId: number;
     }
   | {
       type: "event.user.me";
@@ -220,7 +233,7 @@ export type OtherEvent =
     }
   | {
       type: "event.connected";
-      user: User;
+      user: ConnectedUser;
     };
 
 // RtcMessage is kinda weird, it is both an event and an action

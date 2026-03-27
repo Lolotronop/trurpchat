@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { ConnectedUser, User } from "trurpchat-backend";
+  import type { ConnectedUser, OfflineUser, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
 
   type Props = {
     online: ConnectedUser[];
-    offline: User[];
+    offline: OfflineUser[];
   };
   const { online, offline }: Props = $props();
 </script>

@@ -12,8 +12,8 @@
   };
   const { server }: Props = $props();
 
-  const onlineUsers = $derived(server.users.filter((u) => "online" in u));
-  const offlineUsers = $derived(server.users.filter((u) => !("online" in u)));
+  const onlineUsers = $derived(server.users.filter((u) => u.online));
+  const offlineUsers = $derived(server.users.filter((u) => !u.online));
 
   let selectedRoomId: number | undefined = $state(undefined);
   const selectedRoom = $derived(

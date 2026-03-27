@@ -82,7 +82,7 @@
 >
   {#each server.rtc?.room.users || [] as userId (userId)}
     {@const user = server.findUser(userId)}
-    {#if user && "online" in user}
+    {#if user?.online}
       {@const peer = server.rtc?.peers.get(user.id)}
       {#if user.id === server.user.id}
         <VoiceUserCard
