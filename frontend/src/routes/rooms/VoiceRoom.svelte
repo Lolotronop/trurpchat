@@ -84,7 +84,7 @@
                 </div>
                 <GainSlider
                   bind:value={peer.volume}
-                  max={toDb(2)}
+                  max={toDb(3)}
                   ticks={[0]}
                 />
               </div>

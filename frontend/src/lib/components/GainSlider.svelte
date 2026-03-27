@@ -1,6 +1,7 @@
 <script lang="ts">
   import { fly } from "svelte/transition";
   import { Slider } from "$lib/components/ui/slider";
+  import { toDb } from "$lib/utils.svelte";
 
   type Props = {
     value: number;
@@ -11,7 +12,11 @@
     class?: string;
   };
 
-  let { value = $bindable(), max = 10, class: className }: Props = $props();
+  let {
+    value = $bindable(),
+    max = toDb(3),
+    class: className,
+  }: Props = $props();
 
   const SLIDER_MIN = 0;
   const SLIDER_MAX = 100;
