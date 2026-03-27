@@ -75,8 +75,13 @@
                 <Checkbox checked={peer.mute} />
               </Button>
 
-              <div class="flex flex-col gap-2 w-full px-2">
-                <p class="pl-2 text-sm font-normal">Громкость</p>
+              <div class="flex flex-col gap-2 w-full p-2 px-4">
+                <div
+                  class="flex flex-row items-center justify-between gap-2 text-sm font-normal"
+                >
+                  <p>Громкость</p>
+                  <p>{(peer.volume * 100).toFixed(0)}%</p>
+                </div>
                 <GainSlider
                   bind:value={peer.volume}
                   max={toDb(2)}
