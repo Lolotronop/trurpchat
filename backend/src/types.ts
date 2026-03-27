@@ -6,6 +6,7 @@ import type {
 } from "./db/schema";
 
 export type {
+  User as DbUser,
   Room as RoomData,
   Message as TextMessage,
 } from "./db/schema";
@@ -140,6 +141,18 @@ export type UserEvent =
     }
   | {
       type: "event.user.offline";
+      userId: number;
+    }
+  | {
+      type: "event.user.created";
+      user: OfflineUser;
+    }
+  | {
+      type: "event.user.updated";
+      user: DbUser;
+    }
+  | {
+      type: "event.user.deleted";
       userId: number;
     }
   | {

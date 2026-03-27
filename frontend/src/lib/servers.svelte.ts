@@ -1,7 +1,9 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type {
   ConnectedUserState,
+  DbUser,
   Message,
+  OfflineUser,
   Room,
   User,
 } from "trurpchat-backend";
@@ -26,6 +28,25 @@ function createDefaultConnectedUserState(): ConnectedUserState {
     streaming: false,
     watching: null,
     online: true,
+  };
+}
+
+function patchUser(base: User, patch: DbUser): User {
+  if (!base.online) {
+    return toOfflineUser(patch);
+  }
+
+  return {
+    ...base,
+    ...patch,
+    online: true,
+  };
+}
+
+function toOfflineUser(user: DbUser): OfflineUser {
+  return {
+    ...user,
+    online: false,
   };
 }
 
@@ -147,10 +168,27 @@ export class Server {
         return;
       }
 
-      this.users[userIndex] = {
-        ...user,
-        online: false,
-      };
+      this.users[userIndex] = toOfflineUser(user);
+    } else if (message.type === "event.user.created") {
+      const userIndex = this.users.findIndex((user) => user.id === message.user.id);
+      if (userIndex === -1) {
+        this.users.push(message.user);
+      } else {
+        this.users[userIndex] = message.user;
+      }
+    } else if (message.type === "event.user.updated") {
+      const userIndex = this.users.findIndex((user) => user.id === message.user.id);
+      if (userIndex === -1) {
+        this.users.push(toOfflineUser(message.user));
+      } else {
+        this.users[userIndex] = patchUser(this.users[userIndex]!, message.user);
+      }
+    } else if (message.type === "event.user.deleted") {
+      const userIndex = this.users.findIndex((user) => user.id === message.userId);
+      if (userIndex === -1) {
+        return;
+      }
+      this.users.splice(userIndex, 1);
     } else if (message.type === "event.user.state") {
       const userIndex = this.users.findIndex((user) => user.id === message.user.id);
       if (userIndex === -1) {

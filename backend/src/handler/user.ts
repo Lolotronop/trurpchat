@@ -4,7 +4,6 @@ import { send, sendAll } from "$src/send";
 import { createKey, db, keys, users } from "$src/db";
 import type { UserAction } from "$src/types";
 import type { Handlers } from "./types";
-import { getAllUsers } from "..";
 
 export const userHandlers: Handlers<UserAction> = {
   "action.user.create": async (ctx, ws, msg) => {
@@ -26,10 +25,12 @@ export const userHandlers: Handlers<UserAction> = {
       .returning();
     await createKey(user[0]!.id);
 
-    const u = await getAllUsers(ctx);
     sendAll(ctx.clients.values(), {
-      type: "event.user.list",
-      users: u,
+      type: "event.user.created",
+      user: {
+        ...user[0]!,
+        online: false,
+      },
     });
 
     const admins = ctx.clients.values().filter((c) => c.data.permissions === 1);
@@ -72,10 +73,19 @@ export const userHandlers: Handlers<UserAction> = {
     }
 
     const { id: _id, type: _type, ...rest } = msg;
-    await db.update(users).set(rest).where(eq(users.id, msg.id));
+    const updated = await db
+      .update(users)
+      .set(rest)
+      .where(eq(users.id, msg.id))
+      .returning();
+    const user = updated[0];
+    if (!user) {
+      return err(new Error(`User ${msg.id} not found`));
+    }
+
     const client = ctx.clients.get(msg.id);
     if (client) {
-      client.data = { ...client.data, ...msg };
+      client.data = { ...client.data, ...user };
       send(client, {
         type: "event.user.me",
         user: client.data,
@@ -91,24 +101,10 @@ export const userHandlers: Handlers<UserAction> = {
       });
     }
 
-    const u = await getAllUsers(ctx);
     sendAll(ctx.clients.values(), {
-      type: "event.user.list",
-      users: u,
+      type: "event.user.updated",
+      user,
     });
-
-    if (!client) {
-      return ok();
-    }
-
-    const room = ctx.hotel.roomByClient(client);
-    if (room) {
-      sendAll(ctx.clients.values(), {
-        type: "event.room.updated",
-        room: room.toJson(),
-      });
-      return ok();
-    }
 
     return ok();
   },
@@ -123,7 +119,6 @@ export const userHandlers: Handlers<UserAction> = {
       );
     }
 
-    // TODO: we should do soft deletions here
     await db.delete(keys).where(eq(keys.userId, msg.id));
 
     // this has to be done after the keys are deleted
@@ -143,12 +138,12 @@ export const userHandlers: Handlers<UserAction> = {
       ctx.clients.delete(msg.id);
     }
 
+    // TODO: we should do soft deletions here
     await db.delete(users).where(eq(users.id, msg.id));
 
-    const u = await getAllUsers(ctx);
     sendAll(ctx.clients.values(), {
-      type: "event.user.list",
-      users: u,
+      type: "event.user.deleted",
+      userId: msg.id,
     });
 
     return ok();
