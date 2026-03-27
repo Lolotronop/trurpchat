@@ -124,18 +124,9 @@ export const userHandlers: Handlers<UserAction> = {
     // this has to be done after the keys are deleted
     const client = ctx.clients.get(msg.id);
     if (client) {
-      const room = ctx.hotel.roomByClient(client);
-      if (room) {
-        room.remove(client);
-
-        sendAll(ctx.clients.values(), {
-          type: "event.voice.left",
-          room: room.data.id,
-          userId: client.data.id,
-        });
-      }
+      // this should trigger the client to disconnect
+      // and the handler in index.ts will hadnle it
       client.close();
-      ctx.clients.delete(msg.id);
     }
 
     // TODO: we should do soft deletions here
