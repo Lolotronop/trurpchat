@@ -1,6 +1,7 @@
 import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
-import type { TextMessage } from "trurpchat-backend";
+import type { Room, TextMessage } from "trurpchat-backend";
+import type { Server } from "./servers.svelte";
 
 type TextMessageBlock = {
   messages: TextMessage[];
@@ -38,7 +39,7 @@ export class TextRoomCache {
 
   constructor(
     readonly parent: TextMessageCache,
-    readonly roomId: number,
+    readonly room: Extract<Room, { type: "text" }>,
   ) {
     this.observer = new IntersectionObserver(
       (entries) => {
@@ -81,11 +82,6 @@ export class TextRoomCache {
     this.observer.observe(element);
     return () => {
       this.observer.unobserve(element);
-      const blockId = Number(element.getAttribute("data-block"));
-      const index = this.visibleBlocks.indexOf(blockId);
-      if (index !== -1) {
-        this.visibleBlocks.splice(index, 1);
-      }
     };
   };
 
@@ -96,7 +92,7 @@ export class TextRoomCache {
 
     this.inFlightBlocks.add(blockId);
     tick().then(() => {
-      this.parent.onfetchrequest(this.roomId, blockId);
+      this.parent.onfetchrequest(this.room.id, blockId);
     });
   }
 
@@ -161,19 +157,11 @@ export class TextRoomCache {
   }
 
   lastMessageId() {
-    const lastBlockId = this.lastBlockId();
-    const lastBlock = this.blocks.get(lastBlockId);
-    if (!lastBlock) return 0;
-    return lastBlock.messages[lastBlock.messages.length - 1]?.id ?? 0;
+    return this.room.nextMessageId - 1;
   }
 
   lastBlockId() {
-    const lastBlockId = this.blocks
-      .keys()
-      .toArray()
-      .sort((a, b) => b - a)[0];
-    if (lastBlockId === undefined) return 0;
-    return lastBlockId;
+    return this.parent.getBlockId(this.lastMessageId());
   }
 
   destroy() {
@@ -185,6 +173,8 @@ export class TextMessageCache {
   BLOCK_SIZE = 10;
   /** Map of channel ID to room cache */
   cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
+
+  constructor(readonly server: Server) { }
 
   checkBlockId(blockId: number) {
     if (blockId < 0) {
@@ -204,23 +194,15 @@ export class TextMessageCache {
 
   onfetchrequest: (channelId: number, blockId: number) => void = () => { };
 
-  getRoom(channelId: number, create = true) {
-    let room = this.cache.get(channelId);
+  getRoom(roomId: number, create = true) {
+    let room = this.cache.get(roomId);
     if (!room && create) {
       tick().then(() => {
-        room = new TextRoomCache(this, channelId);
-        this.cache.set(channelId, room);
+        room = new TextRoomCache(this, this.server.findRoom(roomId) as any);
+        this.cache.set(roomId, room);
       })
     }
     return room;
-  }
-
-  get(channelId: number, blockId: number, fetch = true) {
-    return this.getRoom(channelId)?.get(blockId, fetch);
-  }
-
-  initializeRoom(channelId: number, nextMessageId: number) {
-    this.getRoom(channelId)?.initialize(nextMessageId);
   }
 
   /** Sets the block to be alive by default */
@@ -243,13 +225,5 @@ export class TextMessageCache {
 
   delete(roomId: number, messageId: number) {
     this.getRoom(roomId, false)?.delete(messageId);
-  }
-
-  lastMessageId(channelId: number) {
-    return this.getRoom(channelId)?.lastMessageId() ?? 0;
-  }
-
-  lastBlockId(channelId: number) {
-    return this.getRoom(channelId)?.lastBlockId() ?? 0;
   }
 }

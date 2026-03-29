@@ -71,7 +71,7 @@ export class Server {
   users: User[] = $state([]);
   keys: Key[] = $state([]);
 
-  messages: TextMessageCache = new TextMessageCache();
+  messages: TextMessageCache = new TextMessageCache(this);
 
   constructor(definition: ServerDefinition) {
     this.definition = definition;
