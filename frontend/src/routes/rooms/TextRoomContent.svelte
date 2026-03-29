@@ -7,6 +7,7 @@
   import { StickToBottom } from "$lib/StickToBottom.svelte";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import { ArrowRight } from "@lucide/svelte";
+  import { untrack } from "svelte";
 
   type Props = {
     server: Server;
@@ -16,20 +17,34 @@
   const cache = $derived(server.messages);
   const roomCache = $derived(cache.getRoom(room.id));
   $effect(() => {
-    roomCache?.initialize(room.nextMessageId);
+    if (roomCache) {
+      untrack(() => {
+        roomCache.initialize(room.nextMessageId);
+
+        const hasScroll = roomCache.scrollPosition !== undefined;
+
+        if (hasScroll) {
+          scrollElement?.scrollTo({
+            behavior: "instant",
+            top: roomCache.scrollPosition,
+          });
+        }
+
+        const stickToBottom = new StickToBottom({
+          scrollElement: () => scrollElement,
+          contentElement: () => contentElement,
+          resize: "instant",
+          stiffness: 1,
+          damping: 1,
+          mass: 0.5,
+          initial: !hasScroll,
+        });
+      });
+    }
   });
 
   let scrollElement = $state<HTMLElement>();
   let contentElement = $state<HTMLElement>();
-
-  const stickToBottom = new StickToBottom({
-    scrollElement: () => scrollElement,
-    contentElement: () => contentElement,
-    resize: "instant",
-    stiffness: 1,
-    damping: 1,
-    mass: 0.5,
-  });
 
   let text = $state("");
 
@@ -98,6 +113,10 @@
 <div
   class="h-full w-full flex overflow-y-scroll flex-col"
   bind:this={scrollElement}
+  onscroll={(e) => {
+    if (!roomCache) return;
+    roomCache.scrollPosition = e.currentTarget.scrollTop;
+  }}
 >
   <div class="mt-auto" bind:this={contentElement}>
     {#each roomCache?.loadedBlocks as blockId (blockId)}

@@ -16,6 +16,17 @@ type TextMessageBlock = {
 export class TextRoomCache {
   blocks: SvelteMap<number, TextMessageBlock> = new SvelteMap();
   visibleBlocks: number[] = $state([]);
+
+  scrollPosition = $state<number | undefined>(undefined);
+
+  lastMessageId() {
+    return this.room.nextMessageId - 1;
+  }
+
+  lastBlockId() {
+    return this.parent.getBlockId(this.lastMessageId());
+  }
+
   loadedBlocks = $derived.by(() => {
     const blocks = this.visibleBlocks.toSorted((a, b) => a - b);
     if (blocks.length === 0) {
@@ -70,6 +81,7 @@ export class TextRoomCache {
   }
 
   initialize(nextMessageId: number) {
+    console.log("initialize", nextMessageId);
     if (this.visibleBlocks.length > 0) {
       return;
     }
@@ -154,14 +166,6 @@ export class TextRoomCache {
     block.messages[index].text = "";
     block.messages[index].replyTo = null;
     block.messages[index].attachments = null;
-  }
-
-  lastMessageId() {
-    return this.room.nextMessageId - 1;
-  }
-
-  lastBlockId() {
-    return this.parent.getBlockId(this.lastMessageId());
   }
 
   destroy() {
