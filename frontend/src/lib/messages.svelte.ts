@@ -27,24 +27,6 @@ export class TextRoomCache {
     return this.parent.getBlockId(this.lastMessageId());
   }
 
-  loadedBlocks = $derived.by(() => {
-    const blocks = this.visibleBlocks.toSorted((a, b) => a - b);
-    if (blocks.length === 0) {
-      return blocks;
-    }
-
-    if (blocks[0] > 0) {
-      blocks.unshift(blocks[0] - this.parent.BLOCK_SIZE);
-    }
-
-    const lastVisibleBlock = blocks[blocks.length - 1];
-    if (lastVisibleBlock < this.lastBlockId()) {
-      blocks.push(lastVisibleBlock + this.parent.BLOCK_SIZE);
-    }
-
-    return blocks.toSorted((a, b) => a - b);
-  });
-
   inFlightBlocks = new Set<number>();
   observer: IntersectionObserver;
 
@@ -55,39 +37,49 @@ export class TextRoomCache {
     this.observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
           const blockId = Number(entry.target.getAttribute("data-block"));
           if (Number.isNaN(blockId)) {
             continue;
           }
 
-          if (entry.isIntersecting) {
-            if (!this.visibleBlocks.includes(blockId)) {
-              this.visibleBlocks.push(blockId);
+          if (blockId !== 0) {
+            const prev = blockId - this.parent.BLOCK_SIZE;
+            if (!this.visibleBlocks.includes(prev)) {
+              this.visibleBlocks.push(prev);
             }
-          } else {
-            const index = this.visibleBlocks.indexOf(blockId);
-            if (index !== -1) {
-              this.visibleBlocks.splice(index, 1);
+          }
+
+          if (blockId !== this.lastBlockId()) {
+            const next = blockId + this.parent.BLOCK_SIZE;
+            if (!this.visibleBlocks.includes(next)) {
+              this.visibleBlocks.push(next);
             }
+          }
+
+          if (!this.blocks.has(blockId)) {
+            this.fetch(blockId);
           }
         }
       },
       {
         root: null,
         rootMargin: "0px",
-        threshold: 0.1,
+        threshold: 0,
       },
     );
   }
 
-  initialize(nextMessageId: number) {
-    console.log("initialize", nextMessageId);
+  initialize() {
     if (this.visibleBlocks.length > 0) {
       return;
     }
 
-    const lastMessageId = Math.max(0, nextMessageId - 1);
-    this.visibleBlocks = [this.parent.getBlockId(lastMessageId)];
+    this.visibleBlocks = [this.lastBlockId()];
+    // this.visibleBlocks = [Math.max(0, this.lastBlockId() - this.parent.BLOCK_SIZE * 7)];
   }
 
   attachBlock = (element: Element) => {
@@ -174,7 +166,7 @@ export class TextRoomCache {
 }
 
 export class TextMessageCache {
-  BLOCK_SIZE = 10;
+  BLOCK_SIZE = 3;
   /** Map of channel ID to room cache */
   cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
 

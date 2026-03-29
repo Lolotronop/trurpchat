@@ -68,6 +68,7 @@
         <Tooltip.Root>
           <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
             {formatTime(message.createdAt, false)}
+            {message.id}
           </Tooltip.Trigger>
           <Tooltip.Content sideOffset={4}>
             {formatFullDate(message.createdAt)}

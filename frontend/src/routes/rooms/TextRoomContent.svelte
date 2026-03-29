@@ -19,7 +19,7 @@
   $effect(() => {
     if (roomCache) {
       untrack(() => {
-        roomCache.initialize(room.nextMessageId);
+        roomCache.initialize();
 
         const hasScroll = roomCache.scrollPosition !== undefined;
 
@@ -30,15 +30,15 @@
           });
         }
 
-        const stickToBottom = new StickToBottom({
-          scrollElement: () => scrollElement,
-          contentElement: () => contentElement,
-          resize: "instant",
-          stiffness: 1,
-          damping: 1,
-          mass: 0.5,
-          initial: !hasScroll,
-        });
+        // const stickToBottom = new StickToBottom({
+        //   scrollElement: () => scrollElement,
+        //   contentElement: () => contentElement,
+        //   resize: "instant",
+        //   stiffness: 1,
+        //   damping: 1,
+        //   mass: 0.5,
+        //   initial: !hasScroll,
+        // });
       });
     }
   });
@@ -87,26 +87,21 @@
   }
 </script>
 
-<div class="flex flex-col gap-2 items-center w-full">
+<div class="flex flex-col gap-2 w-full justify-center">
   <Button
     onclick={() => {
       console.dir(roomCache?.blocks.entries().toArray());
     }}>log</Button
   >
-
-  <div class="flex flex-row gap-2">
-    {#each roomCache?.blocks
-      .keys()
-      .toArray()
-      .toSorted((a, b) => a - b) as blockId}
-      <Button
-        variant={roomCache?.loadedBlocks.includes(blockId)
-          ? "default"
-          : "secondary"}
-      >
-        {blockId}
-      </Button>
-    {/each}
+  <div class="max-w-96 flex-row gap-2">
+    <p>
+      {#each roomCache?.blocks
+        .keys()
+        .toArray()
+        .toSorted((a, b) => a - b) as blockId}
+        {blockId + " "}
+      {/each}
+    </p>
   </div>
 </div>
 
@@ -119,8 +114,8 @@
   }}
 >
   <div class="mt-auto" bind:this={contentElement}>
-    {#each roomCache?.loadedBlocks as blockId (blockId)}
-      {@const block = roomCache?.get(blockId)}
+    {#each roomCache?.visibleBlocks.toSorted((a, b) => a - b) as blockId (blockId)}
+      {@const block = roomCache?.get(blockId, false)}
       {#if block && block.alive}
         <div data-block={blockId} {@attach roomCache?.attachBlock}>
           {#each partition(block.messages) as part (part[0]?.id)}
@@ -134,7 +129,27 @@
           {/each}
         </div>
       {:else}
-        <p class="h-20">Loading...</p>
+        <div
+          class="h-screen w-full flex items-center justify-center"
+          data-block={blockId}
+          {@attach (el) => {
+            // prevents the browser from locking up at the top
+            // loading messages in a looop up to the first one
+            if (scrollElement?.scrollTop === 0) {
+              scrollElement?.scrollTo({
+                behavior: "instant",
+                top: 1,
+              });
+            }
+
+            roomCache?.observer.observe(el);
+            return () => {
+              roomCache?.observer.unobserve(el);
+            };
+          }}
+        >
+          Loading...
+        </div>
       {/if}
     {/each}
 
