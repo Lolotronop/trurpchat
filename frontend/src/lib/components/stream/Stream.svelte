@@ -10,6 +10,7 @@
   } from "@lucide/svelte";
   import {
     create as createOvenPlayer,
+    type OvenPlayerIceServer,
     type OvenPlayerInstance,
   } from "ovenplayer";
   import { fade } from "svelte/transition";
@@ -20,6 +21,7 @@
   import type { Server } from "$lib/servers.svelte";
   import GainSlider from "../GainSlider.svelte";
   import { OvenAudioController } from "./ovenplayer.svelte";
+  import { ICE_CONFIG } from "$lib/webrtc.svelte";
 
   type Props = {
     user: User;
@@ -72,8 +74,7 @@
       title: "",
       webrtcConfig: {
         playoutDelayHint: 0,
-        // @ts-expect-error
-        // iceServers: ICE_CONFIG.iceServers,
+        iceServers: ICE_CONFIG.iceServers as OvenPlayerIceServer[],
       },
       sources: [
         {
