@@ -1,5 +1,5 @@
 import { SvelteMap } from "svelte/reactivity";
-import type { ConnectedUser, Message, VoiceChat } from "trurpchat-backend";
+import type { Message, VoiceChat } from "trurpchat-backend";
 import type { Camera } from "./camera.svelte";
 import type { Headphones } from "./headphones.svelte";
 import type { Mic } from "./mic.svelte";

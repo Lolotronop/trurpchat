@@ -8,39 +8,54 @@
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import { ArrowRight } from "@lucide/svelte";
   import { untrack } from "svelte";
+  import type { TextRoomCache } from "$lib/messages.svelte";
 
   type Props = {
     server: Server;
     room: Extract<Room, { type: "text" }>;
   };
+
   const { server, room }: Props = $props();
   const cache = $derived(server.messages);
-  const roomCache = $derived(cache.getRoom(room.id));
+  let roomCache: TextRoomCache | undefined = $state(undefined);
+  let stickToBottom: StickToBottom | undefined = $state(undefined);
   $effect(() => {
-    if (roomCache) {
-      untrack(() => {
-        roomCache.initialize();
-
-        const hasScroll = roomCache.scrollPosition !== undefined;
-
-        if (hasScroll) {
-          scrollElement?.scrollTo({
-            behavior: "instant",
-            top: roomCache.scrollPosition,
-          });
-        }
-
-        // const stickToBottom = new StickToBottom({
-        //   scrollElement: () => scrollElement,
-        //   contentElement: () => contentElement,
-        //   resize: "instant",
-        //   stiffness: 1,
-        //   damping: 1,
-        //   mass: 0.5,
-        //   initial: !hasScroll,
-        // });
-      });
+    if (!roomCache) {
+      roomCache = cache.getRoom(room.id);
     }
+
+    untrack(() => {
+      if (!roomCache) return;
+      roomCache.initialize();
+
+      const hasScroll = roomCache.scrollPosition !== undefined;
+      const isLast =
+        roomCache.visibleBlocks[roomCache.visibleBlocks.length - 1] ===
+        roomCache.lastBlockId();
+
+      if (hasScroll) {
+        scrollElement?.scrollTo({
+          behavior: "instant",
+          top: roomCache.scrollPosition,
+        });
+      }
+
+      // stickToBottom = new StickToBottom({
+      //   scrollElement: () => scrollElement,
+      //   contentElement: () => contentElement,
+      //   resize: "instant",
+      //   stiffness: 1,
+      //   damping: 1,
+      //   mass: 0.5,
+      //   // initial: !hasScroll && isLast,
+      //   initial: false,
+      // });
+    });
+
+    return () => {
+      console.log("destroying");
+      // server.messages.cache.delete(room.id);
+    };
   });
 
   let scrollElement = $state<HTMLElement>();
@@ -85,23 +100,80 @@
 
     return result;
   }
+
+  function allIds() {
+    if (!roomCache) return [];
+    const last = roomCache.lastBlockId();
+    const ids = [];
+    for (let i = 0; i <= last; i += roomCache.parent.BLOCK_SIZE) {
+      ids.push(i);
+    }
+    return ids;
+  }
+
+  function determineColor(blockId: number) {
+    const block = roomCache?.get(blockId, false);
+
+    const loaded = block && block.alive;
+    const rendered = roomCache?.renderBlocks.includes(blockId);
+    const visible = roomCache?.visibleBlocks.includes(blockId);
+
+    if (visible) {
+      return "text-accent";
+    }
+
+    if (!loaded && rendered) {
+      return "text-yellow-300";
+    }
+
+    if (rendered) {
+      return "text-blue-300";
+    }
+
+    if (!loaded) {
+      return "text-destructive";
+    }
+
+    return "";
+  }
+
+  function jumpTo(id: number) {
+    if (!roomCache) return;
+    console.log("---jumpTo", id);
+    stickToBottom?.stopScroll();
+    if (!roomCache.renderBlocks.includes(id)) {
+      roomCache.renderBlocks = [id];
+    } else {
+      const el = document.querySelector(`[data-block="${id}"]`);
+      if (el) {
+        el.scrollIntoView();
+      }
+    }
+  }
+
+  let lastHasScroll = false;
+  let isTopLoading = false;
 </script>
 
 <div class="flex flex-col gap-2 w-full justify-center">
-  <Button
+  <button
     onclick={() => {
-      console.dir(roomCache?.blocks.entries().toArray());
-    }}>log</Button
+      jumpTo(30);
+    }}
   >
-  <div class="max-w-96 flex-row gap-2">
-    <p>
-      {#each roomCache?.blocks
-        .keys()
-        .toArray()
-        .toSorted((a, b) => a - b) as blockId}
-        {blockId + " "}
-      {/each}
-    </p>
+    jump to 30
+  </button>
+  <button
+    onclick={() => {
+      jumpTo(roomCache?.lastBlockId() ?? 0);
+    }}
+  >
+    jump to {roomCache?.lastBlockId() ?? 0}
+  </button>
+  <div class="flex-row gap-2">
+    {#each allIds() as blockId}
+      <span class={determineColor(blockId)}> {blockId + " "} </span>
+    {/each}
   </div>
 </div>
 
@@ -110,11 +182,21 @@
   bind:this={scrollElement}
   onscroll={(e) => {
     if (!roomCache) return;
-    roomCache.scrollPosition = e.currentTarget.scrollTop;
+    const el = e.currentTarget;
+
+    if (el.scrollTop === 0 && false) {
+      el.scrollTo({
+        behavior: "instant",
+        top: 1,
+      });
+    }
+
+    roomCache.scrollPosition = el.scrollTop;
   }}
 >
-  <div class="mt-auto" bind:this={contentElement}>
-    {#each roomCache?.visibleBlocks.toSorted((a, b) => a - b) as blockId (blockId)}
+  <div class="h-full flex shrink-0 flex-col" bind:this={contentElement}>
+    <div class="h-full flex flex-col-reverse bg-yellow-100/20"></div>
+    {#each roomCache?.renderBlocks.toSorted((a, b) => a - b) as blockId (blockId)}
       {@const block = roomCache?.get(blockId, false)}
       {#if block && block.alive}
         <div data-block={blockId} {@attach roomCache?.attachBlock}>
@@ -123,37 +205,75 @@
               {#if message.deletedAt === null}
                 {@const isFirst = part.indexOf(message) === 0}
                 {@const user = server.findUser(message.userId)}
-                <TextMessage {user} {message} showHeader={isFirst} />
+                <div
+                  class="contents"
+                  {@attach (_) => {
+                    if (!scrollElement) return;
+                    const el = scrollElement;
+                    const hasScroll = el.scrollHeight > el.clientHeight;
+                    // prevents the browser from locking up at the top
+                    // loading messages in a loop, up to the first one
+                    if (hasScroll && el.scrollTop < 1) {
+                      console.log("scrolling to 1", blockId, el.scrollTop);
+                      // scrollElement.scrollTo({
+                      //   behavior: "instant",
+                      //   top: 1,
+                      // });
+                    }
+
+                    // const fromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
+                    // if (hasScroll && fromBottom < 100) {
+                    //   console.log("scrolling away from bottom", blockId);
+                    //   scrollElement.scrollTo({
+                    //     behavior: "instant",
+                    //     top: el.scrollTop - fromBottom,
+                    //   });
+                    // }
+
+                    lastHasScroll = hasScroll;
+                    console.log("hasScroll", lastHasScroll);
+
+                    return () => {
+                      lastHasScroll = el.scrollHeight > el.clientHeight;
+                    };
+                  }}
+                >
+                  <TextMessage {user} {message} showHeader={isFirst} />
+                </div>
               {/if}
             {/each}
           {/each}
         </div>
       {:else}
         <div
-          class="h-screen w-full flex items-center justify-center"
-          data-block={blockId}
-          {@attach (el) => {
-            // prevents the browser from locking up at the top
-            // loading messages in a looop up to the first one
-            if (scrollElement?.scrollTop === 0) {
-              scrollElement?.scrollTo({
-                behavior: "instant",
-                top: 1,
-              });
-            }
+          class="min-h-screen w-full flex-col flex justify-between bg-accent/20"
+          data-block-load={blockId}
+          {@attach (e) => {
+            roomCache?.attachBlock(e);
 
-            roomCache?.observer.observe(el);
-            return () => {
-              roomCache?.observer.unobserve(el);
-            };
+            if (!scrollElement) return;
+            const el = scrollElement;
+
+            const isTop = el.scrollHeight > el.clientHeight && el.scrollTop < 1;
+            console.log("lastHasScroll", lastHasScroll);
+            if (isTop && !lastHasScroll) {
+              console.log("scrolling to bottom", blockId);
+              const fromBottom =
+                el.scrollHeight - el.clientHeight - el.scrollTop;
+              // scrollElement.scrollTo({
+              //   behavior: "instant",
+              //   top: el.scrollTop + fromBottom,
+              // });
+            }
           }}
         >
-          Loading...
+          <div>Loading... {blockId}</div>
+          <div>Loading... {blockId}</div>
         </div>
       {/if}
     {/each}
 
-    <div class="h-6"></div>
+    <div class="min-h-6"></div>
   </div>
 </div>
 

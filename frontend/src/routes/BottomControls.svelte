@@ -100,14 +100,14 @@
                   const domain = server.overServerUrl?.split(":")[0];
                   if (!domain) return;
                   const options = {
-                    url: `rtmp://${domain}:1935/app/${server.user.id}`, 
+                    url: `rtmp://${domain}:1935/app/${server.user.id}`,
                     width: streamSettings.width,
                     height: streamSettings.height,
                     audioBitrate: streamSettings.audioBitrate,
                     videoBitrate: streamSettings.videoBitrate,
                     fps: streamSettings.fps,
                     presetNum: streamSettings.presetNum,
-                    useHwAccel: streamSettings.useHwAccel
+                    useHwAccel: streamSettings.useHwAccel,
                   };
                   invoke("start_stream", options);
                 }}
@@ -163,8 +163,8 @@
               variant={rtc.camera ? "default" : "ghost"}
               class="size-8"
               onclick={() => {
-            rtc.camera = !rtc.camera;
-          }}
+                rtc.camera = !rtc.camera;
+              }}
             >
               <Camera class="size-5" />
             </Button>

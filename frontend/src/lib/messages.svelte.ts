@@ -2,6 +2,7 @@ import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
 import type { Room, TextMessage } from "trurpchat-backend";
 import type { Server } from "./servers.svelte";
+import { wait } from "./utils.svelte";
 
 type TextMessageBlock = {
   messages: TextMessage[];
@@ -13,8 +14,11 @@ type TextMessageBlock = {
   alive: boolean;
 };
 
+const DBG_WAIT = 100;
+
 export class TextRoomCache {
   blocks: SvelteMap<number, TextMessageBlock> = new SvelteMap();
+  renderBlocks: number[] = $state([]);
   visibleBlocks: number[] = $state([]);
 
   scrollPosition = $state<number | undefined>(undefined);
@@ -30,6 +34,62 @@ export class TextRoomCache {
   inFlightBlocks = new Set<number>();
   observer: IntersectionObserver;
 
+  private async handleVisible(entry: IntersectionObserverEntry) {
+    if (!entry.target.hasAttribute("data-block")) {
+      return;
+    }
+
+    const blockId = Number(entry.target.getAttribute("data-block"));
+    if (Number.isNaN(blockId)) {
+      return;
+    }
+    const isIntersecting = entry.isIntersecting;
+
+    if (isIntersecting && !this.visibleBlocks.includes(blockId)) {
+      this.visibleBlocks.push(blockId);
+    }
+
+    if (!isIntersecting && this.visibleBlocks.includes(blockId)) {
+      const index = this.visibleBlocks.indexOf(blockId);
+      if (index !== -1) {
+        this.visibleBlocks.splice(index, 1);
+      }
+    }
+
+    DBG_WAIT && (await wait(DBG_WAIT));
+    this.expandScope(blockId);
+  }
+
+  private async handleLoad(entry: IntersectionObserverEntry) {
+    if (!entry.target.hasAttribute("data-block-load")) {
+      return;
+    }
+
+    const blockId = Number(entry.target.getAttribute("data-block-load"));
+    if (!entry.isIntersecting || Number.isNaN(blockId)) {
+      return;
+    }
+
+    DBG_WAIT && (await wait(DBG_WAIT));
+    if (!this.blocks.has(blockId)) {
+      this.fetch(blockId);
+    }
+
+    this.expandScope(blockId);
+  }
+
+  expandScope(blockId: number) {
+    const prev = blockId - this.parent.BLOCK_SIZE;
+    const next = blockId + this.parent.BLOCK_SIZE;
+    if (blockId !== 0 && !this.renderBlocks.includes(prev)) {
+      this.renderBlocks.push(prev);
+    }
+
+    if (blockId !== this.lastBlockId() && !this.renderBlocks.includes(next)) {
+      this.renderBlocks.push(next);
+    }
+  }
+
   constructor(
     readonly parent: TextMessageCache,
     readonly room: Extract<Room, { type: "text" }>,
@@ -37,55 +97,44 @@ export class TextRoomCache {
     this.observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          if (!entry.isIntersecting) {
-            return;
-          }
-
-          const blockId = Number(entry.target.getAttribute("data-block"));
-          if (Number.isNaN(blockId)) {
-            continue;
-          }
-
-          if (blockId !== 0) {
-            const prev = blockId - this.parent.BLOCK_SIZE;
-            if (!this.visibleBlocks.includes(prev)) {
-              this.visibleBlocks.push(prev);
-            }
-          }
-
-          if (blockId !== this.lastBlockId()) {
-            const next = blockId + this.parent.BLOCK_SIZE;
-            if (!this.visibleBlocks.includes(next)) {
-              this.visibleBlocks.push(next);
-            }
-          }
-
-          if (!this.blocks.has(blockId)) {
-            this.fetch(blockId);
-          }
+          this.handleVisible(entry);
+          this.handleLoad(entry);
         }
       },
       {
         root: null,
-        rootMargin: "0px",
+        // start preloading messages when the block is
+        // still 100px from the top/bottom of the screen
+        rootMargin: "0px 100px 0px 100px",
+        // rootMargin: "0px",
         threshold: 0,
       },
     );
   }
 
   initialize() {
-    if (this.visibleBlocks.length > 0) {
+    if (this.renderBlocks.length > 0) {
       return;
     }
 
-    this.visibleBlocks = [this.lastBlockId()];
-    // this.visibleBlocks = [Math.max(0, this.lastBlockId() - this.parent.BLOCK_SIZE * 7)];
+    // const init = Math.max(0, this.lastBlockId() - this.parent.BLOCK_SIZE * 10);
+    const init = this.lastBlockId();
+    console.log("init", init);
+    this.renderBlocks = [init];
   }
 
   attachBlock = (element: Element) => {
     this.observer.observe(element);
     return () => {
       this.observer.unobserve(element);
+
+      if (element.hasAttribute("data-block")) {
+        const blockId = Number(element.getAttribute("data-block"));
+        const idx = this.visibleBlocks.indexOf(blockId);
+        if (idx !== -1) {
+          this.visibleBlocks.splice(idx, 1);
+        }
+      }
     };
   };
 
@@ -118,6 +167,7 @@ export class TextRoomCache {
   }
 
   append(message: TextMessage) {
+    console.log("append");
     const blockId = this.parent.getBlockId(message.id);
     let block = this.get(blockId, false);
 
@@ -126,17 +176,22 @@ export class TextRoomCache {
     const isFirstBlock = blockId === 0;
     const prevBlockFull = prevBlock?.messages.length === this.parent.BLOCK_SIZE;
 
+    // happy path: the previous block is loaded and full
+    // so the new one can be appended without fetching
+    // because it's safe to assume that the new message
+    // is the first one in the new block
     if (!block && (isFirstBlock || prevBlockFull)) {
       block = { messages: [], alive: true };
-    }
-
-    if (!block?.alive) {
-      this.fetch(blockId);
+      if (this.renderBlocks[this.renderBlocks.length - 1] === prevBlockId) {
+        this.renderBlocks.push(blockId);
+      }
+      block.messages.push(message);
+      this.set(blockId, block.messages);
       return;
     }
 
-    block.messages.push(message);
-    this.set(blockId, block.messages);
+    this.fetch(blockId);
+    return;
   }
 
   edit(message: TextMessage) {
@@ -166,11 +221,11 @@ export class TextRoomCache {
 }
 
 export class TextMessageCache {
-  BLOCK_SIZE = 3;
+  BLOCK_SIZE = 10;
   /** Map of channel ID to room cache */
   cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
 
-  constructor(readonly server: Server) { }
+  constructor(readonly server: Server) {}
 
   checkBlockId(blockId: number) {
     if (blockId < 0) {
@@ -188,7 +243,7 @@ export class TextMessageCache {
     return id;
   }
 
-  onfetchrequest: (channelId: number, blockId: number) => void = () => { };
+  onfetchrequest: (channelId: number, blockId: number) => void = () => {};
 
   getRoom(roomId: number, create = true) {
     let room = this.cache.get(roomId);
@@ -196,7 +251,7 @@ export class TextMessageCache {
       tick().then(() => {
         room = new TextRoomCache(this, this.server.findRoom(roomId) as any);
         this.cache.set(roomId, room);
-      })
+      });
     }
     return room;
   }

@@ -21,10 +21,14 @@
 <div class="flex flex-col gap-2 w-32 justify-start truncate">
   <h1 class="text-foreground text-lg">Online</h1>
   <div class="flex flex-col gap-2">
-    {#each online as user (user.id)}{@render u(user, true)}{/each}
+    {#each online as user (user.id)}
+      {@render u(user, true)}
+    {/each}
   </div>
   <h1 class="text-foreground text-lg">Offline</h1>
   <div class="flex flex-col gap-2">
-    {#each offline as user (user.id)}{@render u(user, false)}{/each}
+    {#each offline as user (user.id)}
+      {@render u(user, false)}
+    {/each}
   </div>
 </div>
