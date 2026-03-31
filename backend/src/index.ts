@@ -1,19 +1,20 @@
 import { env } from "bun";
 import { eq, getColumns } from "drizzle-orm";
-import type {
-  Message,
-  ConnectedUser,
-  ConnectedUserState,
-  OfflineUser,
-  User,
-  Room,
-} from "./types";
-import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
-import { handleMessage, type HandlerContext } from "./handler";
-import { send, sendAll } from "./send";
 import { db, keys, rooms, users } from "./db";
 import { getKeys, seed } from "./devseed";
+import { type HandlerContext, handleMessage } from "./handler";
 import { voiceHandlers } from "./handler/voice";
+import { send, sendAll } from "./send";
+import type {
+  ConnectedUser,
+  ConnectedUserState,
+  IceConfig,
+  Message,
+  OfflineUser,
+  Room,
+  User,
+} from "./types";
+import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
 
 await seed();
 console.log(await getKeys());
@@ -31,6 +32,59 @@ for (const r of existingRooms) {
 
 const PORT = +(env.PORT ?? 3000);
 
+function isIceConfig(value: unknown): value is IceConfig {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const iceServers = (value as { iceServers?: unknown }).iceServers;
+  if (!Array.isArray(iceServers)) {
+    return false;
+  }
+
+  return iceServers.every((server) => {
+    if (typeof server !== "object" || server === null) {
+      return false;
+    }
+
+    const { urls, username, credential } = server as {
+      urls?: unknown;
+      username?: unknown;
+      credential?: unknown;
+    };
+
+    const validUrls =
+      typeof urls === "string" ||
+      (Array.isArray(urls) && urls.every((url) => typeof url === "string"));
+
+    return (
+      validUrls &&
+      (username === undefined || typeof username === "string") &&
+      (credential === undefined || typeof credential === "string")
+    );
+  });
+}
+
+async function loadIceConfig() {
+  const file = Bun.file(new URL("../ice.json", import.meta.url));
+  const content = await file.text();
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content);
+  } catch (error) {
+    throw new Error(`Failed to parse backend/ice.json: ${error}`);
+  }
+
+  if (!isIceConfig(parsed)) {
+    throw new Error("Invalid backend/ice.json: expected { iceServers: [...] }");
+  }
+
+  return parsed;
+}
+
+const iceConfig = await loadIceConfig();
+
 function createDefaultTalkingUserState(): ConnectedUserState {
   return {
     muted: false,
@@ -42,9 +96,7 @@ function createDefaultTalkingUserState(): ConnectedUserState {
   };
 }
 
-export async function getAllUsers(
-  ctx: HandlerContext,
-): Promise<User[]> {
+export async function getAllUsers(ctx: HandlerContext): Promise<User[]> {
   const allUsers = await db.query.users.findMany();
   const onlineUsers = ctx.clients
     .values()
@@ -109,6 +161,12 @@ Bun.serve<ConnectedUser, never>({
       ctx.clients.set(ws.data.id, ws);
 
       send(ws, {
+        type: "event.startup.config",
+        ovenServerUrl: env.OVEN_SERVER_URL,
+        iceConfig,
+      });
+
+      send(ws, {
         type: "event.connected",
         user: ws.data,
       });
@@ -124,24 +182,19 @@ Bun.serve<ConnectedUser, never>({
         rooms: thing,
       });
 
-      const ovenServerUrl = env.OVEN_SERVER_URL;
-      if (ovenServerUrl) {
-        send(ws, {
-          type: "event.oven",
-          ovenServerUrl,
-        });
-      }
-
       const users = await getAllUsers(ctx);
       send(ws, {
         type: "event.user.list",
         users,
       });
 
-      sendAll(ctx.clients.values().filter((client) => client !== ws), {
-        type: "event.user.online",
-        userId: ws.data.id,
-      });
+      sendAll(
+        ctx.clients.values().filter((client) => client !== ws),
+        {
+          type: "event.user.online",
+          userId: ws.data.id,
+        },
+      );
     },
 
     async message(ws, raw) {
@@ -163,7 +216,7 @@ Bun.serve<ConnectedUser, never>({
     },
 
     async close(ws) {
-      let room = ctx.hotel.roomByClient(ws);
+      const room = ctx.hotel.roomByClient(ws);
       if (room) {
         voiceHandlers["action.voice.leave"](ctx, ws, {
           type: "action.voice.leave",

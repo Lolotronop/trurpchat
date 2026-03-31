@@ -1,14 +1,14 @@
 import type {
+  User as DbUser,
   Key,
   Message as MessageData,
   Room as RoomData,
-  User as DbUser,
 } from "./db/schema";
 
 export type {
-  User as DbUser,
-  Room as RoomData,
   Message as TextMessage,
+  Room as RoomData,
+  User as DbUser,
 } from "./db/schema";
 
 type Flatten<T> = { [K in keyof T]: T[K] } & {};
@@ -37,6 +37,16 @@ export type VoiceChat = Flatten<
 >;
 
 export type Room = VoiceChat | Flatten<RoomData & { type: "text" }>;
+
+export type IceServerConfig = {
+  urls: string | string[];
+  username?: string;
+  credential?: string;
+};
+
+export type IceConfig = {
+  iceServers: IceServerConfig[];
+};
 
 export type RtcMessage =
   | {
@@ -241,8 +251,9 @@ export type MessageEvent =
 
 export type OtherEvent =
   | {
-      type: "event.oven";
-      ovenServerUrl: string;
+      type: "event.startup.config";
+      ovenServerUrl?: string;
+      iceConfig: IceConfig;
     }
   | {
       type: "event.connected";

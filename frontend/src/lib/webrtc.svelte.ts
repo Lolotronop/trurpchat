@@ -7,25 +7,6 @@ import type { Server } from "./servers.svelte";
 import { sound } from "./sound.svelte";
 import { Peer } from "./webrtc-peer.svelte";
 
-// TODO: this whould be dictated by the current server
-const TURN_SERVER_IP = "45.143.95.55";
-export const ICE_CONFIG: RTCConfiguration = {
-  iceServers: [
-    {
-      urls: ["stun:stun1.l.google.com:19302", "stun:stunserver.org:3478"],
-    },
-    {
-      urls: [
-        `stun:${TURN_SERVER_IP}:3478`,
-        `turn:${TURN_SERVER_IP}:3478?transport=udp`,
-        `turn:${TURN_SERVER_IP}:5349?transport=tcp`,
-      ],
-      username: "testuser",
-      credential: "testtoken",
-    },
-  ],
-};
-
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();
   connectedFor: number = $state(0);
@@ -164,7 +145,16 @@ export class WebRTC {
       console.log(`Peer connection with ${targetId} already exists`);
       return peer;
     }
-    peer = new Peer(targetId, this.mic.output.stream, this.headphones);
+    if (!this.server.iceConfig) {
+      throw new Error("ICE config not loaded for server");
+    }
+
+    peer = new Peer(
+      targetId,
+      this.mic.output.stream,
+      this.headphones,
+      this.server.iceConfig,
+    );
     this.peers.set(targetId, peer);
 
     if (this.cameraStream) {

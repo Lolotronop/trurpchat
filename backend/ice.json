@@ -1,0 +1,16 @@
+{
+  "iceServers": [
+    {
+      "urls": ["stun:stun1.l.google.com:19302", "stun:stunserver.org:3478"]
+    },
+    {
+      "urls": [
+        "stun:45.143.95.55:3478",
+        "turn:45.143.95.55:3478?transport=udp",
+        "turn:45.143.95.55:5349?transport=tcp"
+      ],
+      "username": "testuser",
+      "credential": "testtoken"
+    }
+  ]
+}

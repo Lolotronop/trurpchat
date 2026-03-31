@@ -21,7 +21,6 @@
   import type { Server } from "$lib/servers.svelte";
   import GainSlider from "../GainSlider.svelte";
   import { OvenAudioController } from "./ovenplayer.svelte";
-  import { ICE_CONFIG } from "$lib/webrtc.svelte";
 
   type Props = {
     user: User;
@@ -58,7 +57,7 @@
 
   let player: OvenPlayerInstance | undefined = $state(undefined);
   function attachStream(el: HTMLVideoElement) {
-    if (player) {
+    if (player || !server.overServerUrl || !server.iceConfig) {
       return;
     }
     player = createOvenPlayer(el.id, {
@@ -74,12 +73,12 @@
       title: "",
       webrtcConfig: {
         playoutDelayHint: 0,
-        iceServers: ICE_CONFIG.iceServers as OvenPlayerIceServer[],
+        iceServers: server.iceConfig.iceServers as OvenPlayerIceServer[],
       },
       sources: [
         {
           type: "webrtc",
-          file: `ws://${server.overServerUrl!}/app/${user.id}`,
+          file: `ws://${server.overServerUrl}/app/${user.id}`,
         },
       ],
     });

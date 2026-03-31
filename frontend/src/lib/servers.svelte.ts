@@ -2,6 +2,7 @@ import { invoke, isTauri } from "@tauri-apps/api/core";
 import type {
   ConnectedUserState,
   DbUser,
+  IceConfig,
   Message,
   OfflineUser,
   Room,
@@ -57,6 +58,7 @@ export class Server {
    * trailing slash is MANDATORY(no it isnt its just funny to think it is)
    */
   overServerUrl: string | undefined = $state(undefined);
+  iceConfig: IceConfig | undefined = $state(undefined);
   gateway: Gateway;
   rooms: Room[] = $state([]);
   rtc: WebRTC | undefined = $state(undefined);
@@ -81,6 +83,8 @@ export class Server {
       if (this.rtc) this.rtc.handleSignalingMessage(msg);
     });
     this.gateway.onclose(() => {
+      this.overServerUrl = undefined;
+      this.iceConfig = undefined;
       this.leaveRoom(false);
     });
     this.gateway.onopen(() => {
@@ -208,8 +212,9 @@ export class Server {
       } else {
         this.users[userIndex] = message.user;
       }
-    } else if (message.type === "event.oven") {
+    } else if (message.type === "event.startup.config") {
       this.overServerUrl = message.ovenServerUrl;
+      this.iceConfig = message.iceConfig;
     } else if (message.type === "event.key.list") {
       this.keys = message.keys;
     } else if (message.type === "event.user.me") {
@@ -258,6 +263,8 @@ export class Server {
   }
 
   reconnect() {
+    this.overServerUrl = undefined;
+    this.iceConfig = undefined;
     this.gateway.disconnect();
     this.gateway.connect(this.definition.url);
   }

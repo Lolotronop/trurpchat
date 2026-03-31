@@ -1,6 +1,6 @@
+import type { IceConfig } from "trurpchat-backend";
 import { audioctx } from "./audio/context";
 import type { Headphones } from "./headphones.svelte";
-import { ICE_CONFIG } from "./webrtc.svelte";
 
 type DatachannelMessage = {
   type: "speaking";
@@ -48,8 +48,9 @@ export class Peer {
     public targetId: number,
     audioStream: MediaStream,
     public headphones: Headphones,
+    iceConfig: IceConfig,
   ) {
-    this.pc = new RTCPeerConnection(ICE_CONFIG);
+    this.pc = new RTCPeerConnection(iceConfig as RTCConfiguration);
     this.gainNode = audioctx().createGain();
     this.muteNode = audioctx().createGain();
 
