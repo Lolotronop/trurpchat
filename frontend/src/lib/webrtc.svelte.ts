@@ -24,18 +24,6 @@ export class WebRTC {
     });
   }
 
-  #watching: number | null = $state(null);
-  get watching() {
-    return this.#watching;
-  }
-  set watching(value: number | null) {
-    this.#watching = value;
-    this.server.gateway.send({
-      type: "action.user.state",
-      watching: value,
-    });
-  }
-
   #cameraEnabled: boolean = $state(false);
   get camera() {
     return this.#cameraEnabled;
@@ -307,6 +295,5 @@ export class WebRTC {
     this.cam.disable();
     this.camera = false;
     this.streaming = false;
-    this.watching = null;
   }
 }
