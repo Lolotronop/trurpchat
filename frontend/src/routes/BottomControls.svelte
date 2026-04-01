@@ -104,7 +104,7 @@
                   const domain = server.overServerUrl?.split(":")[0];
                   if (!domain) return;
                   const options = {
-                    url: `rtmp://${domain}:1935/app/${server.user.id}`,
+                    url: `rtmp://${domain}:1935/app/${server.definition.id}-${server.user.id}`,
                     width: streamSettings.width,
                     height: streamSettings.height,
                     audioBitrate: streamSettings.audioBitrate,
@@ -120,7 +120,7 @@
               </Button>
             </Tooltip.Trigger>
             <Tooltip.Content
-              class="flex flex-col gap-2 bg-background border-1 pb-4"
+              class="flex flex-col gap-2 bg-background border pb-4"
             >
               {#if import.meta.env.DEV}
                 <div class="flex flex-row items-center gap-2">

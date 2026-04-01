@@ -78,7 +78,7 @@
       sources: [
         {
           type: "webrtc",
-          file: `ws://${server.overServerUrl}/app/${user.id}`,
+          file: `ws://${server.overServerUrl}/app/${server.definition.id}-${user.id}`,
         },
       ],
     });
