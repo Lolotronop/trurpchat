@@ -131,7 +131,7 @@ impl VideoEncoderBuilder {
             if res.is_err() {
                 continue;
             }
-            let mut encoder_ctx = res.unwrap();
+            let mut encoder_ctx = res?;
             encoder_ctx.set_width(settings.width);
             encoder_ctx.set_height(settings.height);
             encoder_ctx.set_format(format);
@@ -145,21 +145,18 @@ impl VideoEncoderBuilder {
             };
 
             let opts = Self::get_opts(settings.clone(), &c);
-            let res = encoder_ctx.open_as_with(c, opts);
-            if let Err(_) = res {
-                continue;
+            match encoder_ctx.open_as_with(c, opts) {
+                Err(_) => continue,
+                Ok(enc) => encoder = Some(enc),
             }
-            encoder = Some(res.unwrap());
             codec = Some(c);
             break;
         }
 
-        if encoder.is_none() || codec.is_none() {
-            return Err(ffmpeg::Error::EncoderNotFound);
-        }
-
-        let encoder = encoder.unwrap();
-        let codec = codec.unwrap();
+        let (encoder, codec) = match (encoder, codec) {
+            (Some(e), Some(c)) => (e, c),
+            _ => return Err(ffmpeg::Error::EncoderNotFound),
+        };
 
         println!("Using codec: {:?}", codec.name());
 
@@ -191,7 +188,11 @@ impl VideoEncoderBuilder {
 
     /// Supposed to be called after octx.write_header
     pub fn set_output_timebase(&mut self, octx: &mut format::context::Output) {
-        let timebase = octx.stream(self.stream_index.unwrap()).unwrap().time_base();
+        let index = self
+            .stream_index
+            .expect("To have been called after add_to_output");
+        let stream = octx.stream(index).expect("Stream not found");
+        let timebase = stream.time_base();
         self.output_timebase = Some(timebase);
     }
 
@@ -200,14 +201,16 @@ impl VideoEncoderBuilder {
     }
 
     pub fn build(self) -> VideoEncoder {
+        let output_timebase = self.output_timebase.expect("To have been set");
+        let stream_index = self.stream_index.expect("To have been set");
         VideoEncoder {
             output: self.output,
             control_plane: self.control_plane,
             encoder: self.encoder,
             timebase: self.timebase,
             frame_ring: self.frame_ring,
-            output_timebase: self.output_timebase.unwrap(),
-            stream_index: self.stream_index.unwrap(),
+            output_timebase,
+            stream_index,
         }
     }
 }
@@ -260,12 +263,24 @@ impl VideoEncoder {
             }
 
             let frame = self.frame_ring.front();
-            self.encoder.send_frame(&frame).unwrap();
-            self.receive_packets().unwrap();
+
+            if let Err(err) = self.encoder.send_frame(&frame) {
+                eprintln!("Failed to send frame: {:?}", err);
+                break;
+            }
+
+            if let Err(err) = self.receive_packets() {
+                eprintln!("Failed to receive packets: {:?}", err);
+                break;
+            }
         }
 
-        self.encoder.send_eof().unwrap();
-        self.receive_packets().unwrap();
+        if let Err(err) = self.encoder.send_eof() {
+            eprintln!("Failed to send eof: {:?}", err);
+        }
+        if let Err(err) = self.receive_packets() {
+            eprintln!("Failed to receive packets: {:?}", err);
+        }
 
         println!("Repeated frames: {}", self.frame_ring.repeated_frames);
     }
@@ -276,7 +291,9 @@ impl VideoEncoder {
         while self.encoder.receive_packet(&mut packet).is_ok() {
             packet.set_stream(self.stream_index);
             packet.rescale_ts(self.timebase, self.output_timebase);
-            self.output.send(packet).unwrap();
+            if let Err(err) = self.output.send(packet) {
+                eprintln!("Failed to send packet: {:?}", err);
+            }
             packet = ffmpeg::Packet::empty();
         }
 

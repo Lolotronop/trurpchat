@@ -37,14 +37,15 @@ pub fn capture_audio(
 
     let autoconvert = true;
 
-    let target = pid_rec.recv();
-    if let Err(err) = target {
-        eprintln!("Failed to receive PID: {}", err);
-        shared_deque.cond.notify_all();
-        control_plane.stop();
-        return;
-    }
-    let target = target.unwrap();
+    let target = match pid_rec.recv() {
+        Ok(target) => target,
+        Err(err) => {
+            eprintln!("Failed to receive PID: {}", err);
+            shared_deque.cond.notify_all();
+            control_plane.stop();
+            return;
+        }
+    };
 
     let audio_client_res = AudioClient::new_application_loopback_client(target.pid, target.include);
     let mut audio_client = match audio_client_res {
@@ -66,14 +67,16 @@ pub fn capture_audio(
         .initialize_client(&desired_format, &Direction::Capture, &mode)
         .expect("Failed to initialize audio client");
 
-    let capture_client = audio_client.get_audiocaptureclient().unwrap();
-    let event_handle = audio_client.set_get_eventhandle().unwrap();
+    let capture_client = audio_client
+        .get_audiocaptureclient()
+        .expect("Failed to get audio capture client");
+    let event_handle = audio_client
+        .set_get_eventhandle()
+        .expect("Failed to set event handle");
 
     audio_client.start_stream().expect("Failed to start stream");
 
-    event_handle
-        .wait_for_event(200)
-        .unwrap_or_else(|_| println!("Heee"));
+    let _ = event_handle.wait_for_event(200);
 
     control_plane.wait_captured();
 
@@ -82,8 +85,7 @@ pub fn capture_audio(
     println!("Audio capture started: {:?}", Instant::now());
     while !control_plane.should_stop() {
         let res = event_handle.wait_for_event(30);
-        if res.is_err() {
-            let err = res.err().unwrap();
+        if let Some(err) = res.err() {
             println!("Err audio thing handle wait you know: {:?}", err);
             match err {
                 wasapi::WasapiError::EventTimeout => {

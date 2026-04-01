@@ -100,11 +100,17 @@ impl AudioEncoderBuilder {
 
     /// Supposed to be called after octx.write_header
     pub fn set_output_timebase(&mut self, octx: &mut format::context::Output) {
-        let timebase = octx.stream(self.stream_index.unwrap()).unwrap().time_base();
+        let index = self
+            .stream_index
+            .expect("To have been called after add_to_output");
+        let stream = octx.stream(index).expect("Stream not found");
+        let timebase = stream.time_base();
         self.output_timebase = Some(timebase);
     }
 
     pub fn build(self) -> AudioEncoder {
+        let output_timebase = self.output_timebase.expect("To have been set");
+        let stream_index = self.stream_index.expect("To have been set");
         AudioEncoder {
             frames_encoded: 0,
             last_pts: Arc::new(AtomicI64::new(0)),
@@ -118,8 +124,8 @@ impl AudioEncoderBuilder {
             control_plane: self.control_plane,
             encoder: self.encoder,
             timebase: self.timebase,
-            output_timebase: self.output_timebase.unwrap(),
-            stream_index: self.stream_index.unwrap(),
+            output_timebase,
+            stream_index,
         }
     }
 }
@@ -154,7 +160,7 @@ impl AudioEncoder {
             self.ingest();
         }
 
-        self.encoder.send_eof().unwrap();
+        self.encoder.send_eof().expect("Failed to send audio EOF");
         self.recieve_packets();
     }
 
@@ -174,8 +180,13 @@ impl AudioEncoder {
 
         while deque.len() >= frame_size {
             let slice = &deque.as_slices().0[..frame_size];
-            self.encode_frame(slice, self.frames_encoded * AUDIO_FRAME_SIZE as i64)
-                .unwrap();
+            match self.encode_frame(slice, self.frames_encoded * AUDIO_FRAME_SIZE as i64) {
+                Ok(_) => {}
+                Err(err) => {
+                    eprintln!("Failed to encode frame: {:?}", err);
+                    break;
+                }
+            }
 
             self.recieve_packets();
 

@@ -149,7 +149,7 @@ impl Capture {
             device.CreateTexture2D(&cpu_texture_desc, None, Some(&mut self.cpu_texture))?;
             device.CreateTexture2D(&render_texture_desc, None, Some(&mut self.render_texture))?;
 
-            let texture = self.cpu_texture.as_ref().unwrap();
+            let texture = self.cpu_texture.as_ref().expect("To have been set");
             context.Map(
                 texture,
                 0,
@@ -253,15 +253,21 @@ impl GraphicsCaptureApiHandler for Capture {
 
         if width == frame.width() && height == frame.height() {
             unsafe {
-                let cpu_tex = self.cpu_texture.as_ref().unwrap();
+                let cpu_tex = self.cpu_texture.as_ref().expect("To have been set");
                 context.CopyResource(cpu_tex, frame.as_raw_texture());
             }
         } else {
-            let mut srv: Option<ID3D11ShaderResourceView> = None;
-            unsafe {
-                device.CreateShaderResourceView(frame.as_raw_texture(), None, Some(&mut srv))?;
-            }
-            let srv = srv.unwrap();
+            let srv = {
+                let mut srv: Option<ID3D11ShaderResourceView> = None;
+                unsafe {
+                    device.CreateShaderResourceView(
+                        frame.as_raw_texture(),
+                        None,
+                        Some(&mut srv),
+                    )?;
+                }
+                srv.expect("To have created a shader resource view")
+            };
 
             let viewport = calculate_viewport(
                 frame.width(),
@@ -286,11 +292,11 @@ impl GraphicsCaptureApiHandler for Capture {
             unsafe {
                 device.CreateSamplerState(&sampler_desc, Some(&mut sampler))?;
             }
-            let texture = self.render_texture.as_ref().unwrap();
+            let texture = self.render_texture.as_ref().expect("To have been set");
             let mut rtv: Option<ID3D11RenderTargetView> = None;
             unsafe {
                 device.CreateRenderTargetView(texture, None, Some(&mut rtv))?;
-                let rtv = rtv.unwrap();
+                let rtv = rtv.expect("To have created a render target view");
 
                 context.ClearRenderTargetView(&rtv, &[0.0, 0.0, 0.0, 1.0]);
                 context.OMSetRenderTargets(Some(&[Some(rtv)]), None);
@@ -299,7 +305,7 @@ impl GraphicsCaptureApiHandler for Capture {
                 context.PSSetSamplers(0, Some(&[sampler]));
                 context.Draw(6, 0);
 
-                let cpu_tex = self.cpu_texture.as_ref().unwrap();
+                let cpu_tex = self.cpu_texture.as_ref().expect("To have been set");
                 context.CopyResource(cpu_tex, texture);
             }
         }
@@ -455,9 +461,9 @@ impl TryInto<GraphicsCaptureItemType> for CaptureItem {
 
     fn try_into(self) -> Result<GraphicsCaptureItemType, Self::Error> {
         match self {
-            CaptureItem::Window(window) => Ok(window.try_into().unwrap()),
-            CaptureItem::Monitor(monitor) => Ok(monitor.try_into().unwrap()),
-            CaptureItem::Picked(picked) => Ok(picked.try_into().unwrap()),
+            CaptureItem::Window(window) => Ok(window.try_into()?),
+            CaptureItem::Monitor(monitor) => Ok(monitor.try_into()?),
+            CaptureItem::Picked(picked) => Ok(picked.try_into()?),
         }
     }
 }
@@ -480,7 +486,7 @@ pub fn capture(flags: HandlerFlags) {
         }
     };
 
-    let name = target.item.DisplayName().unwrap();
+    let name = target.item.DisplayName().expect("To have a display name");
     let audio_target = if let Ok(pid) = get_process_id_from_window_name(&name) {
         AudioCaptureTarget { pid, include: true }
     } else if let Ok(Some(pid)) = find_webview2_audio_service_pid() {
@@ -496,7 +502,10 @@ pub fn capture(flags: HandlerFlags) {
         }
     };
 
-    flags.pid_send.send(audio_target).unwrap();
+    flags
+        .pid_send
+        .send(audio_target)
+        .expect("To send audio target");
 
     // the library panics if you set a non-default value and the API isn't supported
     // so I have to check manually first

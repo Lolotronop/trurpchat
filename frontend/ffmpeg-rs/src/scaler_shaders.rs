@@ -61,7 +61,7 @@ pub fn setup_shaders(device: &ID3D11Device, context: &ID3D11DeviceContext) -> Re
     let vertex_shader: ID3D11VertexShader = unsafe {
         let mut shader: Option<ID3D11VertexShader> = None;
         device.CreateVertexShader(vs_bytes, None, Some(&mut shader))?;
-        shader.unwrap()
+        shader.expect("Failed to create vertex shader")
     };
 
     // Pixel Shader
@@ -83,7 +83,7 @@ pub fn setup_shaders(device: &ID3D11Device, context: &ID3D11DeviceContext) -> Re
     let pixel_shader: ID3D11PixelShader = unsafe {
         let mut shader: Option<ID3D11PixelShader> = None;
         device.CreatePixelShader(ps_bytes, None, Some(&mut shader))?;
-        shader.unwrap()
+        shader.expect("Failed to create pixel shader")
     };
 
     // Bind shaders to pipeline

@@ -44,7 +44,14 @@ pub fn start(
         let output = output_sender.clone();
         let settings = settings.clone();
         let control_plane = control_plane.clone();
-        AudioEncoderBuilder::new(settings, global_header, control_plane, output).unwrap()
+        match AudioEncoderBuilder::new(settings, global_header, control_plane.clone(), output) {
+            Ok(builder) => builder,
+            Err(err) => {
+                eprintln!("Failed to create audio encoder: {:?}", err);
+                control_plane.stop();
+                return Err(Box::new(err));
+            }
+        }
     };
 
     let mut video_encoder_builder = {
@@ -52,14 +59,26 @@ pub fn start(
         let output = output_sender.clone();
         let settings = settings.clone();
         let frame_ring = frame_ring.clone();
-        VideoEncoderBuilder::new(settings, global_header, control_plane, output, frame_ring)
-            .unwrap()
+        match VideoEncoderBuilder::new(
+            settings,
+            global_header,
+            control_plane.clone(),
+            output,
+            frame_ring,
+        ) {
+            Ok(builder) => builder,
+            Err(err) => {
+                eprintln!("Failed to create audio encoder: {:?}", err);
+                control_plane.stop();
+                return Err(Box::new(err));
+            }
+        }
     };
 
-    audio_encoder_builder.add_to_output(&mut octx).unwrap();
-    video_encoder_builder.add_to_output(&mut octx).unwrap();
+    audio_encoder_builder.add_to_output(&mut octx)?;
+    video_encoder_builder.add_to_output(&mut octx)?;
 
-    octx.write_header().unwrap();
+    octx.write_header()?;
 
     audio_encoder_builder.set_output_timebase(&mut octx);
     video_encoder_builder.set_output_timebase(&mut octx);
@@ -108,7 +127,12 @@ pub fn start(
                 }
             }
 
-            octx.write_trailer().unwrap();
+            match octx.write_trailer() {
+                Ok(_) => {}
+                Err(err) => {
+                    eprintln!("Failed to write trailer: {:?}", err);
+                }
+            }
         }
     });
     drop(output_sender);
@@ -140,19 +164,28 @@ pub fn start(
     threads
         .into_iter()
         .map(|(name, thread)| {
-            thread::spawn({
-                let control_plane = control_plane.clone();
-                move || {
-                    let err = thread.join();
-                    if let Err(e) = err {
-                        println!("Error joining thread {name}: {:?}", e);
-                        control_plane.stop();
+            (
+                name,
+                thread::spawn({
+                    let control_plane = control_plane.clone();
+                    move || {
+                        let err = thread.join();
+                        if let Err(e) = err {
+                            println!("Error joining thread {name}: {:?}", e);
+                            control_plane.stop();
+                        }
+                        println!("Thread {name} stopped");
                     }
-                    println!("Thread {name} stopped");
-                }
-            })
+                }),
+            )
         })
-        .for_each(|thread| thread.join().unwrap());
+        .for_each(|(name, thread)| match thread.join() {
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("Error joining thread {name}: {:?}", err);
+                control_plane.stop();
+            }
+        });
 
     println!("Encoding complete!");
 

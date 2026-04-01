@@ -63,7 +63,9 @@ fn start_stream(
                 let app = app.clone();
                 move || {
                     if control_plane.wait_started() {
-                        app.emit("stream-status", true).unwrap();
+                        if let Err(e) = app.emit("stream-status", true) {
+                            println!("Error emitting stream-status: {:?}", e);
+                        }
                     }
                 }
             });
@@ -71,7 +73,9 @@ fn start_stream(
             if let Err(e) = res {
                 println!("Error during stream: {}", e);
             }
-            app.emit("stream-status", false).unwrap();
+            if let Err(e) = app.emit("stream-status", false) {
+                println!("Error emitting stream-status: {:?}", e);
+            }
         }
     });
 }
@@ -129,7 +133,14 @@ fn pause() {
 
 #[tauri::command]
 fn get_permissions(origin: &str, app: AppHandle) {
-    let webview = app.get_webview_window("main").unwrap();
+    let webview = match app.get_webview_window("main") {
+        Ok(webview) => webview,
+        Err(e) => {
+            println!("Error getting webview: {:?}", e);
+            return;
+        }
+    };
+
     let mut origin = origin.to_string();
     origin.push('\0');
     let origin = origin.encode_utf16().collect::<Vec<u16>>();
