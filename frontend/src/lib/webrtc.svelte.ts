@@ -5,14 +5,19 @@ import type { Headphones } from "./headphones.svelte";
 import type { Mic } from "./mic.svelte";
 import type { Server } from "./servers.svelte";
 import { sound } from "./sound.svelte";
+import { debounce } from "./utils.svelte";
+import type { PeerState } from "./webrtc-peer.svelte";
 import { Peer } from "./webrtc-peer.svelte";
+import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();
+  store: IPersistantStore = getPlatformStore("webrtc");
   room: VoiceChat | undefined = $state(undefined);
   connected = $derived(this.room !== undefined);
   connectedFor: number = $state(0);
   connectedTimeout: NodeJS.Timeout | null = null;
+  persistPeerState = new Map<string, (state: PeerState) => void>();
 
   #streaming: boolean = $state(false);
   get streaming() {
@@ -137,7 +142,27 @@ export class WebRTC {
     }
   }
 
-  createPeer(targetId: number): Peer {
+  getPeerStorageKey(targetId: number) {
+    const serverId = this.server.definition.id;
+    if (serverId === null) {
+      return undefined;
+    }
+
+    return `${serverId}-${targetId}`;
+  }
+
+  getPeerStatePersister(key: string) {
+    let persist = this.persistPeerState.get(key);
+    if (persist) {
+      return persist;
+    }
+
+    persist = debounce((state: PeerState) => this.store.set(key, state));
+    this.persistPeerState.set(key, persist);
+    return persist;
+  }
+
+  async createPeer(targetId: number): Promise<Peer> {
     let peer = this.peers.get(targetId);
     if (peer) {
       console.log(`Peer connection with ${targetId} already exists`);
@@ -147,11 +172,22 @@ export class WebRTC {
       throw new Error("ICE config not loaded for server");
     }
 
+    const key = this.getPeerStorageKey(targetId);
+    const initialState = key ? await this.store.get<PeerState>(key) : undefined;
+
     peer = new Peer(
       targetId,
       this.mic.output.stream,
       this.headphones,
       this.server.iceConfig,
+      initialState,
+      (state) => {
+        if (!key) {
+          return;
+        }
+
+        this.getPeerStatePersister(key)(state);
+      },
     );
     this.peers.set(targetId, peer);
 
@@ -220,7 +256,7 @@ export class WebRTC {
       console.error(`Already connected to ${targetId}`);
       return;
     }
-    const peer = this.createPeer(targetId);
+    const peer = await this.createPeer(targetId);
     const chan = peer.pc.createDataChannel("speaking");
     peer.setDatachannel(chan);
 
@@ -238,7 +274,7 @@ export class WebRTC {
   }
 
   async acceptCall(offer: RTCSessionDescriptionInit, senderId: number) {
-    const peer = this.createPeer(senderId);
+    const peer = await this.createPeer(senderId);
 
     await peer.pc.setRemoteDescription(offer);
 

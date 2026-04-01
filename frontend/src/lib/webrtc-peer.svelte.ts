@@ -7,6 +7,13 @@ type DatachannelMessage = {
   speaking: boolean;
 };
 
+export type PeerState = {
+  gain: number;
+  mute: boolean;
+};
+
+type PeerStateField = keyof PeerState;
+
 export class Peer {
   pc: RTCPeerConnection;
   datachannel: RTCDataChannel | null = null;
@@ -22,6 +29,7 @@ export class Peer {
   set volume(value: number) {
     this.#volume = value;
     this.gainNode.gain.setTargetAtTime(value, audioctx().currentTime, 0.01);
+    this.onStateChange?.(this.getState(), "gain");
   }
 
   #mute = $state(false);
@@ -35,6 +43,7 @@ export class Peer {
       audioctx().currentTime,
       0.01,
     );
+    this.onStateChange?.(this.getState(), "mute");
   }
 
   speaking = $state(false);
@@ -49,6 +58,11 @@ export class Peer {
     audioStream: MediaStream,
     public headphones: Headphones,
     iceConfig: IceConfig,
+    initialState?: Partial<PeerState>,
+    private onStateChange?: (
+      state: PeerState,
+      changedField: PeerStateField,
+    ) => void,
   ) {
     this.pc = new RTCPeerConnection(iceConfig as RTCConfiguration);
     this.gainNode = audioctx().createGain();
@@ -56,6 +70,11 @@ export class Peer {
 
     this.gainNode.connect(this.muteNode);
     this.headphones.addSource(this.muteNode);
+
+    this.#volume = initialState?.gain ?? 1;
+    this.#mute = initialState?.mute ?? false;
+    this.gainNode.gain.value = this.#volume;
+    this.muteNode.gain.value = this.#mute ? 0 : 1;
 
     this.interval = setInterval(() => this.updatePing(), 1000);
 
@@ -155,6 +174,13 @@ export class Peer {
         data,
       );
     }
+  }
+
+  getState(): PeerState {
+    return {
+      gain: this.volume,
+      mute: this.mute,
+    };
   }
 
   /**
