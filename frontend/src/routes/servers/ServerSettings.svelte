@@ -6,7 +6,6 @@
   import type { Server } from "$lib/servers.svelte";
   import KeySetting from "./KeySetting.svelte";
 
-  // TODO:
   type Props = {
     server: Server;
   };

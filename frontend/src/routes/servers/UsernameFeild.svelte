@@ -6,7 +6,6 @@
   import { Pencil, Save, Shield, User as UserIcon, X } from "@lucide/svelte";
   import { tick } from "svelte";
 
-  // TODO:
   type Props = {
     server: Server;
     user: User;

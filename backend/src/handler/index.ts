@@ -20,7 +20,6 @@ const handlers = {
   ...messageHandlers,
 } as const;
 
-// TODO: maybe rename rtc to actions too?
 const ACTION_PREFIXES = ["action", "rtc"];
 
 function isAction(message: Message): message is ClientAction {

@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { Message, RoomData, ConnectedUser } from "./types";
+import type { ConnectedUser, RoomData } from "./types";
 
 export type WsClient = ServerWebSocket<ConnectedUser>;
 

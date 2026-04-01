@@ -121,11 +121,12 @@ export const userHandlers: Handlers<UserAction> = {
 
     await db.delete(keys).where(eq(keys.userId, msg.id));
 
-    // this has to be done after the keys are deleted
+    // this has to be done after the keys are already deleted
+    // otherwise the client might reconnect
     const client = ctx.clients.get(msg.id);
     if (client) {
       // this should trigger the client to disconnect
-      // and the handler in index.ts will hadnle it
+      // and the handler in index.ts will handle it
       client.close();
     }
 

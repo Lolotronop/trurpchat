@@ -63,11 +63,9 @@ export const roomHandlers: Handlers<RoomAction> = {
     if (created.type === "voice") {
       const instance = new VoiceChatInstance(created);
       ctx.hotel.rooms.push(instance);
-      sendRoom(ctx, instance.toJson());
-    } else {
-      // TODO: handle text rooms properly
-      sendRoom(ctx, created as Room);
     }
+
+    sendRoom(ctx, created as Room);
 
     return ok();
   },
@@ -90,7 +88,7 @@ export const roomHandlers: Handlers<RoomAction> = {
       }
       ctx.hotel.rooms.splice(ctx.hotel.rooms.indexOf(room), 1);
     }
-    // TODO: don't resent the entire list on delete
+
     sendAll(ctx.clients.values(), {
       type: "event.room.deleted",
       roomId: id,
@@ -109,11 +107,9 @@ export const roomHandlers: Handlers<RoomAction> = {
     const voice = ctx.hotel.find(room.id);
     if (voice) {
       voice.data = { ...voice.data, ...room };
-      sendRoom(ctx, voice.toJson());
-    } else {
-      // TODO: handle text rooms properly
-      sendRoom(ctx, room as Room);
     }
+
+    sendRoom(ctx, room as Room);
 
     return ok();
   },
