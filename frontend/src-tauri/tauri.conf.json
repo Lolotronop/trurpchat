@@ -31,7 +31,8 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "resources/sound/*": "resources/sound/"
+      "resources/sound/*": "resources/sound/",
+      "resources/ffmpeg/*.dll": ""
     }
   }
 }

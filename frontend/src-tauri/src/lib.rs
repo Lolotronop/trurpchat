@@ -134,9 +134,9 @@ fn pause() {
 #[tauri::command]
 fn get_permissions(origin: &str, app: AppHandle) {
     let webview = match app.get_webview_window("main") {
-        Ok(webview) => webview,
-        Err(e) => {
-            println!("Error getting webview: {:?}", e);
+        Some(webview) => webview,
+        None => {
+            println!("Error getting webview");
             return;
         }
     };
