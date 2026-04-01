@@ -2,7 +2,7 @@ import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Theme {
   ready: boolean = $state(false);
-  store: IPersistantStore = getPlatformStore("theme.json");
+  store: IPersistantStore = getPlatformStore("theme");
   element: HTMLStyleElement;
 
   #customCss: string = $state("");

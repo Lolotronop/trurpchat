@@ -332,7 +332,7 @@ export class Server {
 }
 
 export class ServerManager {
-  store: IPersistantStore = getPlatformStore("servers.json");
+  store: IPersistantStore = getPlatformStore("servers");
   values: Server[] = $state([]);
 
   #selected: Server | undefined = $state(undefined);

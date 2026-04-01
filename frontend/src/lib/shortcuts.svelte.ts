@@ -28,7 +28,7 @@ export class Shortcuts extends EventTarget {
 
   constructor() {
     super();
-    this.store = getPlatformStore("shortcuts.json");
+    this.store = getPlatformStore("shortcuts");
 
     this.unregisterAll();
 

@@ -17,11 +17,11 @@ export interface IPersistantStore {
   close(): Promise<void>;
 }
 
-export const getPlatformStore = (filename: string) => {
+export const getPlatformStore = (name: string) => {
   if (isTauri()) {
-    return new LazyStore(filename);
+    return new LazyStore(`${name}.json`);
   } else {
-    return new WebStore(filename);
+    return new WebStore(name);
   }
 };
 

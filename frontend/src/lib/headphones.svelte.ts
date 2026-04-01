@@ -8,7 +8,7 @@ import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Headphones {
   ctx: AudioContext = audioctx();
-  store: IPersistantStore = getPlatformStore("headphones.json");
+  store: IPersistantStore = getPlatformStore("headphones");
   persistGain = debounce((value: number) => this.store.set("gain", value));
   deviceId: string | undefined = $state(undefined);
   devices: MediaDeviceInfo[] = $state([]);

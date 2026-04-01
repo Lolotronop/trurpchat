@@ -1,7 +1,7 @@
 import { getPlatformStore } from "./webstore";
 
 export class StreamSettings {
-  store = getPlatformStore("stream-settings.json");
+  store = getPlatformStore("stream-settings");
 
   #width: number = $state(1920);
   #height: number = $state(1080);

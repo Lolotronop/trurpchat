@@ -1,7 +1,7 @@
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Camera {
-  store: IPersistantStore = getPlatformStore("camera.json");
+  store: IPersistantStore = getPlatformStore("camera");
   hasPermissions: boolean = $state(false);
   stream: MediaStream | undefined = $state(undefined);
 

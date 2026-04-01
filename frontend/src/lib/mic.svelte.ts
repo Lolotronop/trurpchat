@@ -10,7 +10,7 @@ import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Mic {
   ctx: AudioContext = audioctx();
-  store: IPersistantStore = getPlatformStore("mic.json");
+  store: IPersistantStore = getPlatformStore("mic");
   persistGain = debounce((value) => this.store.set("gain", value));
   hasPermissions: boolean = $state(false);
   stream: MediaStream | undefined = undefined;

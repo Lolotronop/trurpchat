@@ -21,7 +21,7 @@ export class Settings {
   values = $state({ ...defaultSettings });
 
   constructor() {
-    this.store = getPlatformStore("settings.json");
+    this.store = getPlatformStore("settings");
 
     this.init().then(() => {
       this.ready = true;
