@@ -37,11 +37,11 @@ export class Camera {
     this.updateDevices();
   }
 
-  async enable() {
+  async enable(exact = true) {
     const settings: MediaTrackConstraints = {};
 
     if (this.deviceId) {
-      settings.deviceId = { exact: this.deviceId };
+      settings.deviceId = exact ? { exact: this.deviceId } : this.deviceId;
     }
 
     try {
@@ -55,6 +55,11 @@ export class Camera {
       const deviceId = track.getSettings().deviceId;
       this.deviceId = deviceId;
     } catch (error) {
+      if (error instanceof OverconstrainedError && exact) {
+        await this.enable(false);
+        return;
+      }
+
       console.error("Error enabling camera:", error);
       return;
     }

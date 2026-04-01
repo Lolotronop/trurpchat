@@ -116,7 +116,7 @@ export class WebRTC {
       this.connectedFor += 1000;
     }, 1000);
 
-    await this.mic.connect();
+    await this.mic.enable();
     // Initiate calls to existing users
     for (const userId of this.room.users) {
       if (userId === this.server.user.id) continue;
@@ -303,7 +303,7 @@ export class WebRTC {
     }
     this.connectedTimeout = null;
     this.peers.clear();
-    this.mic.disconnect();
+    this.mic.disable();
     this.cam.disable();
     this.camera = false;
     this.streaming = false;

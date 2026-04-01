@@ -60,7 +60,7 @@ export class Mic {
   set noiseSuppression(value) {
     this.#noiseSuppression = value;
     this.store.set("noiseSuppression", value);
-    this.connect();
+    this.enable();
   }
   get noiseSuppression() {
     return this.#noiseSuppression;
@@ -71,7 +71,7 @@ export class Mic {
     this.#echoCancellation = value;
 
     this.store.set("echoCancellation", value);
-    this.connect();
+    this.enable();
   }
   get echoCancellation() {
     return this.#echoCancellation;
@@ -132,26 +132,12 @@ export class Mic {
     this.effects.nodes.gate.threshold =
       (await this.store.get("gateThreshold")) || -30;
 
-    try {
-      let media = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
-      media.getTracks().forEach((track) => {
-        track.stop();
-      });
-      // @ts-expect-error
-      media = null;
-    } catch (error) {
-      console.error("Error getting permissions:", error);
-      this.hasPermissions = false;
-    }
-
     this.hasPermissions = true;
     this.updateDevices();
   }
 
-  async connect() {
-    this.disconnect();
+  async enable(exact = true) {
+    this.disable();
     await this.ctx.resume();
 
     const settings: MediaTrackConstraints = {
@@ -162,7 +148,7 @@ export class Mic {
     };
 
     if (this.deviceId) {
-      settings.deviceId = { exact: this.deviceId };
+      settings.deviceId = exact ? { exact: this.deviceId } : this.deviceId;
     }
 
     try {
@@ -179,12 +165,17 @@ export class Mic {
       this.source = this.ctx.createMediaStreamSource(this.stream);
       this.effects.addSource(this.source);
     } catch (error) {
+      if (error instanceof OverconstrainedError && exact) {
+        await this.enable(false);
+        return;
+      }
+
       console.error("Error enabling mic:", error);
       return;
     }
   }
 
-  disconnect() {
+  disable() {
     this.source && this.effects.removeSource(this.source);
     this.source = null;
 
