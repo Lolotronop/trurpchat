@@ -90,8 +90,13 @@ pub fn start(
     let writer_thread = std::thread::spawn({
         let control_plane = control_plane.clone();
         move || {
+            let mut started = false;
             if let Ok(packet) = output_receiver.recv() {
-                control_plane.streaming();
+                if started == false {
+                    control_plane.streaming();
+                    started = true;
+                }
+
                 if packet.dts().is_none() {
                     println!("Dts is none!");
                 }
@@ -99,20 +104,10 @@ pub fn start(
                 let res = packet.write_interleaved(&mut octx);
                 if res.is_err() {
                     println!("Error writing packet: {:?}", res);
+                    control_plane.stop();
                 }
             }
 
-            while let Ok(packet) = output_receiver.recv() {
-                if packet.dts().is_none() {
-                    println!("Dts is none!");
-                    continue;
-                }
-
-                let res = packet.write_interleaved(&mut octx);
-                if res.is_err() {
-                    println!("Error writing packet: {:?}", res);
-                }
-            }
             octx.write_trailer().unwrap();
         }
     });
