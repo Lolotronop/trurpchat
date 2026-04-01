@@ -1,5 +1,6 @@
 import { drizzle } from "drizzle-orm/bun-sqlite";
-import { keys, relations, type Key } from "./schema";
+import { type Key, keys, relations, serverMeta } from "./schema";
+
 export * from "./schema";
 
 export const db = drizzle(process.env.DATABASE_URL!, { relations });
@@ -10,4 +11,22 @@ export async function createKey(userId: number) {
     userId,
   };
   await db.insert(keys).values([keyData]);
+}
+
+export async function getOrCreateServerId() {
+  const [existing] = await db.select().from(serverMeta).limit(1);
+
+  if (existing?.id) {
+    return existing.id;
+  }
+
+  const id = crypto.randomUUID();
+
+  if (existing) {
+    await db.update(serverMeta).set({ id });
+  } else {
+    await db.insert(serverMeta).values({ id });
+  }
+
+  return id;
 }

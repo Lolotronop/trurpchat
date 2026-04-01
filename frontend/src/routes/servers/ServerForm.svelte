@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { Input } from "$lib/components/ui/input";
   import { Button } from "$lib/components/ui/button";
+  import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import type { ServerDefinition } from "$lib/servers.svelte";
 
@@ -10,12 +10,14 @@
   const { onsubmit }: Props = $props();
 
   let server: ServerDefinition = $state({
+    id: null,
     name: "",
     url: "",
   });
 
   if (import.meta.env.DEV) {
     server = {
+      id: null,
       name: "localhost",
       url: "ws://localhost:3000?key=vy84pxgkxm",
     };

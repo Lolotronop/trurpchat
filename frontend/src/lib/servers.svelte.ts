@@ -17,6 +17,7 @@ import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export type ServerDefinition = {
+  id: string | null;
   name: string;
   url: string;
 };
@@ -53,6 +54,7 @@ function toOfflineUser(user: DbUser): OfflineUser {
 
 export class Server {
   definition: ServerDefinition;
+  #persistDefinition: () => void | Promise<void>;
   /**
    * expeceted to be in format "http(s)://domain:port/"
    * trailing slash is MANDATORY(no it isnt its just funny to think it is)
@@ -75,8 +77,12 @@ export class Server {
 
   messages: TextMessageCache = new TextMessageCache(this);
 
-  constructor(definition: ServerDefinition) {
+  constructor(
+    definition: ServerDefinition,
+    persistDefinition: () => void | Promise<void>,
+  ) {
     this.definition = definition;
+    this.#persistDefinition = persistDefinition;
     this.gateway = new Gateway();
     this.rtc = new WebRTC(
       gitGud().mic,
@@ -224,6 +230,16 @@ export class Server {
         this.users[userIndex] = message.user;
       }
     } else if (message.type === "event.startup.config") {
+      if (this.definition.id === null) {
+        this.definition.id = message.serverId;
+        void this.#persistDefinition();
+      } else if (this.definition.id !== message.serverId) {
+        console.warn(
+          `Server id mismatch for ${this.definition.name}: expected ${this.definition.id}, got ${message.serverId}`,
+        );
+        this.definition.id = message.serverId;
+        void this.#persistDefinition();
+      }
       this.overServerUrl = message.ovenServerUrl;
       this.iceConfig = message.iceConfig;
     } else if (message.type === "event.key.list") {
@@ -376,7 +392,17 @@ export class ServerManager {
     if (!definitions) {
       return;
     }
-    this.values = definitions.map((d) => new Server(d));
+    this.values = definitions.map(
+      (definition) =>
+        new Server(
+          {
+            id: definition.id ?? null,
+            name: definition.name,
+            url: definition.url,
+          },
+          () => this.save(),
+        ),
+    );
     if (this.values.length > 0) {
       let selectedIndex =
         (await this.store.get<number>("selectedServerIndex")) ?? 0;
@@ -392,7 +418,7 @@ export class ServerManager {
   }
 
   add(server: ServerDefinition) {
-    this.values.push(new Server(server));
+    this.values.push(new Server(server, () => this.save()));
     this.save();
   }
 

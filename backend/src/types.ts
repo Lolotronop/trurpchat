@@ -252,6 +252,7 @@ export type MessageEvent =
 export type OtherEvent =
   | {
       type: "event.startup.config";
+      serverId: string;
       ovenServerUrl?: string;
       iceConfig: IceConfig;
     }

@@ -16,6 +16,12 @@ export const users = table("users", {
 
 export type User = typeof users.$inferSelect;
 
+export const serverMeta = table("server_meta", {
+  id: t.text(),
+});
+
+export type ServerMeta = typeof serverMeta.$inferSelect;
+
 export const keys = table("keys", {
   id: t.integer().primaryKey(),
   key: t.text({ length: 255 }).notNull(),
@@ -104,7 +110,7 @@ export const messages = table(
 export type Message = typeof messages.$inferSelect;
 
 export const relations = defineRelations(
-  { users, keys, messages, rooms },
+  { users, keys, messages, rooms, serverMeta },
   (r) => ({
     keys: {
       user: r.one.users({

@@ -1,6 +1,6 @@
 import { env } from "bun";
 import { eq, getColumns } from "drizzle-orm";
-import { db, keys, rooms, users } from "./db";
+import { db, getOrCreateServerId, keys, rooms, users } from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
 import { voiceHandlers } from "./handler/voice";
@@ -31,6 +31,7 @@ for (const r of existingRooms) {
 }
 
 const PORT = +(env.PORT ?? 3000);
+const serverId = await getOrCreateServerId();
 
 function isIceConfig(value: unknown): value is IceConfig {
   if (typeof value !== "object" || value === null) {
@@ -162,6 +163,7 @@ Bun.serve<ConnectedUser, never>({
 
       send(ws, {
         type: "event.startup.config",
+        serverId,
         ovenServerUrl: env.OVEN_SERVER_URL,
         iceConfig,
       });
