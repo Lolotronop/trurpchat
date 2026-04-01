@@ -122,7 +122,7 @@ export class Peer {
       let msg: DatachannelMessage;
       try {
         msg = JSON.parse(ev.data) as DatachannelMessage;
-      } catch (e) {
+      } catch (_) {
         console.log(`Can't parse datachanner message`, ev.data);
         return;
       }
@@ -149,7 +149,7 @@ export class Peer {
 
     try {
       this.datachannel.send(JSON.stringify(data));
-    } catch (e) {
+    } catch (_) {
       console.error(
         `Failed to send datachannel message to ${this.targetId}`,
         data,
@@ -162,7 +162,7 @@ export class Peer {
    */
   cleanup() {
     this.datachannel?.close();
-    this.pc.close();
+    this.pc?.close();
     this.headphones.removeSource(this.muteNode);
     if (this.source) {
       this.source.disconnect(this.gainNode);

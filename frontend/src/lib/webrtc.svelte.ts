@@ -9,6 +9,8 @@ import { Peer } from "./webrtc-peer.svelte";
 
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();
+  room: VoiceChat | undefined = $state(undefined);
+  connected = $derived(this.room !== undefined);
   connectedFor: number = $state(0);
   connectedTimeout: NodeJS.Timeout | null = null;
 
@@ -56,7 +58,6 @@ export class WebRTC {
     public headphones: Headphones,
     public cam: Camera,
     public server: Server,
-    public room: VoiceChat,
   ) {
     this.mic.effects.nodes.gate.onmessage(({ isOpen }) => {
       for (const peer of this.peers.values()) {
@@ -68,6 +69,11 @@ export class WebRTC {
         );
       }
     });
+  }
+
+  connect(room: VoiceChat) {
+    console.log("connecting to room", room.name);
+    this.room = room;
   }
 
   async handleSignalingMessage(msg: Message) {
@@ -85,7 +91,7 @@ export class WebRTC {
   }
 
   async handleUserJoined(userId: number, roomId: number) {
-    if (this.room.id !== roomId) {
+    if (this.room?.id !== roomId) {
       return;
     }
 
@@ -113,10 +119,14 @@ export class WebRTC {
   }
 
   async handleUserLeft(userId: number, roomId: number) {
+    if (this.room?.id !== roomId) {
+      return;
+    }
+
     if (userId === this.server.user.id) {
       this.cleanup();
       return;
-    } else if (roomId === this.room.id) {
+    } else if (roomId === this.room?.id) {
       const peer = this.peers.get(userId);
       if (!peer) {
         return;
@@ -156,7 +166,6 @@ export class WebRTC {
 
     peer.pc.onicecandidate = (event) => {
       if (!event.candidate) {
-        console.warn("No ice candidate");
         return;
       }
       this.server.gateway.send({
@@ -172,13 +181,16 @@ export class WebRTC {
         peer.pc.connectionState === "disconnected" ||
         peer.pc.connectionState === "failed"
       ) {
+        if (peer.pc.connectionState === "failed") {
+          console.error("Peer connection failed", peer.targetId);
+        }
         peer.cleanup();
         this.peers.delete(targetId);
       }
     };
 
-    peer.pc.onicecandidateerror = (event) => {
-      console.warn("ICE candidate error:", event);
+    peer.pc.onicecandidateerror = (_) => {
+      // console.warn("ICE candidate error:", event);
     };
 
     peer.pc.onnegotiationneeded = async (event) => {
@@ -285,12 +297,16 @@ export class WebRTC {
     for (const peer of this.peers.values()) {
       peer.cleanup();
     }
+    this.peers.clear();
+
     this.connectedFor = 0;
     if (this.connectedTimeout) {
       clearInterval(this.connectedTimeout);
     }
     this.connectedTimeout = null;
-    this.peers.clear();
+    console.log("room disconnected, setting room to undefined");
+    this.room = undefined;
+
     this.mic.disable();
     this.cam.disable();
     this.camera = false;

@@ -47,19 +47,23 @@
         console.warn("Recieved stream-status event but rtc is not defined");
         return;
       }
+      if (!rtc.connected) {
+        console.warn("Recieved stream-status event but rtc is not connected");
+        return;
+      }
       rtc.streaming = event.payload;
     });
   }
 </script>
 
 <div class="text-muted-foreground rounded border-t px-2 flex flex-col w-full">
-  {#if rtc !== undefined}
+  {#if rtc.connected && rtc.room}
     <div class="flex flex-row items-center justify-between gap-2 py-2">
       <Tooltip.Root delayDuration={100}>
         <Tooltip.Trigger class="flex flex-col items-start">
           <div class="hover:text-foreground flex flex-row items-center gap-2">
             <Info size={16} />
-            {rtc.room?.name}
+            {rtc.room.name}
           </div>
         </Tooltip.Trigger>
         <Tooltip.Content class="w-34">

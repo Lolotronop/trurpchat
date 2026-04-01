@@ -61,7 +61,7 @@ export class Server {
   iceConfig: IceConfig | undefined = $state(undefined);
   gateway: Gateway;
   rooms: Room[] = $state([]);
-  rtc: WebRTC | undefined = $state(undefined);
+  rtc: WebRTC;
   user: User = $state({
     id: -1,
     name: "T",
@@ -78,9 +78,15 @@ export class Server {
   constructor(definition: ServerDefinition) {
     this.definition = definition;
     this.gateway = new Gateway();
+    this.rtc = new WebRTC(
+      gitGud().mic,
+      gitGud().headphones,
+      gitGud().camera,
+      this,
+    );
     this.gateway.onmessage((msg) => {
       this.handleMessage(msg);
-      if (this.rtc) this.rtc.handleSignalingMessage(msg);
+      this.rtc.handleSignalingMessage(msg);
     });
     this.gateway.onclose(() => {
       this.overServerUrl = undefined;
@@ -137,7 +143,7 @@ export class Server {
         return;
       }
 
-      if (this.rtc?.room.id === message.roomId) {
+      if (this.rtc.room?.id === message.roomId) {
         this.leaveRoom();
       }
 
@@ -193,7 +199,12 @@ export class Server {
       if (userIndex === -1) {
         this.users.push(toOfflineUser(message.user));
       } else {
-        this.users[userIndex] = patchUser(this.users[userIndex]!, message.user);
+        const user = this.users[userIndex];
+        if (!user) {
+          console.error("user not found", userIndex, message.user.id);
+          return;
+        }
+        this.users[userIndex] = patchUser(user, message.user);
       }
     } else if (message.type === "event.user.deleted") {
       const userIndex = this.users.findIndex(
@@ -245,7 +256,7 @@ export class Server {
       room.users.splice(index, 1);
 
       const isMe = message.userId === this.user.id;
-      const inRoom = this.rtc?.room.id === room.id;
+      const inRoom = this.rtc.room?.id === room.id;
       if (isMe && inRoom) {
         this.leaveRoom(false);
       }
@@ -291,21 +302,15 @@ export class Server {
       throw new Error("Gateway is not connected");
     }
 
-    if (this.rtc && this.rtc.room.id === room.id) {
+    if (this.rtc.room?.id === room.id) {
       return;
     }
 
-    if (this.rtc) {
+    if (this.rtc.connected) {
       this.leaveRoom();
     }
 
-    this.rtc = new WebRTC(
-      gitGud().mic,
-      gitGud().headphones,
-      gitGud().camera,
-      this,
-      room,
-    );
+    this.rtc.connect(room);
 
     this.gateway.send({
       type: "action.voice.join",
@@ -314,20 +319,21 @@ export class Server {
   }
 
   leaveRoom(send = true) {
-    if (!this.rtc) return;
+    if (!this.rtc.room) return;
 
     const id = this.rtc.room.id;
-    this.rtc?.cleanup();
-    this.rtc = undefined;
+    this.rtc.cleanup();
     sound.play("voice disconnected");
     if (isTauri()) {
       invoke("stop_stream");
     }
-    send &&
+
+    if (send) {
       this.gateway.send({
         type: "action.voice.leave",
         room: id,
       });
+    }
   }
 }
 

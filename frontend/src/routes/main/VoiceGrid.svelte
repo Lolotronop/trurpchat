@@ -80,10 +80,10 @@
         observer.observe(el);
         }}
 >
-  {#each server.rtc?.room.users || [] as userId (userId)}
+  {#each server.rtc.room ? server.rtc.room.users : [] as userId (userId)}
     {@const user = server.findUser(userId)}
     {#if user?.online}
-      {@const peer = server.rtc?.peers.get(user.id)}
+      {@const peer = server.rtc.peers.get(user.id)}
       {#if user.id === server.user.id}
         <VoiceUserCard
           name={user.name}

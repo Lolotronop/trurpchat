@@ -1,6 +1,6 @@
+import { parse } from "devalue";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import type { ClientAction, Message } from "trurpchat-backend";
-import { parse } from "devalue";
 
 export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;
@@ -8,9 +8,6 @@ export class Gateway extends EventTarget {
   private callbacks: Array<(data: Message) => void> = $state([]);
   oncloseCallback = () => {};
   onopenCallback = () => {};
-  constructor() {
-    super();
-  }
 
   connect(url: string) {
     if (this.socket) {

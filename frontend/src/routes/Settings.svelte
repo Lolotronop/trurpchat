@@ -36,13 +36,13 @@
   });
 
   function enableCameraPreview() {
-    if (server.rtc === undefined || !server.rtc.camera) {
+    if (!server.rtc.connected || !server.rtc.camera) {
       g.camera.enable();
     }
   }
 
   function disableCameraPreview() {
-    if (server.rtc === undefined || !server.rtc.camera) {
+    if (!server.rtc.connected || !server.rtc.camera) {
       g.camera.disable();
     }
   }
@@ -63,7 +63,7 @@
       g.mic.monitoring = false;
       g.mic.disableAnalyzer();
     } else {
-      g.mic.connect();
+      g.mic.enable();
       g.mic.enableAnalyzer();
     }
 
@@ -94,7 +94,7 @@
                   variant={g.mic.monitoring ? "secondary" : "outline"}
                   onclick={() => {
                     g.mic.monitoring = !g.mic.monitoring;
-                    g.mic.connect();
+                    g.mic.enable();
                   }}
                 >
                   Прослушать
@@ -104,7 +104,7 @@
                   type="single"
                   onValueChange={(value) => {
                     g.mic.deviceId = value;
-                    g.mic.connect();
+                    g.mic.enable();
                   }}
                 >
                   <Select.Trigger
@@ -240,12 +240,12 @@
                 <Select.Root
                   type="single"
                   onValueChange={(value) => {
-                    const wasRtc = server.rtc?.camera;
+                    const wasRtc = server.rtc.connected && server.rtc.camera;
                     const wasPreviewOpen = cameraPreviewOpen;
-                    if (server.rtc) server.rtc.camera = false;
+                    if (server.rtc.connected) server.rtc.camera = false;
                     if (cameraPreviewOpen) disableCameraPreview();
                     g.camera.deviceId = value;
-                    if (wasRtc && server.rtc) server.rtc.camera = true;
+                    if (wasRtc) server.rtc.camera = true;
                     if (wasPreviewOpen) enableCameraPreview();
                   }}
                 >
@@ -282,7 +282,7 @@
           <div>
             <h1 class="text-foreground text-lg">Горячие клавиши</h1>
             <div class="flex flex-col gap-2">
-              {#each g.keys.bindings.entries() as [action, key] (action)}
+              {#each g.keys.bindings.entries() as [ action, key ] (action)}
                 <div class="flex flex-row items-center justify-between">
                   <p class="text-muted-foreground text-base">
                     {actions[action]}

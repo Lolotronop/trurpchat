@@ -15,7 +15,7 @@
   const g = gitGud();
 
   type Props = {
-    rtc: WebRTC | undefined;
+    rtc: WebRTC;
     room: VoiceChat;
     server: Server;
   };
@@ -27,7 +27,7 @@
   <Button
     variant="ghost"
     class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {rtc
-      ?.room?.name === room.name
+      ?.room?.id === room.id
       ? ''
       : 'text-muted-foreground'}"
     onclick={() => server?.joinRoom(room)}
