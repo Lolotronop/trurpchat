@@ -110,7 +110,7 @@ pub fn start(
         let control_plane = control_plane.clone();
         move || {
             let mut started = false;
-            if let Ok(packet) = output_receiver.recv() {
+            while let Ok(packet) = output_receiver.recv() {
                 if started == false {
                     control_plane.streaming();
                     started = true;
@@ -124,6 +124,7 @@ pub fn start(
                 if res.is_err() {
                     println!("Error writing packet: {:?}", res);
                     control_plane.stop();
+                    break;
                 }
             }
 
