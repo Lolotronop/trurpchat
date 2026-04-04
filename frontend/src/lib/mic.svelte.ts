@@ -5,6 +5,7 @@ import { audioctx } from "./audio/context";
 import { GainEffect } from "./audio/gain.svelte";
 import { GateEffect } from "./audio/gate.svelte";
 import { ChannelMergerEffect } from "./audio/merger.svelte";
+import { sound } from "./sound.svelte";
 import { debounce } from "./utils.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
@@ -99,6 +100,15 @@ export class Mic {
     return this.#isPushToTalk;
   }
 
+  #playPttSound: boolean = $state(false);
+  set playPttSound(value) {
+    this.#playPttSound = value;
+    this.store.set("playPttSound", value);
+  }
+  get playPttSound() {
+    return this.#playPttSound;
+  }
+
   get gain() {
     return this.effects.nodes.gain.gain;
   }
@@ -144,6 +154,7 @@ export class Mic {
     this.deviceId = await this.store.get("deviceId");
     this.muted = (await this.store.get("muted")) || false;
     this.#isPushToTalk = (await this.store.get("isPushToTalk")) || false;
+    this.#playPttSound = (await this.store.get("playPttSound")) || true;
     this.effects.nodes.gain.gain = (await this.store.get("gain")) || 1;
     this.effects.nodes.gate.threshold =
       (await this.store.get("gateThreshold")) || -30;
@@ -228,6 +239,8 @@ export class Mic {
     if (!this.isPushToTalk) return;
     this.effects.nodes.pushToTalkGain.gain = active ? 1 : 0;
     this.setSpeaking(active);
+    if (!this.#playPttSound || this.#muted) return;
+    sound.play(active ? "ptt activate" : "ptt deactivate");
   }
 
   onSpeakingChange(callback: (speaking: boolean) => void) {

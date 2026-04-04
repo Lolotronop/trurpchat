@@ -202,6 +202,10 @@
                       </Button>
                     </div>
                   </div>
+                  <div class="flex items-center space-x-2">
+                    <Switch id="ptt-sound" bind:checked={g.mic.playPttSound} />
+                    <Label for="ptt-sound">Воспроизводить звук рации</Label>
+                  </div>
                 </div>
               {:else}
                 <div class="flex flex-col gap-2">

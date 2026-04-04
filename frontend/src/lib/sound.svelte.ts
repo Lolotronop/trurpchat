@@ -15,6 +15,8 @@ const sounds = [
   "viewer join",
   "viewer leave",
   "voice disconnected",
+  "ptt activate",
+  "ptt deactivate",
 ] as const;
 export type SoundName = (typeof sounds)[number];
 
