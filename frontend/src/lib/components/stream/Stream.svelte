@@ -64,7 +64,7 @@
   });
 
   let watching = $state(false);
-  function watch() {
+  function sendWatch() {
     if (watching || !server.connected) {
       return;
     }
@@ -76,7 +76,7 @@
     watching = true;
   }
 
-  function unwatch() {
+  function sendUnwatch() {
     if (!watching) {
       return;
     }
@@ -93,7 +93,7 @@
   }
 
   function cleanup() {
-    unwatch();
+    sendUnwatch();
     clearTimeout(timeout);
     player?.stop();
     player?.remove();
@@ -144,6 +144,8 @@
       if (server.user.id === user.id) {
         oven.gain = 0;
       }
+
+      sendWatch();
     });
   }
 
@@ -229,7 +231,6 @@
       class="w-full h-full"
       onclick={() => {
         cleanup();
-        watch();
         oven.connect();
       }}
     >
