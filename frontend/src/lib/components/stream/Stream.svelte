@@ -262,7 +262,7 @@
       class="absolute inset-0 flex flex-col justify-between pointer-events-none"
       transition:fade={{ duration: 100 }}
     >
-      <div id="watchers" class="flex w-full items-start justify-end">
+      <div id="watchers" class="flex w-full items-start justify-end p-2">
         {#if watcherUsers.length > 0}
           <Tooltip.Root>
             <Tooltip.Trigger
@@ -273,12 +273,12 @@
                 {#each visibleWatcherUsers as watcher (watcher.id)}
                   <Avatar
                     name={watcher.name}
-                    class="size-8 border-2 border-background/90 bg-background"
+                    class="size-6 border-2 border-background/90 bg-background"
                   />
                 {/each}
                 {#if hiddenWatcherCount > 0}
                   <div
-                    class="z-10 flex size-8 items-center justify-center rounded-full border-2 border-background/90 bg-muted text-xs font-medium text-foreground"
+                    class="z-10 flex size-6 items-center justify-center rounded-full border-2 border-background/90 bg-muted text-xs font-medium text-foreground"
                   >
                     +{hiddenWatcherCount}
                   </div>
@@ -379,8 +379,6 @@
       rgba(0, 0, 0, 0.22) 35%,
       rgba(0, 0, 0, 0) 100%
     );
-    margin: -0.5rem;
-    padding: 0.5rem;
     border-top-left-radius: inherit;
     border-top-right-radius: inherit;
   }
