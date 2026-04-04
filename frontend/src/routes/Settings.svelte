@@ -216,7 +216,11 @@
                   <div
                     class={`transition-[filter] duration-50 ${g.mic.speaking ? "" : "saturate-0"}`}
                   >
-                    <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
+                    <AnalyzerDisplay
+                      rms={g.mic.rms}
+                      peak={g.mic.peak}
+                      min={-42}
+                    />
                   </div>
                 </div>
               {/if}
