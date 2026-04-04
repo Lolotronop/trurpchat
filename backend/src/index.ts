@@ -3,7 +3,7 @@ import { eq, getColumns } from "drizzle-orm";
 import { db, getOrCreateServerId, keys, rooms, users } from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
-import { voiceHandlers } from "./handler/voice";
+import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
 import { send, sendAll } from "./send";
 import type {
   ConnectedUser,
@@ -92,7 +92,7 @@ function createDefaultTalkingUserState(): ConnectedUserState {
     deafened: false,
     camera: false,
     streaming: false,
-    watching: null,
+    watchedBy: [],
     online: true,
   };
 }
@@ -225,6 +225,8 @@ Bun.serve<ConnectedUser, never>({
           room: room.data.id,
         });
       }
+
+      removeWatcherFromAllUsers(ctx, ws.data.id);
 
       ctx.clients.delete(ws.data.id);
 

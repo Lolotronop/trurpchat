@@ -18,7 +18,7 @@ export type ConnectedUserState = {
   deafened: boolean;
   camera: boolean;
   streaming: boolean;
-  watching: number | null;
+  watchedBy: number[];
   online: true;
 };
 
@@ -79,6 +79,14 @@ export type VoiceAction =
   | {
       type: "action.voice.leave";
       room: number;
+    }
+  | {
+      type: "action.voice.watch";
+      userId: number;
+    }
+  | {
+      type: "action.voice.unwatch";
+      userId: number;
     }
   | {
       type: "action.voice.pause";

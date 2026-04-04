@@ -1,7 +1,53 @@
 import { err, ok } from "neverthrow";
-import type { VoiceAction } from "$src/types";
 import { send, sendAll } from "$src/send";
+import type { VoiceAction } from "$src/types";
 import type { Handlers } from "./types";
+
+function removeWatcherFromTarget(
+  targetId: number,
+  watcherId: number,
+  ctx: Parameters<Handlers<VoiceAction>["action.voice.join"]>[0],
+) {
+  const target = ctx.clients.get(targetId);
+  if (!target) {
+    return false;
+  }
+
+  const nextWatchedBy = target.data.watchedBy.filter((id) => id !== watcherId);
+  if (nextWatchedBy.length === target.data.watchedBy.length) {
+    return false;
+  }
+
+  target.data.watchedBy = nextWatchedBy;
+  sendAll(ctx.clients.values(), {
+    type: "event.user.state",
+    user: target.data,
+  });
+  return true;
+}
+
+export function removeWatcherFromAllUsers(
+  ctx: Parameters<Handlers<VoiceAction>["action.voice.join"]>[0],
+  watcherId: number,
+) {
+  let updated = false;
+  for (const target of ctx.clients.values()) {
+    if (!target.data.watchedBy.includes(watcherId)) {
+      continue;
+    }
+
+    target.data.watchedBy = target.data.watchedBy.filter(
+      (id) => id !== watcherId,
+    );
+    sendAll(ctx.clients.values(), {
+      type: "event.user.state",
+      user: target.data,
+    });
+    updated = true;
+  }
+
+  return updated;
+}
 
 export const voiceHandlers: Handlers<VoiceAction> = {
   "action.voice.join": (ctx, ws, msg) => {
@@ -24,8 +70,15 @@ export const voiceHandlers: Handlers<VoiceAction> = {
       return err(new Error(`Room ${msg.room} not found`));
     }
     room.remove(ws);
+    removeWatcherFromAllUsers(ctx, ws.data.id);
+    if (ws.data.watchedBy.length > 0) {
+      ws.data.watchedBy = [];
+      sendAll(ctx.clients.values(), {
+        type: "event.user.state",
+        user: ws.data,
+      });
+    }
     ws.data.streaming = false;
-    ws.data.watching = null;
     sendAll(ctx.clients.values(), {
       type: "event.voice.left",
       room: msg.room,
@@ -34,13 +87,33 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     return ok();
   },
 
-  "action.voice.pause": (ctx, ws, msg) => {
-    if (ws.data.watching === null) {
+  "action.voice.watch": (ctx, ws, msg) => {
+    const target = ctx.clients.get(msg.userId);
+    if (!target) {
+      return err(new Error(`Client ${msg.userId} not found`));
+    }
+
+    if (target.data.watchedBy.includes(ws.data.id)) {
       return ok();
     }
+
+    target.data.watchedBy = [...target.data.watchedBy, ws.data.id];
+    sendAll(ctx.clients.values(), {
+      type: "event.user.state",
+      user: target.data,
+    });
+    return ok();
+  },
+
+  "action.voice.unwatch": (ctx, ws, msg) => {
+    removeWatcherFromTarget(msg.userId, ws.data.id, ctx);
+    return ok();
+  },
+
+  "action.voice.pause": (ctx, ws, msg) => {
     const to = ctx.clients.get(msg.userId);
     if (!to) {
-      return err(new Error(`Client ${ws.data.watching} not found`));
+      return err(new Error(`Client ${msg.userId} not found`));
     }
     if (!to.data.streaming) {
       return ok();

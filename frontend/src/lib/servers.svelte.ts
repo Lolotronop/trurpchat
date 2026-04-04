@@ -28,7 +28,7 @@ function createDefaultConnectedUserState(): ConnectedUserState {
     deafened: false,
     camera: false,
     streaming: false,
-    watching: null,
+    watchedBy: [],
     online: true,
   };
 }

@@ -16,7 +16,9 @@
   import { fade } from "svelte/transition";
   import type { User } from "trurpchat-backend";
   import { audioctx } from "$lib/audio/context";
+  import Avatar from "$lib/components/Avatar.svelte";
   import { Button } from "$lib/components/ui/button";
+  import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
   import GainSlider from "../GainSlider.svelte";
@@ -37,6 +39,23 @@
     }
     return lastOven;
   });
+  const watcherUsers = $derived.by(() => {
+    if (!user.online) {
+      return [];
+    }
+
+    return user.watchedBy
+      .map((id) => server.findUser(id))
+      .filter((watcher): watcher is User => watcher !== undefined)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  });
+  const MAX_VISIBLE_WATCHERS = 10;
+  const visibleWatcherUsers = $derived(
+    watcherUsers.slice(0, MAX_VISIBLE_WATCHERS),
+  );
+  const hiddenWatcherCount = $derived(
+    Math.max(watcherUsers.length - MAX_VISIBLE_WATCHERS, 0),
+  );
 
   $effect(() => {
     return () => {
@@ -44,7 +63,38 @@
     };
   });
 
+  let watching = $state(false);
+  function watch() {
+    if (watching || !server.connected) {
+      return;
+    }
+
+    server.gateway.send({
+      type: "action.voice.watch",
+      userId: user.id,
+    });
+    watching = true;
+  }
+
+  function unwatch() {
+    if (!watching) {
+      return;
+    }
+
+    watching = false;
+    if (!server.connected) {
+      return;
+    }
+
+    server.gateway.send({
+      type: "action.voice.unwatch",
+      userId: user.id,
+    });
+  }
+
   function cleanup() {
+    unwatch();
+    clearTimeout(timeout);
     player?.stop();
     player?.remove();
     player = undefined;
@@ -101,7 +151,7 @@
   let timeout: NodeJS.Timeout | undefined;
   let shouldHide = $state(true);
   function attachAutohide(el: HTMLDivElement) {
-    el.onmousemove = (event) => {
+    const onMouseMove = (event: MouseEvent) => {
       clearTimeout(timeout);
       shouldHide = false;
 
@@ -114,12 +164,21 @@
       }, 2000);
     };
 
-    el.onmouseleave = () => {
+    const onMouseLeave = () => {
       clearTimeout(timeout);
       shouldHide = true;
     };
 
+    el.addEventListener("mousemove", onMouseMove);
+    el.addEventListener("mouseleave", onMouseLeave);
     el.addEventListener("dblclick", toggleFullscreen);
+
+    return () => {
+      clearTimeout(timeout);
+      el.removeEventListener("mousemove", onMouseMove);
+      el.removeEventListener("mouseleave", onMouseLeave);
+      el.removeEventListener("dblclick", toggleFullscreen);
+    };
   }
 
   let isFullscreen = $state(false);
@@ -170,8 +229,7 @@
       class="w-full h-full"
       onclick={() => {
         cleanup();
-        // TODO: also signal to the main server
-        // that we are wathcing something
+        watch();
         oven.connect();
       }}
     >
@@ -200,68 +258,132 @@
   <!-- controls -->
   {#if oven.state === "connected" && !shouldHide}
     <div
-      id="controls"
-      class="absolute bottom-0 flex w-full justify-between p-2 pointer-events-none"
+      class="absolute inset-0 flex flex-col justify-between p-2 pointer-events-none"
       transition:fade={{ duration: 100 }}
     >
-      <div
-        data-controls
-        class="flex items-center gap-2 bg-background/80 rounded-md"
-      >
-        <p class="text-foreground text-sm px-2 flex items-center gap-1">
-          <Monitor class="size-4" />
-          {user.name}
-        </p>
-
-        <Button
-          class="pointer-events-auto p-0 hover:bg-destructive/50!"
-          variant="ghost"
-          onclick={() => {
-            cleanup();
-          }}
-        >
-          <DoorOpen class="size-4" />
-        </Button>
+      <div id="watchers" class="flex w-full items-start justify-end">
+        {#if watcherUsers.length > 0}
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              data-controls
+              class="pointer-events-auto rounded-md bg-background/75 px-2 py-1.5"
+            >
+              <div class="flex -space-x-2">
+                {#each visibleWatcherUsers as watcher (watcher.id)}
+                  <Avatar
+                    name={watcher.name}
+                    class="size-8 border-2 border-background/90 bg-background"
+                  />
+                {/each}
+                {#if hiddenWatcherCount > 0}
+                  <div
+                    class="z-10 flex size-8 items-center justify-center rounded-full border-2 border-background/90 bg-muted text-xs font-medium text-foreground"
+                  >
+                    +{hiddenWatcherCount}
+                  </div>
+                {/if}
+              </div>
+            </Tooltip.Trigger>
+            <Tooltip.Content
+              side="bottom"
+              sideOffset={8}
+              class="max-w-56 bg-background"
+            >
+              <div class="space-y-2">
+                <p class="text-sm font-medium">
+                  Зритерей: {watcherUsers.length}
+                </p>
+                <div class="space-y-1">
+                  {#each watcherUsers as watcher (watcher.id)}
+                    <div class="flex items-center gap-2">
+                      <Avatar name={watcher.name} class="size-6 shrink-0" />
+                      <span class="truncate text-sm">{watcher.name}</span>
+                    </div>
+                  {/each}
+                </div>
+              </div>
+            </Tooltip.Content>
+          </Tooltip.Root>
+        {/if}
       </div>
-      <div
-        data-controls
-        class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
-      >
-        <div class="w-36 flex items-center gap-2">
+
+      <div id="controls" class="flex items-end justify-between gap-2">
+        <div
+          data-controls
+          class="flex items-center gap-2 rounded-md bg-background/80"
+        >
+          <p class="text-foreground text-sm px-2 flex items-center gap-1">
+            <Monitor class="size-4" />
+            {user.name}
+          </p>
+
           <Button
+            class="pointer-events-auto p-0 hover:bg-destructive/50!"
             variant="ghost"
-            class="p-0"
             onclick={() => {
-              if (oven.gain === 0) {
-                oven.gain = prevgain;
-              } else {
-                prevgain = oven.gain;
-                oven.gain = 0;
-              }
+              cleanup();
             }}
           >
-            {#if oven.gain === 0}
-              <VolumeOff class="size-4" />
-            {:else}
-              <Volume2 class="size-4" />
-            {/if}
+            <DoorOpen class="size-4" />
           </Button>
-          <GainSlider class="w-full mt-1" bind:value={oven.gain} ticks={[1]} />
         </div>
-        <Button
-          id="fullscreen"
-          class="p-0"
-          variant="ghost"
-          onclick={toggleFullscreen}
+        <div
+          data-controls
+          class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
         >
-          <Fullscreen class="size-4" />
-        </Button>
+          <div class="w-36 flex items-center gap-2">
+            <Button
+              variant="ghost"
+              class="p-0"
+              onclick={() => {
+                if (oven.gain === 0) {
+                  oven.gain = prevgain;
+                } else {
+                  prevgain = oven.gain;
+                  oven.gain = 0;
+                }
+              }}
+            >
+              {#if oven.gain === 0}
+                <VolumeOff class="size-4" />
+              {:else}
+                <Volume2 class="size-4" />
+              {/if}
+            </Button>
+            <GainSlider
+              class="w-full mt-1"
+              bind:value={oven.gain}
+              ticks={[1]}
+            />
+          </div>
+          <Button
+            id="fullscreen"
+            class="p-0"
+            variant="ghost"
+            onclick={toggleFullscreen}
+          >
+            <Fullscreen class="size-4" />
+          </Button>
+        </div>
       </div>
     </div>
   {/if}
 </div>
 
 <style>
+  #watchers {
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.45) 0%,
+      rgba(0, 0, 0, 0.22) 35%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    margin: -0.5rem;
+    padding: 0.5rem;
+    border-top-left-radius: inherit;
+    border-top-right-radius: inherit;
+  }
+
   #controls {
     background: linear-gradient(
       to top,
