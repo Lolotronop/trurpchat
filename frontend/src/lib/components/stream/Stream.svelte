@@ -13,7 +13,6 @@
     type OvenPlayerIceServer,
     type OvenPlayerInstance,
   } from "ovenplayer";
-  import { fade } from "svelte/transition";
   import type { User } from "trurpchat-backend";
   import { audioctx } from "$lib/audio/context";
   import Avatar from "$lib/components/Avatar.svelte";
@@ -228,14 +227,20 @@
   {:else if oven.state === "disconnected"}
     <Button
       variant="ghost"
-      class="w-full h-full"
+      class="w-full h-full flex flex-col items-center justify-center"
       onclick={() => {
         cleanup();
         oven.connect();
       }}
     >
-      <Tv class="size-6" />
-      Стрим {user.name}
+      <div class="flex items-center gap-2 p-2">
+        <Tv class="size-6" />
+        Стрим {user.name}
+      </div>
+
+      {#if watcherUsers.length > 0}
+        {@render watchersTooltip()}
+      {/if}
     </Button>
   {:else if oven.state === "connecting"}
     <div class="flex flex-col items-center justify-center gap-2">
@@ -257,54 +262,13 @@
   {/if}
 
   <!-- controls -->
-  {#if oven.state === "connected" && !shouldHide}
+  {#if oven.state === "connected"}
     <div
-      class="absolute inset-0 flex flex-col justify-between pointer-events-none"
-      transition:fade={{ duration: 100 }}
+      class="absolute inset-0 flex flex-col justify-between pointer-events-none transition-opacity duration-100 {shouldHide && 'opacity-0'}"
     >
       <div id="watchers" class="flex w-full items-start justify-end p-2">
         {#if watcherUsers.length > 0}
-          <Tooltip.Root>
-            <Tooltip.Trigger
-              data-controls
-              class="pointer-events-auto rounded-md bg-background/75 px-2 py-1.5"
-            >
-              <div class="flex -space-x-2">
-                {#each visibleWatcherUsers as watcher (watcher.id)}
-                  <Avatar
-                    name={watcher.name}
-                    class="size-6 border-2 border-background/90 bg-background"
-                  />
-                {/each}
-                {#if hiddenWatcherCount > 0}
-                  <div
-                    class="z-10 flex size-6 items-center justify-center rounded-full border-2 border-background/90 bg-muted text-xs font-medium text-foreground"
-                  >
-                    +{hiddenWatcherCount}
-                  </div>
-                {/if}
-              </div>
-            </Tooltip.Trigger>
-            <Tooltip.Content
-              side="bottom"
-              sideOffset={8}
-              class="max-w-56 bg-background"
-            >
-              <div class="space-y-2">
-                <p class="text-sm font-medium">
-                  Зритерей: {watcherUsers.length}
-                </p>
-                <div class="space-y-1">
-                  {#each watcherUsers as watcher (watcher.id)}
-                    <div class="flex items-center gap-2">
-                      <Avatar name={watcher.name} class="size-6 shrink-0" />
-                      <span class="truncate text-sm">{watcher.name}</span>
-                    </div>
-                  {/each}
-                </div>
-              </div>
-            </Tooltip.Content>
-          </Tooltip.Root>
+          {@render watchersTooltip()}
         {/if}
       </div>
 
@@ -370,6 +334,48 @@
     </div>
   {/if}
 </div>
+
+{#snippet watchersTooltip()}
+  <Tooltip.Root>
+    <Tooltip.Trigger
+      data-controls
+      class="pointer-events-auto rounded-md bg-background/75 px-2 py-1.5"
+    >
+      <div class="flex -space-x-2">
+        {#each visibleWatcherUsers as watcher (watcher.id)}
+          <Avatar
+            name={watcher.name}
+            class="size-6 border-2 border-background/90 bg-background"
+          />
+        {/each}
+        {#if hiddenWatcherCount > 0}
+          <div
+            class="z-10 flex size-6 items-center justify-center rounded-full border-2 border-background/90 bg-muted text-xs font-medium text-foreground"
+          >
+            +{hiddenWatcherCount}
+          </div>
+        {/if}
+      </div>
+    </Tooltip.Trigger>
+    <Tooltip.Content
+      side="bottom"
+      sideOffset={8}
+      class="max-w-56 bg-background"
+    >
+      <div class="space-y-2">
+        <p class="text-sm font-medium">Зритерей: {watcherUsers.length}</p>
+        <div class="space-y-1">
+          {#each watcherUsers as watcher (watcher.id)}
+            <div class="flex items-center gap-2">
+              <Avatar name={watcher.name} class="size-6 shrink-0" />
+              <span class="truncate text-sm">{watcher.name}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    </Tooltip.Content>
+  </Tooltip.Root>
+{/snippet}
 
 <style>
   #watchers {
