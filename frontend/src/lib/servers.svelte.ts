@@ -61,7 +61,11 @@ function findRemovedIds(previous: number[], next: number[]) {
 }
 
 export class Server {
-  definition: ServerDefinition;
+  definition: ServerDefinition = $state({
+    id: null,
+    name: "",
+    url: "",
+  });
   #persistDefinition: () => void | Promise<void>;
   /**
    * expeceted to be in format "http(s)://domain:port/"
@@ -486,6 +490,26 @@ export class ServerManager {
   add(server: ServerDefinition) {
     this.values.push(new Server(server, () => this.save()));
     this.save();
+  }
+
+  update(server: Server, definition: ServerDefinition) {
+    const value = this.values.find((s) => s === server);
+    if (!value) {
+      throw new Error("trying to update a server that does not exist");
+    }
+
+    const previousUrl = value.definition.url;
+    value.definition = {
+      id: value.definition.id,
+      name: definition.name,
+      url: definition.url,
+    };
+
+    this.save();
+
+    if (this.selected === value && previousUrl !== definition.url) {
+      value.reconnect();
+    }
   }
 
   remove(server: Server) {

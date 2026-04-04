@@ -1,9 +1,9 @@
 <script lang="ts">
-  import * as Tooltip from "$lib/components/ui/tooltip";
-  import * as Dialog from "$lib/components/ui/dialog";
-  import { Button } from "$lib/components/ui/button";
-  import type { ServerManager } from "$lib/servers.svelte";
   import Avatar from "$lib/components/Avatar.svelte";
+  import { Button } from "$lib/components/ui/button";
+  import * as Dialog from "$lib/components/ui/dialog";
+  import * as Tooltip from "$lib/components/ui/tooltip";
+  import type { ServerManager } from "$lib/servers.svelte";
   import ServerForm from "./ServerForm.svelte";
 
   type Props = {
@@ -13,6 +13,8 @@
   const { servers }: Props = $props();
 
   let showServerForm = $state(false);
+  let editingServer: ServerManager["values"][number] | undefined =
+    $state(undefined);
 </script>
 
 <div class="flex shrink flex-col items-center gap-1">
@@ -39,6 +41,13 @@
         {server.definition.name}
         <Button
           onclick={() => {
+            editingServer = server;
+          }}
+        >
+          Изменить
+        </Button>
+        <Button
+          onclick={() => {
             servers.remove(server);
           }}
         >
@@ -61,6 +70,26 @@
           showServerForm = false;
         }}
       />
+    </Dialog.Content>
+  </Dialog.Root>
+
+  <Dialog.Root
+    open={editingServer !== undefined}
+    onOpenChange={(open) => {
+      if (!open) editingServer = undefined;
+    }}
+  >
+    <Dialog.Content class="max-w-2xl p-0! px-0! py-0!">
+      {#if editingServer}
+        <ServerForm
+          initialServer={editingServer.definition}
+          onsubmit={(server) => {
+            const target = editingServer;
+            if (server && target) servers.update(target, server);
+            editingServer = undefined;
+          }}
+        />
+      {/if}
     </Dialog.Content>
   </Dialog.Root>
 </div>

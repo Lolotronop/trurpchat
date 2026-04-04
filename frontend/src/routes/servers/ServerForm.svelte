@@ -6,8 +6,11 @@
 
   type Props = {
     onsubmit: (server: ServerDefinition | null) => void;
+    initialServer?: ServerDefinition;
   };
-  const { onsubmit }: Props = $props();
+  const { onsubmit, initialServer }: Props = $props();
+
+  let isEditing = $derived(initialServer !== undefined);
 
   let server: ServerDefinition = $state({
     id: null,
@@ -15,13 +18,31 @@
     url: "",
   });
 
-  if (import.meta.env.DEV) {
+  $effect(() => {
+    if (initialServer) {
+      server = {
+        id: initialServer.id,
+        name: initialServer.name,
+        url: initialServer.url,
+      };
+      return;
+    }
+
+    if (import.meta.env.DEV) {
+      server = {
+        id: null,
+        name: "localhost",
+        url: "ws://localhost:3000?key=vy84pxgkxm",
+      };
+      return;
+    }
+
     server = {
       id: null,
-      name: "localhost",
-      url: "ws://localhost:3000?key=vy84pxgkxm",
+      name: "",
+      url: "",
     };
-  }
+  });
 
   function checkUrl(text: string): boolean {
     try {
@@ -51,7 +72,7 @@
 </script>
 
 <form class="flex flex-col gap-2 p-2 w-full" onsubmit={() => onsubmit(server)}>
-  <h1 class="text-2xl">Добавить сервер</h1>
+  <h1 class="text-2xl">{isEditing ? "Изменить сервер" : "Добавить сервер"}</h1>
 
   <div>
     <Label for="name" class="mb-2">Название сервера</Label>
@@ -107,7 +128,7 @@
       disabled={!isUrlValid || !isNameValid}
       type="submit"
     >
-      Добавить
+      {isEditing ? "Сохранить" : "Добавить"}
     </Button>
   </div>
 </form>
