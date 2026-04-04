@@ -90,6 +90,10 @@ export class God {
       }
     });
 
+    this.keys.on("pushToTalk", (state) => {
+      this.mic.setPushToTalkActive(state === "Pressed");
+    });
+
     // TODO: there will be a bug!
     // if the server is not connected it wont do do that
     // move this to when joining voice channel?

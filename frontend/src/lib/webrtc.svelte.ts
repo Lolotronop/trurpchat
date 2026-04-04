@@ -64,12 +64,12 @@ export class WebRTC {
     public cam: Camera,
     public server: Server,
   ) {
-    this.mic.effects.nodes.gate.onmessage(({ isOpen }) => {
+    this.mic.onSpeakingChange((speaking) => {
       for (const peer of this.peers.values()) {
         peer.datachannel?.send(
           JSON.stringify({
             type: "speaking",
-            speaking: isOpen && !this.mic.muted,
+            speaking: speaking && !this.mic.muted,
           }),
         );
       }
@@ -77,7 +77,6 @@ export class WebRTC {
   }
 
   connect(room: VoiceChat) {
-    console.log("connecting to room", room.name);
     this.room = room;
   }
 
@@ -340,7 +339,6 @@ export class WebRTC {
       clearInterval(this.connectedTimeout);
     }
     this.connectedTimeout = null;
-    console.log("room disconnected, setting room to undefined");
     this.room = undefined;
 
     this.mic.disable();

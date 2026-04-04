@@ -46,7 +46,6 @@ export class Sound {
         file = await readFile(path);
       } catch (error) {
         // console.error(`Failed to load sound from resource ${sound}:`, error);
-        continue;
       }
 
       try {
@@ -55,7 +54,9 @@ export class Sound {
         });
       } catch (error) {
         // console.warn(`Failed to load sound from config ${sound}:`, error);
+        continue;
       }
+
       const buffer = new ArrayBuffer(file.length);
       const view = new Uint8Array(buffer);
       view.set(new Uint8Array(file.buffer));

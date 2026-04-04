@@ -15,6 +15,7 @@ export class Mic {
   hasPermissions: boolean = $state(false);
   stream: MediaStream | undefined = undefined;
   deviceId: string | undefined = $state(undefined);
+  private speakingListeners = new Set<(speaking: boolean) => void>();
 
   private source: MediaStreamAudioSourceNode | null = null;
   effects = new EffectChain({
@@ -27,6 +28,7 @@ export class Mic {
       release: 0.2,
     }),
     gate: new GateEffect(),
+    pushToTalkGain: new GainEffect(),
     merger: new ChannelMergerEffect(),
     mute: new GainEffect(),
   });
@@ -87,6 +89,16 @@ export class Mic {
     return this.#muted;
   }
 
+  #isPushToTalk: boolean = $state(false);
+  set isPushToTalk(value) {
+    this.#isPushToTalk = value;
+    this.store.set("isPushToTalk", value);
+    this.applyInputMode();
+  }
+  get isPushToTalk() {
+    return this.#isPushToTalk;
+  }
+
   get gain() {
     return this.effects.nodes.gain.gain;
   }
@@ -104,6 +116,7 @@ export class Mic {
   }
 
   speaking: boolean = $state(false);
+  #pushToTalkActive: boolean = $state(false);
 
   peak: number = $state(0);
   rms: number = $state(0);
@@ -112,7 +125,9 @@ export class Mic {
 
   constructor() {
     this.effects.nodes.gate.onmessage(({ isOpen }) => {
-      this.speaking = isOpen;
+      if (!this.isPushToTalk) {
+        this.setSpeaking(isOpen);
+      }
     });
 
     this.analyzer.onmessage(({ rms, peak }) => {
@@ -128,9 +143,11 @@ export class Mic {
   async init() {
     this.deviceId = await this.store.get("deviceId");
     this.muted = (await this.store.get("muted")) || false;
+    this.#isPushToTalk = (await this.store.get("isPushToTalk")) || false;
     this.effects.nodes.gain.gain = (await this.store.get("gain")) || 1;
     this.effects.nodes.gate.threshold =
       (await this.store.get("gateThreshold")) || -30;
+    this.applyInputMode();
 
     this.hasPermissions = true;
     this.updateDevices();
@@ -204,5 +221,40 @@ export class Mic {
       // log the rest
       console.warn("Could not disconnect analyzer", err);
     }
+  }
+
+  setPushToTalkActive(active: boolean) {
+    this.#pushToTalkActive = active;
+    if (!this.isPushToTalk) return;
+    this.effects.nodes.pushToTalkGain.gain = active ? 1 : 0;
+    this.setSpeaking(active);
+  }
+
+  onSpeakingChange(callback: (speaking: boolean) => void) {
+    this.speakingListeners.add(callback);
+    return () => {
+      this.speakingListeners.delete(callback);
+    };
+  }
+
+  private setSpeaking(value: boolean) {
+    if (this.speaking === value) return;
+    this.speaking = value;
+    for (const callback of this.speakingListeners) {
+      callback(value);
+    }
+  }
+
+  private applyInputMode() {
+    if (this.isPushToTalk) {
+      this.effects.bypass("gate");
+      this.effects.nodes.pushToTalkGain.gain = this.#pushToTalkActive ? 1 : 0;
+      this.setSpeaking(this.#pushToTalkActive);
+      return;
+    }
+
+    this.effects.enable("gate");
+    this.effects.nodes.pushToTalkGain.gain = 1;
+    this.setSpeaking(false);
   }
 }

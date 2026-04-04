@@ -1,16 +1,17 @@
+import { isTauri } from "@tauri-apps/api/core";
 import {
   register,
+  type ShortcutHandler,
   unregister,
   unregisterAll,
-  type ShortcutHandler,
 } from "@tauri-apps/plugin-global-shortcut";
 import { SvelteMap } from "svelte/reactivity";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
-import { isTauri } from "@tauri-apps/api/core";
 
 export const actions = {
   mute: "Выключить микрофон",
   deafen: "Выключить звук",
+  pushToTalk: "Рация (push to talk)",
 } as const;
 type KeyAction = keyof typeof actions;
 

@@ -141,6 +141,13 @@
                     />
                     <Label for="airplane-mode">Эхоподавление</Label>
                   </div>
+                  <div class="flex items-center space-x-2">
+                    <Switch
+                      id="push-to-talk"
+                      bind:checked={g.mic.isPushToTalk}
+                    />
+                    <Label for="push-to-talk">Режим рации (push to talk)</Label>
+                  </div>
                 </div>
               </div>
 
@@ -149,21 +156,70 @@
                 <GainSlider max={24} bind:value={g.mic.gain} />
               </div>
 
-              <div class="flex flex-col gap-2">
-                <h1>Чувствительность</h1>
-                <Slider
-                  type="single"
-                  bind:value={g.mic.threshold}
-                  min={-42}
-                  max={0}
-                  step={0.1}
-                />
-                <div
-                  class={`transition-[filter] duration-50 ${g.mic.speaking ? "" : "saturate-0"}`}
-                >
-                  <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
+              {#if g.mic.isPushToTalk}
+                <div class="flex flex-col gap-2">
+                  <h1>Клавиша рации</h1>
+                  <div class="flex flex-row items-center justify-between">
+                    <p class="text-muted-foreground text-base">
+                      {actions.pushToTalk}
+                    </p>
+                    <div
+                      class="flex flex-row items-center justify-between gap-2"
+                    >
+                      <Tooltip.Root disableHoverableContent={true}>
+                        <Tooltip.Trigger
+                          class="flex flex-row items-center justify-between"
+                        >
+                          <Button
+                            variant="secondary"
+                            onclick={() => {
+                              if (g.keys.detectingFor === "pushToTalk") {
+                                g.keys.stopDetect();
+                              } else {
+                                g.keys.detect("pushToTalk");
+                              }
+                            }}
+                          >
+                            {#if g.keys.detectingFor === "pushToTalk"}
+                              Считываю...
+                            {:else if g.keys.bindings.get("pushToTalk")}
+                              {g.keys.bindings.get("pushToTalk")}
+                            {:else}
+                              Не задано
+                            {/if}
+                          </Button>
+                        </Tooltip.Trigger>
+                        <Tooltip.Content>Нажмите, чтобы задать</Tooltip.Content>
+                      </Tooltip.Root>
+
+                      <Button
+                        variant="secondary"
+                        onclick={() => {
+                          g.keys.unset("pushToTalk");
+                        }}
+                      >
+                        <X />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              {:else}
+                <div class="flex flex-col gap-2">
+                  <h1>Чувствительность</h1>
+                  <Slider
+                    type="single"
+                    bind:value={g.mic.threshold}
+                    min={-42}
+                    max={0}
+                    step={0.1}
+                  />
+                  <div
+                    class={`transition-[filter] duration-50 ${g.mic.speaking ? "" : "saturate-0"}`}
+                  >
+                    <AnalyzerDisplay rms={g.mic.rms} peak={g.mic.peak} />
+                  </div>
+                </div>
+              {/if}
             </div>
           </div>
 
