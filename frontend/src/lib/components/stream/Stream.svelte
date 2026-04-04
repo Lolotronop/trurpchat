@@ -49,7 +49,7 @@
       .filter((watcher): watcher is User => watcher !== undefined)
       .sort((a, b) => a.name.localeCompare(b.name));
   });
-  const MAX_VISIBLE_WATCHERS = 10;
+  const MAX_VISIBLE_WATCHERS = 4;
   const visibleWatcherUsers = $derived(
     watcherUsers.slice(0, MAX_VISIBLE_WATCHERS),
   );
@@ -259,7 +259,7 @@
   <!-- controls -->
   {#if oven.state === "connected" && !shouldHide}
     <div
-      class="absolute inset-0 flex flex-col justify-between p-2 pointer-events-none"
+      class="absolute inset-0 flex flex-col justify-between pointer-events-none"
       transition:fade={{ duration: 100 }}
     >
       <div id="watchers" class="flex w-full items-start justify-end">
@@ -308,7 +308,7 @@
         {/if}
       </div>
 
-      <div id="controls" class="flex items-end justify-between gap-2">
+      <div id="controls" class="flex items-end justify-between gap-2 p-2">
         <div
           data-controls
           class="flex items-center gap-2 rounded-md bg-background/80"
