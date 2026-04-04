@@ -78,7 +78,13 @@ export const voiceHandlers: Handlers<VoiceAction> = {
         user: ws.data,
       });
     }
-    ws.data.streaming = false;
+    if (ws.data.streaming) {
+      ws.data.streaming = false;
+      sendAll(ctx.clients.values(), {
+        type: "event.user.state",
+        user: ws.data,
+      });
+    }
     sendAll(ctx.clients.values(), {
       type: "event.voice.left",
       room: msg.room,

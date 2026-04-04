@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
 import { resolveResource } from "@tauri-apps/api/path";
+import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
 import { audioctx } from "./audio/context";
 
 const sounds = [
@@ -10,6 +10,10 @@ const sounds = [
   "undeafen",
   "user join",
   "user leave",
+  "stream started",
+  "stream stopped",
+  "viewer join",
+  "viewer leave",
   "voice disconnected",
 ] as const;
 export type SoundName = (typeof sounds)[number];
@@ -46,15 +50,14 @@ export class Sound {
         file = await readFile(path);
       } catch (error) {
         // console.error(`Failed to load sound from resource ${sound}:`, error);
-      }
-
-      try {
-        file = await readFile(`sound/${sound}.mp3`, {
-          baseDir: BaseDirectory.AppConfig,
-        });
-      } catch (error) {
-        // console.warn(`Failed to load sound from config ${sound}:`, error);
-        continue;
+        try {
+          file = await readFile(`sound/${sound}.mp3`, {
+            baseDir: BaseDirectory.AppConfig,
+          });
+        } catch (error) {
+          // console.warn(`Failed to load sound ${sound}:`, error);
+          continue;
+        }
       }
 
       const buffer = new ArrayBuffer(file.length);

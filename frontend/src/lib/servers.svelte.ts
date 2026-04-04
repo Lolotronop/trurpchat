@@ -52,6 +52,14 @@ function toOfflineUser(user: DbUser): OfflineUser {
   };
 }
 
+function findAddedIds(previous: number[], next: number[]) {
+  return next.filter((id) => !previous.includes(id));
+}
+
+function findRemovedIds(previous: number[], next: number[]) {
+  return previous.filter((id) => !next.includes(id));
+}
+
 export class Server {
   definition: ServerDefinition;
   #persistDefinition: () => void | Promise<void>;
@@ -227,7 +235,9 @@ export class Server {
       if (userIndex === -1) {
         this.users.push(message.user);
       } else {
+        const previousUser = this.users[userIndex]!;
         this.users[userIndex] = message.user;
+        this.handleUserStateSound(previousUser, message.user);
       }
     } else if (message.type === "event.startup.config") {
       if (this.definition.id === null) {
@@ -307,6 +317,62 @@ export class Server {
 
   findRoom(id: number) {
     return this.rooms.find((r) => r.id === id);
+  }
+
+  findVoiceRoomByUserId(userId: number) {
+    for (const room of this.rooms) {
+      if (room.type === "voice" && room.users.includes(userId)) {
+        return room;
+      }
+    }
+
+    return undefined;
+  }
+
+  shouldHearStreamSound(user: User) {
+    if (!user.online) {
+      return false;
+    }
+
+    if (user.id === this.user.id) {
+      return true;
+    }
+
+    const room = this.findVoiceRoomByUserId(user.id);
+    return room?.users.includes(this.user.id) ?? false;
+  }
+
+  shouldHearViewerSound(streamerId: number, watcherIds: number[]) {
+    return streamerId === this.user.id || watcherIds.includes(this.user.id);
+  }
+
+  handleUserStateSound(previous: User, next: User) {
+    if (!previous.online || !next.online) {
+      return;
+    }
+
+    if (
+      previous.streaming !== next.streaming &&
+      this.shouldHearStreamSound(next)
+    ) {
+      sound.play(next.streaming ? "stream started" : "stream stopped");
+    }
+
+    const addedWatchers = findAddedIds(previous.watchedBy, next.watchedBy);
+    if (
+      addedWatchers.length > 0 &&
+      this.shouldHearViewerSound(next.id, [next.id, ...next.watchedBy])
+    ) {
+      sound.play("viewer join");
+    }
+
+    const removedWatchers = findRemovedIds(previous.watchedBy, next.watchedBy);
+    if (
+      removedWatchers.length > 0 &&
+      this.shouldHearViewerSound(next.id, [next.id, ...previous.watchedBy])
+    ) {
+      sound.play("viewer leave");
+    }
   }
 
   async joinRoom(room: Room) {
