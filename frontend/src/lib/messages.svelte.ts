@@ -222,7 +222,7 @@ export class TextRoomCache {
 }
 
 export class TextMessageCache {
-  BLOCK_SIZE = 3;
+  BLOCK_SIZE = 10;
   /** Map of channel ID to room cache */
   cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
 

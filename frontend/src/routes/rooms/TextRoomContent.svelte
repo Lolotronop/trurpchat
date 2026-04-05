@@ -21,24 +21,24 @@
     if (!roomCache || roomCache.room.id !== room.id) {
       console.log("creating room cache");
       roomCache = cache.getRoom(room.id);
+
+      untrack(() => {
+        if (!roomCache) return;
+        roomCache.initialize();
+
+        const hasScroll = roomCache.scrollPosition !== undefined;
+        const isLast =
+          roomCache.visibleBlocks[roomCache.visibleBlocks.length - 1] ===
+          roomCache.lastBlockId();
+
+        if (hasScroll) {
+          scrollElement?.scrollTo({
+            behavior: "instant",
+            top: roomCache.scrollPosition,
+          });
+        }
+      });
     }
-
-    untrack(() => {
-      if (!roomCache) return;
-      roomCache.initialize();
-
-      const hasScroll = roomCache.scrollPosition !== undefined;
-      const isLast =
-        roomCache.visibleBlocks[roomCache.visibleBlocks.length - 1] ===
-        roomCache.lastBlockId();
-
-      if (hasScroll) {
-        scrollElement?.scrollTo({
-          behavior: "instant",
-          top: roomCache.scrollPosition,
-        });
-      }
-    });
 
     return () => {
       console.log("destroying");
@@ -171,11 +171,12 @@
     if (!roomCache) return;
     const el = e.currentTarget;
 
-    if (el.scrollTop < 50 ) {
+    // prevent the browser from locking up at the top
+    // when loading messages
+    if (el.scrollTop < 50) {
       const r = roomCache.renderBlocks;
       const first = roomCache.get(r[0], false);
       if (!first) return;
-      console.log("scrolling to 1 from onscroll");
       if (el.scrollTop === 0 && first.messages.length == 0) {
         el.scrollTo({
           behavior: "instant",
@@ -207,16 +208,15 @@
                     // prevents the browser from locking up at the top
                     // loading messages in a loop, up to the first one
                     if (hasScroll && el.scrollTop < 1) {
-                      console.log("scrolling to 1", blockId, el.scrollTop);
                       scrollElement.scrollTo({
                         behavior: "instant",
                         top: 1,
                       });
                     }
 
+                    // stick to bottom behavior
                     const fromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
                     if (hasScroll && fromBottom < 100) {
-                      console.log("scrolling away from bottom", blockId, fromBottom);
                       scrollElement.scrollTo({
                         behavior: "instant",
                         top: el.scrollTop + fromBottom,
