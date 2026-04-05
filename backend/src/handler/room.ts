@@ -1,5 +1,5 @@
 import { err, ok } from "neverthrow";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Room, RoomAction, RoomData } from "$src/types";
 import { db, rooms } from "$src/db";
 import { VoiceChatInstance, type WsClient } from "$src/voice";
@@ -39,6 +39,7 @@ export const roomHandlers: Handlers<RoomAction> = {
       const [roomOrderRow] = await tx
         .select({ order: rooms.order })
         .from(rooms)
+        .where(isNull(rooms.deletedAt))
         .orderBy(desc(rooms.order))
         .limit(1);
 
@@ -75,7 +76,15 @@ export const roomHandlers: Handlers<RoomAction> = {
       return err(new Error("Only admins can delete rooms"));
     }
 
-    await db.delete(rooms).where(eq(rooms.id, id));
+    const deleted = await db
+      .update(rooms)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(rooms.id, id), isNull(rooms.deletedAt)))
+      .returning({ id: rooms.id });
+
+    if (deleted.length === 0) {
+      return err(new Error(`Room ${id} not found`));
+    }
 
     const room = ctx.hotel.find(id);
     if (room) {
@@ -102,14 +111,24 @@ export const roomHandlers: Handlers<RoomAction> = {
       return result;
     }
 
-    await db.update(rooms).set(room).where(eq(rooms.id, room.id));
+    const updated = await db
+      .update(rooms)
+      .set(room)
+      .where(and(eq(rooms.id, room.id), isNull(rooms.deletedAt)))
+      .returning();
 
-    const voice = ctx.hotel.find(room.id);
-    if (voice) {
-      voice.data = { ...voice.data, ...room };
+    if (updated.length === 0) {
+      return err(new Error(`Room ${room.id} not found`));
     }
 
-    sendRoom(ctx, room as Room);
+    const updatedRoom = updated[0]!;
+
+    const voice = ctx.hotel.find(updatedRoom.id);
+    if (voice) {
+      voice.data = { ...voice.data, ...updatedRoom };
+    }
+
+    sendRoom(ctx, updatedRoom as Room);
 
     return ok();
   },

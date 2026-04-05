@@ -1,5 +1,5 @@
 import { err, ok } from "neverthrow";
-import { eq } from "drizzle-orm";
+import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { send, sendAll } from "$src/send";
 import { createKey, db, keys, users } from "$src/db";
 import type { UserAction } from "$src/types";
@@ -36,7 +36,13 @@ export const userHandlers: Handlers<UserAction> = {
     const admins = ctx.clients.values().filter((c) => c.data.permissions === 1);
     sendAll(admins, {
       type: "event.key.list",
-      keys: await db.select().from(keys),
+      keys: await db
+        .select({
+          ...getColumns(keys),
+        })
+        .from(keys)
+        .innerJoin(users, eq(keys.userId, users.id))
+        .where(isNull(users.deletedAt)),
     });
 
     return ok();
@@ -76,7 +82,7 @@ export const userHandlers: Handlers<UserAction> = {
     const updated = await db
       .update(users)
       .set(rest)
-      .where(eq(users.id, msg.id))
+      .where(and(eq(users.id, msg.id), isNull(users.deletedAt)))
       .returning();
     const user = updated[0];
     if (!user) {
@@ -130,8 +136,15 @@ export const userHandlers: Handlers<UserAction> = {
       client.close();
     }
 
-    // TODO: we should do soft deletions here
-    await db.delete(users).where(eq(users.id, msg.id));
+    const deleted = await db
+      .update(users)
+      .set({ deletedAt: new Date() })
+      .where(and(eq(users.id, msg.id), isNull(users.deletedAt)))
+      .returning({ id: users.id });
+
+    if (deleted.length === 0) {
+      return err(new Error(`User ${msg.id} not found`));
+    }
 
     sendAll(ctx.clients.values(), {
       type: "event.user.deleted",

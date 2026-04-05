@@ -1,9 +1,9 @@
 import { err, ok } from "neverthrow";
 import { send, sendAll } from "$src/send";
-import { createKey, db, keys } from "$src/db";
+import { createKey, db, keys, users } from "$src/db";
 import type { Handlers } from "./types";
 import type { KeyAction } from "$src/types";
-import { eq } from "drizzle-orm";
+import { and, eq, getColumns, isNull } from "drizzle-orm";
 
 export const keyHandlers: Handlers<KeyAction> = {
   "action.key.add": async (ctx, ws, msg) => {
@@ -15,12 +15,31 @@ export const keyHandlers: Handlers<KeyAction> = {
         ),
       );
     }
+
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.id, msg.userId), isNull(users.deletedAt)))
+      .limit(1);
+
+    if (!user) {
+      return err(new Error(`User ${msg.userId} not found`));
+    }
+
     await createKey(msg.userId);
 
     const allKeys = await db
-      .select()
+      .select({
+        ...getColumns(keys),
+      })
       .from(keys)
-      .where(!isAdmin ? eq(keys.userId, ws.data.id) : undefined);
+      .innerJoin(users, eq(keys.userId, users.id))
+      .where(
+        and(
+          isNull(users.deletedAt),
+          !isAdmin ? eq(keys.userId, ws.data.id) : undefined,
+        ),
+      );
 
     send(ws, {
       type: "event.key.list",
@@ -47,7 +66,13 @@ export const keyHandlers: Handlers<KeyAction> = {
 
   "action.key.remove": async (ctx, ws, msg) => {
     const isAdmin = ws.data.permissions === 1;
-    const keyss = await db.select().from(keys).where(eq(keys.id, msg.keyId));
+    const keyss = await db
+      .select({
+        ...getColumns(keys),
+      })
+      .from(keys)
+      .innerJoin(users, eq(keys.userId, users.id))
+      .where(and(eq(keys.id, msg.keyId), isNull(users.deletedAt)));
     if (keyss.length === 0 || !keyss[0]) {
       return err(new Error(`Key ${msg.keyId} not found`));
     }
@@ -62,9 +87,17 @@ export const keyHandlers: Handlers<KeyAction> = {
     }
     await db.delete(keys).where(eq(keys.id, msg.keyId));
     const allKeys = await db
-      .select()
+      .select({
+        ...getColumns(keys),
+      })
       .from(keys)
-      .where(!isAdmin ? eq(keys.userId, ws.data.id) : undefined);
+      .innerJoin(users, eq(keys.userId, users.id))
+      .where(
+        and(
+          isNull(users.deletedAt),
+          !isAdmin ? eq(keys.userId, ws.data.id) : undefined,
+        ),
+      );
 
     send(ws, {
       type: "event.key.list",
@@ -93,9 +126,17 @@ export const keyHandlers: Handlers<KeyAction> = {
   "action.key.list": async (_, ws, __) => {
     const isAdmin = ws.data.permissions === 1;
     const allKeys = await db
-      .select()
+      .select({
+        ...getColumns(keys),
+      })
       .from(keys)
-      .where(!isAdmin ? eq(keys.userId, ws.data.id) : undefined);
+      .innerJoin(users, eq(keys.userId, users.id))
+      .where(
+        and(
+          isNull(users.deletedAt),
+          !isAdmin ? eq(keys.userId, ws.data.id) : undefined,
+        ),
+      );
 
     send(ws, {
       type: "event.key.list",

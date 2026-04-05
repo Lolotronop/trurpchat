@@ -1,4 +1,4 @@
-import { and, eq, gte, lt } from "drizzle-orm";
+import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import { db, messages, rooms } from "$src/db";
 import { send, sendAll } from "$src/send";
@@ -33,7 +33,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       const [lastIdRow] = await tx
         .select({ nextMessageId: rooms.nextMessageId })
         .from(rooms)
-        .where(eq(rooms.id, roomId))
+        .where(and(eq(rooms.id, roomId), isNull(rooms.deletedAt)))
         .limit(1);
 
       if (!lastIdRow) {
@@ -45,7 +45,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       await tx
         .update(rooms)
         .set({ nextMessageId: id + 1 })
-        .where(eq(rooms.id, roomId));
+        .where(and(eq(rooms.id, roomId), isNull(rooms.deletedAt)));
 
       return tx
         .insert(messages)
@@ -150,7 +150,7 @@ export const messageHandlers: Handlers<MessageAction> = {
     const [room] = await db
       .select()
       .from(rooms)
-      .where(eq(rooms.id, roomId))
+      .where(and(eq(rooms.id, roomId), isNull(rooms.deletedAt)))
       .limit(1);
 
     if (!room) {
@@ -159,10 +159,6 @@ export const messageHandlers: Handlers<MessageAction> = {
 
     if (room.type !== "text") {
       return err(new Error("Room is not a text room"));
-    }
-
-    if (room.deletedAt) {
-      return err(new Error("Room is deleted"));
     }
 
     if (fromId > room.nextMessageId - 1) {

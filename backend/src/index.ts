@@ -1,5 +1,5 @@
 import { env } from "bun";
-import { eq, getColumns } from "drizzle-orm";
+import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { db, getOrCreateServerId, keys, rooms, users } from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
@@ -23,7 +23,10 @@ const ctx: HandlerContext = {
   clients: new Map<number, WsClient>(),
   hotel: new Hotel(),
 };
-const existingRooms = await db.select().from(rooms);
+const existingRooms = await db
+  .select()
+  .from(rooms)
+  .where(isNull(rooms.deletedAt));
 for (const r of existingRooms) {
   if (r.type === "voice") {
     ctx.hotel.rooms.push(new VoiceChatInstance(r));
@@ -98,7 +101,7 @@ function createDefaultTalkingUserState(): ConnectedUserState {
 }
 
 export async function getAllUsers(ctx: HandlerContext): Promise<User[]> {
-  const allUsers = await db.query.users.findMany();
+  const allUsers = await db.select().from(users).where(isNull(users.deletedAt));
   const onlineUsers = ctx.clients
     .values()
     .map((c) => c.data)
@@ -128,7 +131,7 @@ Bun.serve<ConnectedUser, never>({
       })
       .from(users)
       .leftJoin(keys, eq(users.id, keys.userId))
-      .where(eq(keys.key, key))
+      .where(and(eq(keys.key, key), isNull(users.deletedAt)))
       .limit(1);
 
     if (userRow.length === 0) {
@@ -176,7 +179,9 @@ Bun.serve<ConnectedUser, never>({
       const textRooms = (await db
         .select()
         .from(rooms)
-        .where(eq(rooms.type, "text"))) as Extract<Room, { type: "text" }>[];
+        .where(
+          and(eq(rooms.type, "text"), isNull(rooms.deletedAt)),
+        )) as Extract<Room, { type: "text" }>[];
 
       const thing = [...ctx.hotel.toJson(), ...textRooms];
       send(ws, {
