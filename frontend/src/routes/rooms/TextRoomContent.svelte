@@ -243,34 +243,36 @@
   }
 </script>
 
-<div class="flex flex-col gap-2 w-full justify-center">
-  <div class="flex-row gap-2">
-    {#each debugAllIds() as blockId}
-      <span class={debugDetermineColor(blockId)}> {`${blockId} `} </span>
-    {/each}
-  </div>
-  <input type="number" bind:value={targetMsg}>
-  <button
-    type="button"
-    onclick={async () => {
+{#if false && import.meta.env.DEV}
+  <div class="flex flex-col gap-2 w-full justify-center">
+    <div class="flex-row gap-2">
+      {#each debugAllIds() as blockId}
+        <span class={debugDetermineColor(blockId)}> {`${blockId} `} </span>
+      {/each}
+    </div>
+    <input type="number" bind:value={targetMsg}>
+    <button
+      type="button"
+      onclick={async () => {
       target = cache.parent.getBlockId(targetMsg);
       cache.renderBlocks = [];
       shouldAutoscroll = false;
       await tick();
       cache.renderBlocks = [target];
     }}
-  >
-    Jump
-  </button>
-  <button
-    type="button"
-    onclick={() => {
+    >
+      Jump
+    </button>
+    <button
+      type="button"
+      onclick={() => {
       console.log($state.snapshot(cache.renderBlocks));
     }}
-  >
-    Log
-  </button>
-</div>
+    >
+      Log
+    </button>
+  </div>
+{/if}
 
 <div
   class="h-full w-full flex overflow-y-scroll flex-col"
@@ -288,7 +290,7 @@
     {/if}
 
     {#if target === cache.lastBlockId()}
-      <div class="h-full flex bg-yellow-100/20"></div>
+      <div class="h-full flex"></div>
     {/if}
 
     {#each cache?.renderBlocks as blockId (blockId)}
@@ -307,7 +309,7 @@
         </div>
       {:else}
         <div
-          class="min-h-dvh w-full flex-col flex justify-between bg-accent/20"
+          class="min-h-dvh w-full flex-col flex justify-between"
           data-block-load={blockId}
           {@attach attachBlock}
         >
@@ -318,7 +320,7 @@
     {/each}
 
     {#if target !== cache.lastBlockId()}
-      <div class="h-full flex bg-yellow-100/20"></div>
+      <div class="h-full flex"></div>
     {/if}
 
     <div class="min-h-6"></div>
