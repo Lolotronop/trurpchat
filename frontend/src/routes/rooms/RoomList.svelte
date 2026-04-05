@@ -7,6 +7,7 @@
   import RoomForm from "./RoomForm.svelte";
   import type { EditingRoom } from "./RoomForm.svelte";
   import TextRoom from "./TextRoom.svelte";
+  import { tick } from "svelte";
 
   type Props = {
     server: Server;
@@ -24,19 +25,29 @@
     });
     editOpen = false;
   }
+
+  // TODO: this is a hack to make the cache derive work
+  // in the ServerUI. Fix this somehow.
+  async function setRoomId(roomId: number) {
+    if (selectedRoomId === roomId) return;
+    selectedRoomId = undefined;
+    await tick();
+    selectedRoomId = roomId;
+  }
 </script>
 
 <div class="h-full p-2">
   {#each server.rooms as room (room.id)}
     {#if room.type === "voice"}
-      <button class="contents" onclick={() => selectedRoomId = room.id}>
+      <button type="button" class="contents" onclick={() => setRoomId(room.id)}>
         <VoiceRoom {room} server={server!} {rtc} />
       </button>
     {/if}
     {#if room.type === "text"}
       <button
+        type="button"
         class="contents {(selectedRoomId !== room.id) && 'text-muted-foreground'}"
-        onclick={() => selectedRoomId = room.id}
+        onclick={() => setRoomId(room.id)}
       >
         <TextRoom {room} server={server!} />
       </button>

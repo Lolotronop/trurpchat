@@ -19,6 +19,15 @@
   const selectedRoom = $derived(
     server.rooms.find((r) => r.id === selectedRoomId),
   );
+
+  // TODO: this hacky
+  const cache = $derived.by(() => {
+    if (!selectedRoom) return;
+    if (selectedRoom.type !== "text") return;
+    const roomCache = server.messages.getRoom(selectedRoom.id);
+    if (!roomCache) return;
+    return roomCache;
+  });
 </script>
 
 <div class="flex h-full w-full">
@@ -38,8 +47,7 @@
       <!-- <div class="flex w-full flex-row justify-between px-16"></div> -->
       <VoiceGrid {server} />
     {:else if selectedRoom?.type === "text"}
-      {@const cache = server.messages.getRoom(selectedRoom.id)}
-      {#if cache}
+      {#if cache !== undefined}
         <TextRoomContent {cache} {server} />
       {/if}
     {:else}

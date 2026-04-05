@@ -20,7 +20,17 @@
   // let target = $state(0);
 
   onMount(() => {
-    cache.renderBlocks = [cache.lastBlockId()];
+    if (cache.renderBlocks.length === 0) {
+      cache.renderBlocks = [cache.lastBlockId()];
+    } else if (cache.scrollPosition !== undefined) {
+      if (!se) return;
+      se.scrollTop = cache.scrollPosition;
+    }
+
+    return () => {
+      observer.disconnect();
+      observer = null;
+    };
     // cache.renderBlocks = [cache.lastBlockId()];
   });
 
@@ -205,7 +215,7 @@
     }
   }
 
-  let observer: IntersectionObserver;
+  let observer: IntersectionObserver | null = null;
   function createObserver(el: HTMLDivElement) {
     observer = new IntersectionObserver(
       (entries) => {
@@ -228,15 +238,15 @@
   function attachBlock(el: Element) {
     preventTopScrollLock();
 
-    observer.observe(el);
+    observer?.observe(el);
     return () => {
-      observer.unobserve(el);
+      observer?.unobserve(el);
 
       if (el.hasAttribute("data-block")) {
         const blockId = Number(el.getAttribute("data-block"));
-        const idx = cache.visibleBlocks.indexOf(blockId);
+        const idx = cache?.visibleBlocks.indexOf(blockId);
         if (idx !== -1) {
-          cache.visibleBlocks.splice(idx, 1);
+          cache?.visibleBlocks.splice(idx, 1);
         }
       }
     };
