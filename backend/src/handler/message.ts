@@ -37,7 +37,7 @@ export const messageHandlers: Handlers<MessageAction> = {
         .limit(1);
 
       if (!lastIdRow) {
-        return;
+        return [];
       }
 
       const id = lastIdRow.nextMessageId;
@@ -59,11 +59,10 @@ export const messageHandlers: Handlers<MessageAction> = {
         .returning();
     });
 
-    if (!result) {
+    const [message] = result;
+    if (!message) {
       return err(new Error("Failed to create message. Room doens't exist"));
     }
-
-    const message = result[0]!;
 
     sendAll(ctx.clients.values(), {
       type: "event.message.created",
@@ -76,7 +75,7 @@ export const messageHandlers: Handlers<MessageAction> = {
   "action.message.edit": async (ctx, ws, { roomId, id, text }) => {
     const userId = ws.data.id;
 
-    const updated = await db
+    const [message] = await db
       .update(messages)
       .set({ text, editedAt: new Date() })
       .where(
@@ -88,7 +87,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       )
       .returning();
 
-    if (updated.length === 0) {
+    if (!message) {
       return err(
         new Error("Message not found or you don't have permission to edit it"),
       );
@@ -96,7 +95,7 @@ export const messageHandlers: Handlers<MessageAction> = {
 
     sendAll(ctx.clients.values(), {
       type: "event.message.edited",
-      message: updated[0]!,
+      message,
     });
 
     return ok();
@@ -134,7 +133,7 @@ export const messageHandlers: Handlers<MessageAction> = {
     return ok();
   },
 
-  "action.message.list": async (ctx, ws, { roomId, fromId, toId }) => {
+  "action.message.list": async (_ctx, ws, { roomId, fromId, toId }) => {
     if (fromId > toId) {
       return err(new Error("fromId must be less than toId"));
     }

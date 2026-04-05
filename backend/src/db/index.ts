@@ -3,7 +3,11 @@ import { type Key, keys, relations, serverMeta } from "./schema";
 
 export * from "./schema";
 
-export const db = drizzle(process.env.DATABASE_URL!, { relations });
+const url = process.env.DATABASE_URL;
+if (!url) {
+  throw new Error("DATABASE_URL is not set");
+}
+export const db = drizzle(url, { relations });
 
 export async function createKey(userId: number) {
   const keyData: Pick<Key, "key" | "userId"> = {

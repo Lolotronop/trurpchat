@@ -41,7 +41,6 @@ export async function handleMessage(
   if (!isAction(message)) {
     return err(new Error(`Unsupported message type: ${message.type}`));
   }
-  message = message;
 
   const handler = handlers[message.type];
   if (handler === undefined) {

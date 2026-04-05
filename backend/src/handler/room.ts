@@ -111,17 +111,15 @@ export const roomHandlers: Handlers<RoomAction> = {
       return result;
     }
 
-    const updated = await db
+    const [updatedRoom] = await db
       .update(rooms)
       .set(room)
       .where(and(eq(rooms.id, room.id), isNull(rooms.deletedAt)))
       .returning();
 
-    if (updated.length === 0) {
+    if (!updatedRoom) {
       return err(new Error(`Room ${room.id} not found`));
     }
-
-    const updatedRoom = updated[0]!;
 
     const voice = ctx.hotel.find(updatedRoom.id);
     if (voice) {

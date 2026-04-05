@@ -16,12 +16,14 @@ export function safeSend(client: WsClient, message: Message) {
   // * - if **>0**, it represents the **number of bytes sent**.
   const status = client.send(str);
   if (status === 0) {
-    return err(new Error("Message  dropped", {
-      cause: {
-        clientId: client.data.id,
-        message
-      }
-    }));
+    return err(
+      new Error("Message  dropped", {
+        cause: {
+          clientId: client.data.id,
+          message,
+        },
+      }),
+    );
   }
 
   return ok();

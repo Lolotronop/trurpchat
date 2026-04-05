@@ -21,18 +21,18 @@ export async function seed() {
 }
 
 async function seedUsers() {
-  const res = await db
+  const [countRow] = await db
     .select({
       count: count(users.id),
     })
     .from(users);
 
-  if (res.length === 0) {
+  if (!countRow) {
     console.error("Conudn't count ma usas");
     return;
   }
 
-  const { count: userCount } = res[0]!;
+  const { count: userCount } = countRow;
   if (userCount !== 0) {
     return;
   }
@@ -69,19 +69,19 @@ async function seedUsers() {
 }
 
 async function seedRooms() {
-  const res = await db
+  const [countRow] = await db
     .select({
       count: count(rooms.id),
     })
     .from(rooms);
 
-  if (res.length === 0) {
-    console.error("No rooms found, creating default");
+  if (!countRow) {
+    console.error("Conudn't count ma usas");
     return;
   }
 
-  const { count: roomCount } = res[0]!;
-  if (roomCount !== 0) {
+  const { count: userCount } = countRow;
+  if (userCount !== 0) {
     return;
   }
 

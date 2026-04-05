@@ -125,7 +125,7 @@ Bun.serve<ConnectedUser, never>({
       return new Response("Missing key parameter", { status: 400 });
     }
 
-    const userRow = await db
+    const [user] = await db
       .select({
         ...getColumns(users),
       })
@@ -134,7 +134,7 @@ Bun.serve<ConnectedUser, never>({
       .where(and(eq(keys.key, key), isNull(users.deletedAt)))
       .limit(1);
 
-    if (userRow.length === 0) {
+    if (!user) {
       console.log("User not found");
       return new Response("User not found", { status: 400 });
     }
@@ -144,7 +144,6 @@ Bun.serve<ConnectedUser, never>({
       .set({ lastSeen: new Date() })
       .where(eq(keys.key, key));
 
-    const user = userRow[0]!;
     ctx.hotel.removeById(user.id);
 
     const options = {

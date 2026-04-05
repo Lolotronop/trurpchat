@@ -14,7 +14,7 @@ export const userHandlers: Handlers<UserAction> = {
       );
     }
 
-    const user = await db
+    const [user] = await db
       .insert(users)
       .values([
         {
@@ -23,12 +23,17 @@ export const userHandlers: Handlers<UserAction> = {
         },
       ])
       .returning();
-    await createKey(user[0]!.id);
+
+    if (!user) {
+      return err(new Error(`Failed to create user ${msg.name}`));
+    }
+
+    await createKey(user.id);
 
     sendAll(ctx.clients.values(), {
       type: "event.user.created",
       user: {
-        ...user[0]!,
+        ...user,
         online: false,
       },
     });
