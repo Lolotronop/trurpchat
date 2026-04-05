@@ -1,56 +1,32 @@
 <script lang="ts">
-  import type { Room } from "trurpchat-backend";
   import type { TextMessage as TMessage } from "trurpchat-backend";
+  import type { TextRoomCache } from "$lib/messages.svelte";
+  import { onMount, tick } from "svelte";
   import TextMessage from "$lib/components/TextMessage.svelte";
   import type { Server } from "$lib/servers.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import { ArrowRight } from "@lucide/svelte";
-  import { untrack } from "svelte";
-  import type { TextRoomCache } from "$lib/messages.svelte";
 
   type Props = {
+    cache: TextRoomCache;
     server: Server;
-    room: Extract<Room, { type: "text" }>;
   };
 
-  const { server, room }: Props = $props();
-  const cache = $derived(server.messages);
-  let roomCache: TextRoomCache | undefined = $state(undefined);
-  $effect(() => {
-    if (!roomCache || roomCache.room.id !== room.id) {
-      console.log("creating room cache");
-      roomCache = cache.getRoom(room.id);
+  const { cache, server }: Props = $props();
 
-      untrack(() => {
-        if (!roomCache) return;
-        roomCache.initialize();
+  let target: number = $state(cache.lastBlockId());
+  let targetMsg = $state(0);
+  // let target = $state(0);
 
-        const hasScroll = roomCache.scrollPosition !== undefined;
-        const isLast =
-          roomCache.visibleBlocks[roomCache.visibleBlocks.length - 1] ===
-          roomCache.lastBlockId();
-
-        if (hasScroll) {
-          scrollElement?.scrollTo({
-            behavior: "instant",
-            top: roomCache.scrollPosition,
-          });
-        }
-      });
-    }
-
-    return () => {
-      console.log("destroying");
-      // server.messages.cache.delete(room.id);
-    };
+  onMount(() => {
+    cache.renderBlocks = [cache.lastBlockId()];
+    // cache.renderBlocks = [cache.lastBlockId()];
   });
 
-  let scrollElement = $state<HTMLElement>();
-  let contentElement = $state<HTMLElement>();
-
+  let se = $state<HTMLElement>();
   let text = $state("");
-
+  let textarea = $state<HTMLTextAreaElement>();
   function sendMessage() {
     const trimmed = text.trim();
     if (!trimmed || trimmed.length === 0) {
@@ -58,27 +34,60 @@
     }
     server.gateway.send({
       type: "action.message.create",
-      roomId: room.id,
+      roomId: cache.room.id,
       text: trimmed,
     });
     text = "";
   }
 
-  let textarea = $state<HTMLTextAreaElement>();
+  $effect(() => {
+    if (!se) return;
+    if (cache.renderBlocks.length === 0) return;
+    const last = cache.renderBlocks[cache.renderBlocks.length - 1];
+    if (last !== cache.lastBlockId()) return;
+    const block = cache.get(cache.lastBlockId(), false);
+    if (!block) return;
+    block.messages.length;
+    autoscroll();
+  });
 
-  const MINUTES = 60 * 1000;
+  let shouldAutoscroll = $state(false);
+
+  function updateAutoscroll() {
+    if (!se) return;
+    const lhs = se.offsetHeight + se.scrollTop;
+    const rhs = se.scrollHeight - 40;
+    shouldAutoscroll = lhs > rhs;
+  }
+
+  function autoscroll() {
+    if (!se) return;
+    if (!shouldAutoscroll) return;
+    if (cache.renderBlocks.length === 0) return;
+    const last = cache.renderBlocks[cache.renderBlocks.length - 1];
+    if (last !== cache.lastBlockId()) return;
+    scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    tick().then(() => {
+      if (!se) return;
+      se.scrollTo(0, se.scrollHeight);
+    });
+  }
 
   function partition(messages: TMessage[]): TMessage[][] {
     const result: TMessage[][] = [];
     let current: TMessage[] = [];
-    for (const message of messages) {
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
       if (
         current.length === 0 ||
         current.length > 20 ||
         current[current.length - 1].userId !== message.userId ||
         message.createdAt.getTime() -
           current[current.length - 1].createdAt.getTime() >
-          2 * MINUTES
+          2 * 60 * 1000
       ) {
         current = [message];
         result.push(current);
@@ -90,22 +99,33 @@
     return result;
   }
 
-  function allIds() {
-    if (!roomCache) return [];
-    const last = roomCache.lastBlockId();
+  function preventTopScrollLock() {
+    if (!se) return;
+    if (cache.renderBlocks.length > 0 && cache.renderBlocks[0] === 0) {
+      return;
+    }
+    const hasScroll = se.scrollHeight > se.clientHeight;
+    if (hasScroll && se.scrollTop <= 1) {
+      se.scrollTop = 1;
+    }
+  }
+
+  function debugAllIds() {
+    if (!cache) return [];
+    const last = cache.lastBlockId();
     const ids = [];
-    for (let i = 0; i <= last; i += roomCache.parent.BLOCK_SIZE) {
+    for (let i = 0; i <= last; i += cache.parent.BLOCK_SIZE) {
       ids.push(i);
     }
     return ids;
   }
 
-  function determineColor(blockId: number) {
-    const block = roomCache?.get(blockId, false);
+  function debugDetermineColor(blockId: number) {
+    const block = cache?.get(blockId, false);
 
-    const loaded = block && block.alive;
-    const rendered = roomCache?.renderBlocks.includes(blockId);
-    const visible = roomCache?.visibleBlocks.includes(blockId);
+    const loaded = block?.alive;
+    const rendered = cache?.renderBlocks.includes(blockId);
+    const visible = cache?.visibleBlocks.includes(blockId);
 
     if (visible) {
       return "text-accent";
@@ -126,144 +146,180 @@
     return "";
   }
 
-  function jumpTo(id: number) {
-    if (!roomCache) return;
-    console.log("---jumpTo", id);
-    if (!roomCache.renderBlocks.includes(id)) {
-      roomCache.renderBlocks = [id];
-    } else {
-      const el = document.querySelector(`[data-block="${id}"]`);
-      if (el) {
-        el.scrollIntoView();
+  function handleVisible(entry: IntersectionObserverEntry) {
+    if (!entry.target.hasAttribute("data-block")) {
+      return;
+    }
+
+    const blockId = Number(entry.target.getAttribute("data-block"));
+    if (Number.isNaN(blockId)) {
+      return;
+    }
+    const isIntersecting = entry.isIntersecting;
+
+    if (isIntersecting && !cache.visibleBlocks.includes(blockId)) {
+      cache.visibleBlocks.push(blockId);
+    }
+
+    if (!isIntersecting && cache.visibleBlocks.includes(blockId)) {
+      const index = cache.visibleBlocks.indexOf(blockId);
+      if (index !== -1) {
+        cache.visibleBlocks.splice(index, 1);
       }
+    }
+
+    expandScope(blockId);
+  }
+
+  function handleLoad(entry: IntersectionObserverEntry) {
+    if (!entry.target.hasAttribute("data-block-load")) {
+      return;
+    }
+
+    const blockId = Number(entry.target.getAttribute("data-block-load"));
+    if (!entry.isIntersecting || Number.isNaN(blockId)) {
+      return;
+    }
+
+    const block = cache.blocks.get(blockId);
+    if (!block?.alive) {
+      cache.fetch(blockId);
+    }
+
+    expandScope(blockId);
+  }
+
+  function expandScope(blockId: number) {
+    const size = cache.parent.BLOCK_SIZE;
+    const prev = blockId - size;
+    const next = blockId + size;
+
+    const first = cache.renderBlocks[0];
+    const last = cache.renderBlocks[cache.renderBlocks.length - 1];
+    if (blockId !== 0 && prev === first - size) {
+      cache.renderBlocks.unshift(prev);
+    }
+
+    if (blockId !== cache.lastBlockId() && next === last + size) {
+      cache.renderBlocks.push(next);
     }
   }
 
-  let lastHasScroll = false;
+  let observer: IntersectionObserver;
+  function createObserver(el: HTMLDivElement) {
+    observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          handleVisible(entry);
+          handleLoad(entry);
+        }
+      },
+      {
+        root: el,
+        // start preloading messages when the block is
+        // still 100px from the top/bottom of the screen
+        rootMargin: "0px 100px 0px 100px",
+        // rootMargin: "0px",
+        threshold: 0,
+      },
+    );
+  }
+
+  function attachBlock(el: Element) {
+    preventTopScrollLock();
+
+    observer.observe(el);
+    return () => {
+      observer.unobserve(el);
+
+      if (el.hasAttribute("data-block")) {
+        const blockId = Number(el.getAttribute("data-block"));
+        const idx = cache.visibleBlocks.indexOf(blockId);
+        if (idx !== -1) {
+          cache.visibleBlocks.splice(idx, 1);
+        }
+      }
+    };
+  }
 </script>
 
 <div class="flex flex-col gap-2 w-full justify-center">
-  <button
-    onclick={() => {
-      jumpTo(30);
-    }}
-  >
-    jump to 30
-  </button>
-  <button
-    onclick={() => {
-      jumpTo(roomCache?.lastBlockId() ?? 0);
-    }}
-  >
-    jump to {roomCache?.lastBlockId() ?? 0}
-  </button>
   <div class="flex-row gap-2">
-    {#each allIds() as blockId}
-      <span class={determineColor(blockId)}> {blockId + " "} </span>
+    {#each debugAllIds() as blockId}
+      <span class={debugDetermineColor(blockId)}> {`${blockId} `} </span>
     {/each}
   </div>
+  <input type="number" bind:value={targetMsg}>
+  <button
+    type="button"
+    onclick={async () => {
+      target = cache.parent.getBlockId(targetMsg);
+      cache.renderBlocks = [];
+      shouldAutoscroll = false;
+      await tick();
+      cache.renderBlocks = [target];
+    }}
+  >
+    Jump
+  </button>
+  <button
+    type="button"
+    onclick={() => {
+      console.log($state.snapshot(cache.renderBlocks));
+    }}
+  >
+    Log
+  </button>
 </div>
 
 <div
   class="h-full w-full flex overflow-y-scroll flex-col"
-  bind:this={scrollElement}
+  bind:this={se}
   onscroll={(e) => {
-    if (!roomCache) return;
-    const el = e.currentTarget;
-
-    // prevent the browser from locking up at the top
-    // when loading messages
-    if (el.scrollTop < 50) {
-      const r = roomCache.renderBlocks;
-      const first = roomCache.get(r[0], false);
-      if (!first) return;
-      if (el.scrollTop === 0 && first.messages.length == 0) {
-        el.scrollTo({
-          behavior: "instant",
-          top: 1,
-        });
-      }
-    }
-
-    roomCache.scrollPosition = el.scrollTop;
+    updateAutoscroll();
+    preventTopScrollLock();
+    cache.scrollPosition = e.currentTarget.scrollTop;
   }}
+  {@attach createObserver}
 >
-  <div class="h-full flex shrink-0 flex-col" bind:this={contentElement}>
-    <div class="h-full flex flex-col-reverse bg-yellow-100/20"></div>
-    {#each roomCache?.renderBlocks.toSorted((a, b) => a - b) as blockId (blockId)}
-      {@const block = roomCache?.get(blockId, false)}
-      {#if block && block.alive}
-        <div data-block={blockId} {@attach roomCache?.attachBlock}>
-          {#each partition(block.messages) as part (part[0]?.id)}
+  <div class="h-full flex shrink-0 flex-col">
+    {#if cache.renderBlocks.length > 0 && cache.renderBlocks[0] !== 0}
+      <div style="height:1px;"></div>
+    {/if}
+
+    {#if target === cache.lastBlockId()}
+      <div class="h-full flex bg-yellow-100/20"></div>
+    {/if}
+
+    {#each cache?.renderBlocks as blockId (blockId)}
+      {@const block = cache?.get(blockId, false)}
+      {#if block?.alive}
+        <div data-block={blockId} {@attach attachBlock}>
+          {#each partition(block.messages) as part (part[0]?.id ?? 0)}
             {#each part as message (message.id)}
               {#if message.deletedAt === null}
                 {@const isFirst = part.indexOf(message) === 0}
                 {@const user = server.findUser(message.userId)}
-                <div
-                  class="contents"
-                  {@attach (_) => {
-                    if (!scrollElement) return;
-                    const el = scrollElement;
-                    const hasScroll = el.scrollHeight > el.clientHeight;
-                    // prevents the browser from locking up at the top
-                    // loading messages in a loop, up to the first one
-                    if (hasScroll && el.scrollTop < 1) {
-                      scrollElement.scrollTo({
-                        behavior: "instant",
-                        top: 1,
-                      });
-                    }
-
-                    // stick to bottom behavior
-                    const fromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
-                    if (hasScroll && fromBottom < 100) {
-                      scrollElement.scrollTo({
-                        behavior: "instant",
-                        top: el.scrollTop + fromBottom,
-                      });
-                    }
-
-                    lastHasScroll = hasScroll;
-
-                    return () => {
-                      lastHasScroll = el.scrollHeight > el.clientHeight;
-                    };
-                  }}
-                >
-                  <TextMessage {user} {message} showHeader={isFirst} />
-                </div>
+                <TextMessage {user} {message} showHeader={isFirst} />
               {/if}
             {/each}
           {/each}
         </div>
       {:else}
         <div
-          class="min-h-screen w-full flex-col flex justify-between bg-accent/20"
+          class="min-h-dvh w-full flex-col flex justify-between bg-accent/20"
           data-block-load={blockId}
-          {@attach (e) => {
-            roomCache?.attachBlock(e);
-
-            if (!scrollElement) return;
-            const el = scrollElement;
-
-            const isTop = el.scrollHeight > el.clientHeight && el.scrollTop < 1;
-            console.log("lastHasScroll", lastHasScroll);
-            if (isTop && !lastHasScroll) {
-              console.log("scrolling to bottom", blockId);
-              const fromBottom =
-                el.scrollHeight - el.clientHeight - el.scrollTop;
-              scrollElement.scrollTo({
-                behavior: "instant",
-                top: el.scrollTop + fromBottom,
-              });
-            }
-          }}
+          {@attach attachBlock}
         >
           <div>Loading... {blockId}</div>
           <div>Loading... {blockId}</div>
         </div>
       {/if}
     {/each}
+
+    {#if target !== cache.lastBlockId()}
+      <div class="h-full flex bg-yellow-100/20"></div>
+    {/if}
 
     <div class="min-h-6"></div>
   </div>
@@ -281,7 +337,7 @@
     <textarea
       data-slot="input-group-control"
       class="flex field-sizing-content w-full px-3 py-2 resize-none rounded-md bg-transparent text-base transition-[color,box-shadow] outline-none md:text-sm"
-      placeholder={`#${room.name}`}
+      placeholder={`#${cache.room.name}`}
       bind:value={text}
       bind:this={textarea}
       onkeydown={(e) => {

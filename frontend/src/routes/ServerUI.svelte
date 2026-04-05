@@ -38,7 +38,10 @@
       <!-- <div class="flex w-full flex-row justify-between px-16"></div> -->
       <VoiceGrid {server} />
     {:else if selectedRoom?.type === "text"}
-      <TextRoomContent {server} room={selectedRoom} />
+      {@const cache = server.messages.getRoom(selectedRoom.id)}
+      {#if cache}
+        <TextRoomContent {cache} {server} />
+      {/if}
     {:else}
       It is what it is man
     {/if}
