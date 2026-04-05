@@ -4,7 +4,6 @@
   import TextMessage from "$lib/components/TextMessage.svelte";
   import type { Server } from "$lib/servers.svelte";
   import { Button } from "$lib/components/ui/button";
-  import { StickToBottom } from "$lib/StickToBottom.svelte";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import { ArrowRight } from "@lucide/svelte";
   import { untrack } from "svelte";
@@ -18,9 +17,9 @@
   const { server, room }: Props = $props();
   const cache = $derived(server.messages);
   let roomCache: TextRoomCache | undefined = $state(undefined);
-  let stickToBottom: StickToBottom | undefined = $state(undefined);
   $effect(() => {
-    if (!roomCache) {
+    if (!roomCache || roomCache.room.id !== room.id) {
+      console.log("creating room cache");
       roomCache = cache.getRoom(room.id);
     }
 
@@ -39,17 +38,6 @@
           top: roomCache.scrollPosition,
         });
       }
-
-      // stickToBottom = new StickToBottom({
-      //   scrollElement: () => scrollElement,
-      //   contentElement: () => contentElement,
-      //   resize: "instant",
-      //   stiffness: 1,
-      //   damping: 1,
-      //   mass: 0.5,
-      //   // initial: !hasScroll && isLast,
-      //   initial: false,
-      // });
     });
 
     return () => {
@@ -64,13 +52,14 @@
   let text = $state("");
 
   function sendMessage() {
-    if (!text || text.length === 0) {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.length === 0) {
       return;
     }
     server.gateway.send({
       type: "action.message.create",
       roomId: room.id,
-      text,
+      text: trimmed,
     });
     text = "";
   }
@@ -140,7 +129,6 @@
   function jumpTo(id: number) {
     if (!roomCache) return;
     console.log("---jumpTo", id);
-    stickToBottom?.stopScroll();
     if (!roomCache.renderBlocks.includes(id)) {
       roomCache.renderBlocks = [id];
     } else {
@@ -152,7 +140,6 @@
   }
 
   let lastHasScroll = false;
-  let isTopLoading = false;
 </script>
 
 <div class="flex flex-col gap-2 w-full justify-center">
@@ -184,11 +171,17 @@
     if (!roomCache) return;
     const el = e.currentTarget;
 
-    if (el.scrollTop === 0 && false) {
-      el.scrollTo({
-        behavior: "instant",
-        top: 1,
-      });
+    if (el.scrollTop < 50 ) {
+      const r = roomCache.renderBlocks;
+      const first = roomCache.get(r[0], false);
+      if (!first) return;
+      console.log("scrolling to 1 from onscroll");
+      if (el.scrollTop === 0 && first.messages.length == 0) {
+        el.scrollTo({
+          behavior: "instant",
+          top: 1,
+        });
+      }
     }
 
     roomCache.scrollPosition = el.scrollTop;
@@ -215,23 +208,22 @@
                     // loading messages in a loop, up to the first one
                     if (hasScroll && el.scrollTop < 1) {
                       console.log("scrolling to 1", blockId, el.scrollTop);
-                      // scrollElement.scrollTo({
-                      //   behavior: "instant",
-                      //   top: 1,
-                      // });
+                      scrollElement.scrollTo({
+                        behavior: "instant",
+                        top: 1,
+                      });
                     }
 
-                    // const fromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
-                    // if (hasScroll && fromBottom < 100) {
-                    //   console.log("scrolling away from bottom", blockId);
-                    //   scrollElement.scrollTo({
-                    //     behavior: "instant",
-                    //     top: el.scrollTop - fromBottom,
-                    //   });
-                    // }
+                    const fromBottom = el.scrollHeight - el.clientHeight - el.scrollTop;
+                    if (hasScroll && fromBottom < 100) {
+                      console.log("scrolling away from bottom", blockId, fromBottom);
+                      scrollElement.scrollTo({
+                        behavior: "instant",
+                        top: el.scrollTop + fromBottom,
+                      });
+                    }
 
                     lastHasScroll = hasScroll;
-                    console.log("hasScroll", lastHasScroll);
 
                     return () => {
                       lastHasScroll = el.scrollHeight > el.clientHeight;
@@ -260,10 +252,10 @@
               console.log("scrolling to bottom", blockId);
               const fromBottom =
                 el.scrollHeight - el.clientHeight - el.scrollTop;
-              // scrollElement.scrollTo({
-              //   behavior: "instant",
-              //   top: el.scrollTop + fromBottom,
-              // });
+              scrollElement.scrollTo({
+                behavior: "instant",
+                top: el.scrollTop + fromBottom,
+              });
             }
           }}
         >

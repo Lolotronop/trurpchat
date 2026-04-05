@@ -14,7 +14,7 @@ type TextMessageBlock = {
   alive: boolean;
 };
 
-const DBG_WAIT = 100;
+const DBG_WAIT = 0;
 
 export class TextRoomCache {
   blocks: SvelteMap<number, TextMessageBlock> = new SvelteMap();
@@ -22,6 +22,8 @@ export class TextRoomCache {
   visibleBlocks: number[] = $state([]);
 
   scrollPosition = $state<number | undefined>(undefined);
+
+  onappend: () => void = () => {};
 
   lastMessageId() {
     return this.room.nextMessageId - 1;
@@ -167,7 +169,6 @@ export class TextRoomCache {
   }
 
   append(message: TextMessage) {
-    console.log("append");
     const blockId = this.parent.getBlockId(message.id);
     let block = this.get(blockId, false);
 
@@ -182,7 +183,7 @@ export class TextRoomCache {
     // is the first one in the new block
     if (!block && (isFirstBlock || prevBlockFull)) {
       block = { messages: [], alive: true };
-      if (this.renderBlocks[this.renderBlocks.length - 1] === prevBlockId) {
+      if (this.renderBlocks.includes(prevBlockId)) {
         this.renderBlocks.push(blockId);
       }
       block.messages.push(message);
@@ -221,7 +222,7 @@ export class TextRoomCache {
 }
 
 export class TextMessageCache {
-  BLOCK_SIZE = 10;
+  BLOCK_SIZE = 3;
   /** Map of channel ID to room cache */
   cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
 
