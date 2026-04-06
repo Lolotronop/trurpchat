@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { Fullscreen, Volume2, VolumeOff } from "@lucide/svelte";
   import type { ConnectedUser } from "trurpchat-backend";
+  import GainSlider from "$lib/components/GainSlider.svelte";
   import LoudnessContext from "$lib/components/LoudnessContext.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { OvenPlayerController } from "$lib/components/stream/ovenplayer.svelte";
@@ -25,6 +27,7 @@
   const GAP = 8;
   const CONTAINER_PADDING = 16;
   const ASPECT_RATIO = 16 / 9;
+  const AUTO_HIDE_DELAY = 2000;
 
   const roomUsers = $derived.by(() => {
     const userIds = server.rtc.room?.users ?? [];
@@ -59,17 +62,46 @@
   let layoutMode = $state<"grid" | "focus">("grid");
   let focusedTileId = $state<string | undefined>(undefined);
   let hideOthers = $state(false);
+  let shouldHide = $state(true);
+  let isFullscreen = $state(false);
 
   const focusedTile = $derived(tiles.find((tile) => tile.id === focusedTileId));
   const secondaryTiles = $derived(
     focusedTileId ? tiles.filter((tile) => tile.id !== focusedTileId) : [],
   );
+  const focusedUser = $derived(findConnectedUser(focusedTile?.userId));
+  const focusedPeer = $derived.by(() => {
+    if (!focusedTile || focusedTile.kind !== "user" || !focusedUser) {
+      return undefined;
+    }
 
+    if (focusedUser.id === server.user.id) {
+      return undefined;
+    }
+
+    return server.rtc.peers.get(focusedUser.id);
+  });
+  const focusedPlayer = $derived.by(() => {
+    if (!focusedTile || focusedTile.kind !== "stream" || !focusedUser) {
+      return undefined;
+    }
+
+    if (focusedUser.id === server.user.id) {
+      return undefined;
+    }
+
+    return getStreamPlayer(focusedUser.id);
+  });
+  const focusedCanAdjustVolume = $derived(
+    Boolean(focusedPeer || focusedPlayer),
+  );
+
+  let gridShell: HTMLDivElement | undefined = $state(undefined);
   let gridContainer: HTMLDivElement | undefined = $state(undefined);
   let secondaryContainer: HTMLDivElement | undefined = $state(undefined);
   let focusContainer: HTMLDivElement | undefined = $state(undefined);
-  let focusControlsContainer: HTMLDivElement | undefined = $state(undefined);
 
+  let hideTimeout: ReturnType<typeof setTimeout> | undefined;
   let gridItemWidth = $state(0);
   let secondaryItemWidth = $state(0);
   let focusItemWidth = $state(0);
@@ -152,7 +184,6 @@
       return;
     }
 
-    const controlsHeight = focusControlsContainer?.offsetHeight ?? 0;
     const availableWidth = focusContainer.clientWidth;
     const availableHeight = focusContainer.clientHeight;
     const secondaryHeightBudget = hideOthers
@@ -175,9 +206,7 @@
           secondaryTiles.length,
         );
 
-    const reservedHeight =
-      controlsHeight + (controlsHeight > 0 ? GAP : 0) + secondaryHeight;
-    const focusHeight = Math.max(availableHeight - reservedHeight - GAP, 0);
+    const focusHeight = Math.max(availableHeight - secondaryHeight - GAP, 0);
 
     focusItemWidth = getFocusTileWidth(availableWidth, focusHeight);
   }
@@ -199,6 +228,70 @@
     };
   }
 
+  function scheduleControlsHide() {
+    clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+      shouldHide = true;
+    }, AUTO_HIDE_DELAY);
+  }
+
+  function toggleGridFullscreen() {
+    if (!gridShell) {
+      return;
+    }
+
+    if (!document.fullscreenElement) {
+      gridShell.requestFullscreen();
+      return;
+    }
+
+    document.exitFullscreen();
+  }
+
+  function attachGridShell(el: HTMLDivElement) {
+    const onMouseMove = (event: MouseEvent) => {
+      shouldHide = false;
+
+      const target = event.target as HTMLElement;
+      if (target.closest("[data-controls]")) {
+        return;
+      }
+
+      scheduleControlsHide();
+    };
+
+    const onMouseLeave = () => {
+      clearTimeout(hideTimeout);
+      shouldHide = true;
+    };
+
+    const onDblClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (target.closest("[data-controls]")) {
+        return;
+      }
+
+      toggleGridFullscreen();
+    };
+
+    const onFullscreenChange = () => {
+      isFullscreen = document.fullscreenElement === el;
+    };
+
+    el.addEventListener("mousemove", onMouseMove);
+    el.addEventListener("mouseleave", onMouseLeave);
+    el.addEventListener("dblclick", onDblClick);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+
+    return () => {
+      clearTimeout(hideTimeout);
+      el.removeEventListener("mousemove", onMouseMove);
+      el.removeEventListener("mouseleave", onMouseLeave);
+      el.removeEventListener("dblclick", onDblClick);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }
+
   function shouldIgnoreFocusToggle(target: EventTarget | null) {
     if (!(target instanceof HTMLElement)) {
       return false;
@@ -210,7 +303,10 @@
   }
 
   function findConnectedUser(userId: number | undefined) {
-    if (!userId) return;
+    if (userId === undefined) {
+      return undefined;
+    }
+
     const user = server.findUser(userId);
     return user?.online ? user : undefined;
   }
@@ -232,6 +328,52 @@
 
   function setStreamMuted(userId: number, muted: boolean) {
     getStreamPlayer(userId).setMuted(muted);
+  }
+
+  function getFocusedGain() {
+    if (focusedPeer) {
+      return focusedPeer.volume;
+    }
+
+    if (focusedPlayer) {
+      return focusedPlayer.gain;
+    }
+
+    return 0;
+  }
+
+  function setFocusedGain(value: number) {
+    if (focusedPeer) {
+      focusedPeer.volume = value;
+      return;
+    }
+
+    if (focusedPlayer) {
+      focusedPlayer.gain = value;
+    }
+  }
+
+  function isFocusedMuted() {
+    if (focusedPeer) {
+      return focusedPeer.mute;
+    }
+
+    if (focusedPlayer) {
+      return focusedPlayer.gain === 0;
+    }
+
+    return false;
+  }
+
+  function setFocusedMuted(value: boolean) {
+    if (focusedPeer) {
+      focusedPeer.mute = value;
+      return;
+    }
+
+    if (focusedPlayer) {
+      focusedPlayer.setMuted(value);
+    }
   }
 
   function toggleTileFocus(tileId: string) {
@@ -288,6 +430,7 @@
 
   $effect(() => {
     return () => {
+      clearTimeout(hideTimeout);
       for (const player of streamPlayers.values()) {
         player.destroy();
       }
@@ -327,7 +470,7 @@
 </script>
 
 {#snippet tileContent(tile: Tile)}
-  {@const user = findConnectedUser(tile?.userId)}
+  {@const user = findConnectedUser(tile.userId)}
   {#if user}
     {#if tile.kind === "user"}
       {@const peer = server.rtc.peers.get(user.id)}
@@ -339,16 +482,18 @@
           deafened={g.deafened}
           camera={user.camera}
           cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
+          shouldHideInfo={shouldHide}
         />
       {:else if peer}
         <LoudnessContext bind:gain={peer.volume} bind:muted={peer.mute}>
           <VoiceUserCard
             name={user.name}
-            speaking={peer?.speaking || false}
-            muted={peer?.mute || user.muted || false}
+            speaking={peer.speaking || false}
+            muted={peer.mute || user.muted || false}
             deafened={user.deafened || false}
             camera={user.camera}
-            cameraStream={peer?.cameraStream}
+            cameraStream={peer.cameraStream}
+            shouldHideInfo={shouldHide}
           />
         </LoudnessContext>
       {:else}
@@ -359,18 +504,19 @@
           deafened={user.deafened || false}
           camera={user.camera}
           cameraStream={undefined}
+          shouldHideInfo={shouldHide}
         />
       {/if}
     {:else}
       {@const player = getStreamPlayer(user.id)}
       {#if user.id === server.user.id}
-        <Stream {server} {user} {player} />
+        <Stream {server} {user} {player} shouldHideInfo={shouldHide} />
       {:else}
         <LoudnessContext
           bind:gain={player.gain}
           bind:muted={() => isStreamMuted(user.id), (muted) => setStreamMuted(user.id, muted)}
         >
-          <Stream {server} {user} {player} />
+          <Stream {server} {user} {player} shouldHideInfo={shouldHide} />
         </LoudnessContext>
       {/if}
     {/if}
@@ -390,65 +536,124 @@
   </div>
 {/snippet}
 
-{#if layoutMode === "focus" && focusedTile}
-  <div
-    class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden p-2"
-    bind:this={focusContainer}
-    {@attach function(el) {
-      focusContainer = el;
-      return observeResize(el, updateFocusLayout);
-    }}
-  >
+<div
+  class="relative h-full w-full overflow-hidden"
+  class:cursor-none={shouldHide}
+  bind:this={gridShell}
+  {@attach attachGridShell}
+>
+  {#if layoutMode === "focus" && focusedTile}
     <div
-      class="flex max-h-full w-full max-w-full flex-col items-center justify-center gap-2 overflow-hidden"
+      class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden p-2"
+      bind:this={focusContainer}
+      {@attach function(el) {
+        focusContainer = el;
+        return observeResize(el, updateFocusLayout);
+      }}
     >
-      <div class="flex w-full justify-end" bind:this={focusControlsContainer}>
-        <Button
-          size="sm"
-          variant="secondary"
-          data-no-focus-toggle
-          onclick={() => {
-            hideOthers = !hideOthers;
-            updateFocusLayout();
-          }}
-        >
-          {hideOthers ? "Show others" : "Hide others"}
-        </Button>
-      </div>
-
-      <div class="flex max-w-full items-center justify-center overflow-hidden">
-        {@render tileShell(focusedTile, focusItemWidth)}
-      </div>
-
-      {#if !hideOthers && secondaryTiles.length > 0}
+      <div
+        class="flex max-h-full w-full max-w-full flex-col items-center justify-center gap-2 overflow-hidden"
+      >
         <div
-          class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
-          bind:this={secondaryContainer}
-          {@attach function(el) {
-          secondaryContainer = el;
-          return observeResize(el, updateFocusLayout);
-        }}
+          class="flex max-w-full items-center justify-center overflow-hidden"
         >
-          {#each secondaryTiles as tile (tile.id)}
-            {@render tileShell(tile, secondaryItemWidth)}
-          {/each}
+          {@render tileShell(focusedTile, focusItemWidth)}
         </div>
-      {/if}
+
+        {#if !hideOthers && secondaryTiles.length > 0}
+          <div
+            class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
+            bind:this={secondaryContainer}
+            {@attach function(el) {
+              secondaryContainer = el;
+              return observeResize(el, updateFocusLayout);
+            }}
+          >
+            {#each secondaryTiles as tile (tile.id)}
+              {@render tileShell(tile, secondaryItemWidth)}
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+  {:else}
+    <div
+      class="flex h-full w-full min-h-0 min-w-0 flex-wrap content-center justify-center gap-2 overflow-auto p-2"
+      bind:this={gridContainer}
+      {@attach function(el) {
+        gridContainer = el;
+        return observeResize(el, () => {
+          gridItemWidth = getOptimalTileWidth(el.clientWidth, el.clientHeight, tiles.length);
+        });
+      }}
+    >
+      {#each tiles as tile (tile.id)}
+        {@render tileShell(tile, gridItemWidth)}
+      {/each}
+    </div>
+  {/if}
+
+  <div
+    class="pointer-events-none absolute inset-0 transition-opacity duration-100 {shouldHide && 'opacity-0'}"
+  >
+    <div class="flex w-full justify-end p-2"></div>
+
+    <div
+      class="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2"
+    >
+      <div>
+        {#if layoutMode === "focus"}
+          <div
+            data-controls
+            class="rounded-md bg-background/80 pointer-events-auto"
+          >
+            <Button
+              size="sm"
+              variant="ghost"
+              data-no-focus-toggle
+              onclick={() => {
+                hideOthers = !hideOthers;
+                updateFocusLayout();
+              }}
+            >
+              {hideOthers ? "Show others" : "Hide others"}
+            </Button>
+          </div>
+        {/if}
+      </div>
+
+      <div
+        data-controls
+        class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
+      >
+        {#if layoutMode === "focus" && focusedCanAdjustVolume}
+          <div class="w-36 flex items-center gap-2">
+            <Button
+              variant="ghost"
+              class="p-0"
+              onclick={() => {
+                setFocusedMuted(!isFocusedMuted());
+              }}
+            >
+              {#if isFocusedMuted()}
+                <VolumeOff class="size-4" />
+              {:else}
+                <Volume2 class="size-4" />
+              {/if}
+            </Button>
+            <GainSlider
+              class="w-full mt-1"
+              bind:value={() => getFocusedGain(), (value) => setFocusedGain(value)}
+              ticks={[1]}
+            />
+          </div>
+        {/if}
+        <div class="rounded-md bg-background/80 pointer-events-auto">
+          <Button class="p-0" variant="ghost" onclick={toggleGridFullscreen}>
+            <Fullscreen class="size-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   </div>
-{:else}
-  <div
-    class="flex h-full w-full min-h-0 min-w-0 flex-wrap content-center justify-center gap-2 overflow-auto p-2"
-    bind:this={gridContainer}
-    {@attach function(el) {
-      gridContainer = el;
-      return observeResize(el, () => {
-        gridItemWidth = getOptimalTileWidth(el.clientWidth, el.clientHeight, tiles.length);
-      });
-    }}
-  >
-    {#each tiles as tile (tile.id)}
-      {@render tileShell(tile, gridItemWidth)}
-    {/each}
-  </div>
-{/if}
+</div>

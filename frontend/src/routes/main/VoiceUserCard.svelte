@@ -9,8 +9,17 @@
     speaking: boolean;
     camera: boolean;
     cameraStream?: MediaStream;
+    shouldHideInfo?: boolean;
   };
-  const { name, muted, deafened, speaking, camera, cameraStream }: Props =
+  const {
+    name,
+    muted,
+    deafened,
+    speaking,
+    camera,
+    cameraStream,
+    shouldHideInfo = false,
+  }: Props =
     $props();
 
   function attachCamera(el: HTMLVideoElement) {
@@ -29,18 +38,20 @@
   {:else}
     <Avatar name={name} class="size-8"></Avatar>
   {/if}
-  <div class="absolute bottom-0 flex w-full justify-between p-2">
-    <div class="flex items-center gap-2 bg-background rounded-md p-2">
-      <p class="text-foreground text-sm">{name}</p>
-      {#if muted}
-        <MicOff class="size-4" />
-      {/if}
-      {#if deafened}
-        <HeadphoneOff class="size-4" />
-      {/if}
-      {#if camera}
-        <Camera class="size-4" />
-      {/if}
+  {#if !shouldHideInfo}
+    <div class="absolute bottom-0 flex w-full justify-between p-2">
+      <div class="flex items-center gap-2 bg-background rounded-md p-2">
+        <p class="text-foreground text-sm">{name}</p>
+        {#if muted}
+          <MicOff class="size-4" />
+        {/if}
+        {#if deafened}
+          <HeadphoneOff class="size-4" />
+        {/if}
+        {#if camera}
+          <Camera class="size-4" />
+        {/if}
+      </div>
     </div>
-  </div>
+  {/if}
 </div>

@@ -1,27 +1,19 @@
 <script lang="ts">
-  import {
-    DoorOpen,
-    Fullscreen,
-    Loader2,
-    Monitor,
-    Tv,
-    Volume2,
-    VolumeOff,
-  } from "@lucide/svelte";
+  import { DoorOpen, Loader2, Monitor, Tv } from "@lucide/svelte";
   import type { ConnectedUser, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import type { Server } from "$lib/servers.svelte";
-  import GainSlider from "../GainSlider.svelte";
   import type { OvenPlayerController } from "./ovenplayer.svelte";
 
   type Props = {
     user: ConnectedUser;
     server: Server;
     player: OvenPlayerController;
+    shouldHideInfo?: boolean;
   };
-  let { user, server, player }: Props = $props();
+  let { user, server, player, shouldHideInfo = false }: Props = $props();
 
   const watcherUsers = $derived.by(() => {
     return user.watchedBy
@@ -37,13 +29,8 @@
     Math.max(watcherUsers.length - MAX_VISIBLE_WATCHERS, 0),
   );
 
-  let container: HTMLDivElement | undefined = $state(undefined);
-  let timeout: NodeJS.Timeout | undefined;
-  let shouldHide = $state(true);
-  let isFullscreen = $state(false);
   $effect(() => {
     return () => {
-      clearTimeout(timeout);
       player.unmount();
     };
   });
@@ -55,69 +42,10 @@
       player.unmount();
     };
   }
-
-  function attachAutohide(el: HTMLDivElement) {
-    const onMouseMove = (event: MouseEvent) => {
-      clearTimeout(timeout);
-      shouldHide = false;
-
-      const target = event.target as HTMLElement;
-      if (target.closest("[data-controls]")) {
-        return;
-      }
-
-      timeout = setTimeout(() => {
-        shouldHide = true;
-      }, 2000);
-    };
-
-    const onMouseLeave = () => {
-      clearTimeout(timeout);
-      shouldHide = true;
-    };
-
-    el.addEventListener("mousemove", onMouseMove);
-    el.addEventListener("mouseleave", onMouseLeave);
-    el.addEventListener("dblclick", toggleFullscreen);
-
-    return () => {
-      clearTimeout(timeout);
-      el.removeEventListener("mousemove", onMouseMove);
-      el.removeEventListener("mouseleave", onMouseLeave);
-      el.removeEventListener("dblclick", toggleFullscreen);
-    };
-  }
-
-  function toggleFullscreen(e: MouseEvent) {
-    if (
-      e.target instanceof HTMLElement &&
-      !(
-        e.target.closest("video") ||
-        (e.target instanceof HTMLButtonElement && e.target.id === "fullscreen")
-      )
-    ) {
-      return;
-    }
-
-    if (!container || player.state !== "playing") {
-      return;
-    }
-
-    if (!isFullscreen) {
-      container.requestFullscreen();
-      isFullscreen = true;
-    } else {
-      document.exitFullscreen();
-      isFullscreen = false;
-    }
-  }
 </script>
 
 <div
-  class="aspect-video flex w-full justify-center items-center rounded-md relative bg-black"
-  class:cursor-none={shouldHide}
-  bind:this={container}
-  {@attach attachAutohide}
+  class="aspect-video flex w-full items-center justify-center rounded-md relative bg-black"
 >
   {#if player.state === "playing"}
     <div class="h-full w-full" {@attach attachPlayerHost}></div>
@@ -134,7 +62,7 @@
         Стрим {user.name}
       </div>
 
-      {#if watcherUsers.length > 0}
+      {#if watcherUsers.length > 0 && !shouldHideInfo}
         {@render watchersTooltip()}
       {/if}
     </Button>
@@ -156,68 +84,41 @@
 
   {#if player.state === "playing"}
     <div
-      class="absolute inset-0 flex flex-col justify-between pointer-events-none transition-opacity duration-100 {shouldHide && 'opacity-0'}"
+      class="absolute inset-0 flex flex-col justify-between pointer-events-none"
     >
-      <div id="watchers" class="flex w-full items-start justify-end p-2">
-        {#if watcherUsers.length > 0}
-          {@render watchersTooltip()}
-        {/if}
-      </div>
+      {#if !shouldHideInfo}
+        <div id="watchers" class="flex w-full items-start justify-end p-2">
+          {#if watcherUsers.length > 0}
+            {@render watchersTooltip()}
+          {/if}
+        </div>
+      {:else}
+        <div></div>
+      {/if}
 
-      <div id="controls" class="flex items-end justify-between gap-2 p-2">
-        <div
-          data-controls
-          class="flex items-center gap-2 rounded-md bg-background/80"
-        >
-          <p class="text-foreground text-sm px-2 flex items-center gap-1">
-            <Monitor class="size-4" />
-            {user.name}
-          </p>
+      {#if !shouldHideInfo}
+        <div id="controls" class="flex items-end justify-between gap-2 p-2">
+          <div
+            data-controls
+            class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
+          >
+            <p class="text-foreground text-sm px-2 flex items-center gap-1">
+              <Monitor class="size-4" />
+              {user.name}
+            </p>
 
-          <Button
-            class="pointer-events-auto p-0 hover:bg-destructive/50!"
-            variant="ghost"
-            onclick={() => {
+            <Button
+              class="p-0 hover:bg-destructive/50!"
+              variant="ghost"
+              onclick={() => {
               player.stop();
             }}
-          >
-            <DoorOpen class="size-4" />
-          </Button>
-        </div>
-        <div
-          data-controls
-          class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
-        >
-          <div class="w-36 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              class="p-0"
-              onclick={() => {
-                player.toggleMuted();
-              }}
             >
-              {#if player.gain === 0}
-                <VolumeOff class="size-4" />
-              {:else}
-                <Volume2 class="size-4" />
-              {/if}
+              <DoorOpen class="size-4" />
             </Button>
-            <GainSlider
-              class="w-full mt-1"
-              bind:value={player.gain}
-              ticks={[1]}
-            />
           </div>
-          <Button
-            id="fullscreen"
-            class="p-0"
-            variant="ghost"
-            onclick={toggleFullscreen}
-          >
-            <Fullscreen class="size-4" />
-          </Button>
         </div>
-      </div>
+      {/if}
     </div>
   {/if}
 </div>
