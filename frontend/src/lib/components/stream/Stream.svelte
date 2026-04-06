@@ -8,41 +8,22 @@
     Volume2,
     VolumeOff,
   } from "@lucide/svelte";
-  import {
-    create as createOvenPlayer,
-    type OvenPlayerIceServer,
-    type OvenPlayerInstance,
-  } from "ovenplayer";
-  import type { User } from "trurpchat-backend";
-  import { audioctx } from "$lib/audio/context";
+  import type { ConnectedUser, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Tooltip from "$lib/components/ui/tooltip";
-  import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
   import GainSlider from "../GainSlider.svelte";
-  import { OvenAudioController } from "./ovenplayer.svelte";
+  import type { OvenPlayerController } from "./ovenplayer.svelte";
 
   type Props = {
-    user: User;
+    user: ConnectedUser;
     server: Server;
+    player: OvenPlayerController;
   };
-  let { user, server }: Props = $props();
+  let { user, server, player }: Props = $props();
 
-  // TODO: this is a hack to prevent oven signaling from being recreated every time
-  // figure out a better way to do this
-  let lastOven: OvenAudioController | undefined;
-  const oven: OvenAudioController = $derived.by(() => {
-    if (!lastOven) {
-      lastOven = new OvenAudioController(gitGud().headphones);
-    }
-    return lastOven;
-  });
   const watcherUsers = $derived.by(() => {
-    if (!user.online) {
-      return [];
-    }
-
     return user.watchedBy
       .map((id) => server.findUser(id))
       .filter((watcher): watcher is User => watcher !== undefined)
@@ -56,101 +37,27 @@
     Math.max(watcherUsers.length - MAX_VISIBLE_WATCHERS, 0),
   );
 
-  $effect(() => {
-    return () => {
-      cleanup();
-    };
-  });
-
-  let watching = $state(false);
-  function sendWatch() {
-    if (watching || !server.connected) {
-      return;
-    }
-
-    server.gateway.send({
-      type: "action.voice.watch",
-      userId: user.id,
-    });
-    watching = true;
-  }
-
-  function sendUnwatch() {
-    if (!watching) {
-      return;
-    }
-
-    watching = false;
-    if (!server.connected) {
-      return;
-    }
-
-    server.gateway.send({
-      type: "action.voice.unwatch",
-      userId: user.id,
-    });
-  }
-
-  function cleanup() {
-    sendUnwatch();
-    clearTimeout(timeout);
-    player?.stop();
-    player?.remove();
-    player = undefined;
-    const el = document.getElementById(`oven-${user.id}`);
-    if (el) {
-      el.remove();
-    }
-    oven.disconnect();
-  }
-
-  let player: OvenPlayerInstance | undefined = $state(undefined);
-  function attachStream(el: HTMLVideoElement) {
-    if (player || !server.overServerUrl || !server.iceConfig) {
-      return;
-    }
-    player = createOvenPlayer(el.id, {
-      volume: 0,
-      disableSeekUI: true,
-      expandFullScreenUI: false,
-      controls: false,
-      autoStart: true,
-      showBigPlayButton: false,
-      playbackRate: 1,
-      playbackRates: [1],
-      waterMark: undefined,
-      title: "",
-      webrtcConfig: {
-        playoutDelayHint: 0,
-        iceServers: server.iceConfig.iceServers as OvenPlayerIceServer[],
-      },
-      sources: [
-        {
-          type: "webrtc",
-          file: `ws://${server.overServerUrl}/app/${server.definition.id}-${user.id}`,
-        },
-      ],
-    });
-
-    player.on("stateChanged", async (state) => {
-      if (state.newstate != "playing") {
-        return;
-      }
-      const stream = player?.getMediaElement()?.srcObject as MediaStream;
-
-      oven.audioSource = audioctx().createMediaStreamSource(stream);
-      oven.audioSource.connect(oven.gainnode);
-      if (server.user.id === user.id) {
-        oven.gain = 0;
-      }
-
-      sendWatch();
-    });
-  }
-
   let container: HTMLDivElement | undefined = $state(undefined);
   let timeout: NodeJS.Timeout | undefined;
   let shouldHide = $state(true);
+  let isFullscreen = $state(false);
+  let prevgain = 0.75;
+
+  $effect(() => {
+    return () => {
+      clearTimeout(timeout);
+      player.unmount();
+    };
+  });
+
+  function attachPlayerHost(el: HTMLDivElement) {
+    player.mount(el);
+
+    return () => {
+      player.unmount();
+    };
+  }
+
   function attachAutohide(el: HTMLDivElement) {
     const onMouseMove = (event: MouseEvent) => {
       clearTimeout(timeout);
@@ -160,6 +67,7 @@
       if (target.closest("[data-controls]")) {
         return;
       }
+
       timeout = setTimeout(() => {
         shouldHide = true;
       }, 2000);
@@ -182,19 +90,18 @@
     };
   }
 
-  let isFullscreen = $state(false);
   function toggleFullscreen(e: MouseEvent) {
     if (
-      e.target &&
+      e.target instanceof HTMLElement &&
       !(
-        e.target instanceof HTMLVideoElement ||
+        e.target.closest("video") ||
         (e.target instanceof HTMLButtonElement && e.target.id === "fullscreen")
       )
     ) {
       return;
     }
 
-    if (!container || oven.state !== "connected") {
+    if (!container || player.state !== "playing") {
       return;
     }
 
@@ -206,7 +113,6 @@
       isFullscreen = false;
     }
   }
-  let prevgain = 0.75;
 </script>
 
 <div
@@ -215,22 +121,14 @@
   bind:this={container}
   {@attach attachAutohide}
 >
-  {#if oven.state === "connected"}
-    <video
-      class="w-full h-full object-fit rounded-md"
-      id="oven-{user.id}"
-      autoplay
-      muted
-      preload="auto"
-      {@attach attachStream}
-    ></video>
-  {:else if oven.state === "disconnected"}
+  {#if player.state === "playing"}
+    <div class="h-full w-full" {@attach attachPlayerHost}></div>
+  {:else if player.state === "disconnected"}
     <Button
       variant="ghost"
       class="w-full h-full flex flex-col items-center justify-center"
       onclick={() => {
-        cleanup();
-        oven.connect();
+        player.start();
       }}
     >
       <div class="flex items-center gap-2 p-2">
@@ -242,27 +140,23 @@
         {@render watchersTooltip()}
       {/if}
     </Button>
-  {:else if oven.state === "connecting"}
+  {:else}
     <div class="flex flex-col items-center justify-center gap-2">
       <Loader2 class="size-8 animate-spin" />
       <Button
         variant="ghost"
         class="hover:bg-destructive/20!"
         onclick={() => {
-          cleanup();
-          oven.disconnect();
+          player.stop();
         }}
       >
         <DoorOpen class="size-4" />
         Выйти
       </Button>
     </div>
-  {:else}
-    <p>¯\_(ツ)_/¯</p>
   {/if}
 
-  <!-- controls -->
-  {#if oven.state === "connected"}
+  {#if player.state === "playing"}
     <div
       class="absolute inset-0 flex flex-col justify-between pointer-events-none transition-opacity duration-100 {shouldHide && 'opacity-0'}"
     >
@@ -286,7 +180,7 @@
             class="pointer-events-auto p-0 hover:bg-destructive/50!"
             variant="ghost"
             onclick={() => {
-              cleanup();
+              player.stop();
             }}
           >
             <DoorOpen class="size-4" />
@@ -301,15 +195,15 @@
               variant="ghost"
               class="p-0"
               onclick={() => {
-                if (oven.gain === 0) {
-                  oven.gain = prevgain;
+                if (player.gain === 0) {
+                  player.gain = prevgain;
                 } else {
-                  prevgain = oven.gain;
-                  oven.gain = 0;
+                  prevgain = player.gain;
+                  player.gain = 0;
                 }
               }}
             >
-              {#if oven.gain === 0}
+              {#if player.gain === 0}
                 <VolumeOff class="size-4" />
               {:else}
                 <Volume2 class="size-4" />
@@ -317,7 +211,7 @@
             </Button>
             <GainSlider
               class="w-full mt-1"
-              bind:value={oven.gain}
+              bind:value={player.gain}
               ticks={[1]}
             />
           </div>
