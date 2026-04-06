@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { Fullscreen, Volume2, VolumeOff } from "@lucide/svelte";
+  import {
+    ChevronDown,
+    ChevronUp,
+    Fullscreen,
+    Users,
+    Volume2,
+    VolumeOff,
+  } from "@lucide/svelte";
   import type { ConnectedUser } from "trurpchat-backend";
   import GainSlider from "$lib/components/GainSlider.svelte";
   import LoudnessContext from "$lib/components/LoudnessContext.svelte";
@@ -64,6 +71,9 @@
   let hideOthers = $state(false);
   let shouldHide = $state(true);
   let isFullscreen = $state(false);
+  const immersiveFocus = $derived(
+    layoutMode === "focus" && hideOthers && isFullscreen,
+  );
 
   const focusedTile = $derived(tiles.find((tile) => tile.id === focusedTileId));
   const secondaryTiles = $derived(
@@ -83,10 +93,6 @@
   });
   const focusedPlayer = $derived.by(() => {
     if (!focusedTile || focusedTile.kind !== "stream" || !focusedUser) {
-      return undefined;
-    }
-
-    if (focusedUser.id === server.user.id) {
       return undefined;
     }
 
@@ -149,9 +155,13 @@
     return Math.max(finalHeight * ASPECT_RATIO, 0);
   }
 
-  function getFocusTileWidth(containerWidth: number, containerHeight: number) {
-    const availableWidth = Math.max(containerWidth - CONTAINER_PADDING, 0);
-    const availableHeight = Math.max(containerHeight - CONTAINER_PADDING, 0);
+  function getFocusTileWidth(
+    containerWidth: number,
+    containerHeight: number,
+    padding: number = CONTAINER_PADDING,
+  ) {
+    const availableWidth = Math.max(containerWidth - padding, 0);
+    const availableHeight = Math.max(containerHeight - padding, 0);
 
     return Math.max(
       Math.min(availableWidth, availableHeight * ASPECT_RATIO),
@@ -206,9 +216,16 @@
           secondaryTiles.length,
         );
 
-    const focusHeight = Math.max(availableHeight - secondaryHeight - GAP, 0);
+    const focusHeight = Math.max(
+      availableHeight - secondaryHeight - (secondaryHeight > 0 ? GAP : 0),
+      0,
+    );
 
-    focusItemWidth = getFocusTileWidth(availableWidth, focusHeight);
+    focusItemWidth = getFocusTileWidth(
+      availableWidth,
+      focusHeight,
+      immersiveFocus ? 0 : CONTAINER_PADDING,
+    );
   }
 
   function observeResize(el: HTMLDivElement, onResize: () => void) {
@@ -469,7 +486,7 @@
   });
 </script>
 
-{#snippet tileContent(tile: Tile)}
+{#snippet tileContent(tile: Tile, edgeToEdge = false)}
   {@const user = findConnectedUser(tile.userId)}
   {#if user}
     {#if tile.kind === "user"}
@@ -483,6 +500,7 @@
           camera={user.camera}
           cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
           shouldHideInfo={shouldHide}
+          {edgeToEdge}
         />
       {:else if peer}
         <LoudnessContext bind:gain={peer.volume} bind:muted={peer.mute}>
@@ -494,6 +512,7 @@
             camera={user.camera}
             cameraStream={peer.cameraStream}
             shouldHideInfo={shouldHide}
+            {edgeToEdge}
           />
         </LoudnessContext>
       {:else}
@@ -505,34 +524,47 @@
           camera={user.camera}
           cameraStream={undefined}
           shouldHideInfo={shouldHide}
+          {edgeToEdge}
         />
       {/if}
     {:else}
       {@const player = getStreamPlayer(user.id)}
       {#if user.id === server.user.id}
-        <Stream {server} {user} {player} shouldHideInfo={shouldHide} />
+        <Stream
+          {server}
+          {user}
+          {player}
+          shouldHideInfo={shouldHide}
+          {edgeToEdge}
+        />
       {:else}
         <LoudnessContext
           bind:gain={player.gain}
           bind:muted={() => isStreamMuted(user.id), (muted) => setStreamMuted(user.id, muted)}
         >
-          <Stream {server} {user} {player} shouldHideInfo={shouldHide} />
+          <Stream
+            {server}
+            {user}
+            {player}
+            shouldHideInfo={shouldHide}
+            {edgeToEdge}
+          />
         </LoudnessContext>
       {/if}
     {/if}
   {/if}
 {/snippet}
 
-{#snippet tileShell(tile: Tile, width: number)}
+{#snippet tileShell(tile: Tile, width: number, edgeToEdge = false)}
   <div
-    class="shrink-0 cursor-pointer overflow-hidden rounded-md"
+    class="shrink-0 cursor-pointer overflow-hidden {edgeToEdge ? 'rounded-none' : 'rounded-md'}"
     role="button"
     tabindex="0"
     style:width={width > 0 ? `${width}px` : undefined}
     onclick={(event) => handleTileClick(tile.id, event)}
     onkeydown={(event) => handleTileKeydown(tile.id, event)}
   >
-    {@render tileContent(tile)}
+    {@render tileContent(tile, edgeToEdge)}
   </div>
 {/snippet}
 
@@ -544,7 +576,7 @@
 >
   {#if layoutMode === "focus" && focusedTile}
     <div
-      class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden p-2"
+      class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden {immersiveFocus ? 'p-0' : 'p-2'}"
       bind:this={focusContainer}
       {@attach function(el) {
         focusContainer = el;
@@ -555,9 +587,35 @@
         class="flex max-h-full w-full max-w-full flex-col items-center justify-center gap-2 overflow-hidden"
       >
         <div
-          class="flex max-w-full items-center justify-center overflow-hidden"
+          class="relative flex max-w-full items-center justify-center overflow-visible"
         >
-          {@render tileShell(focusedTile, focusItemWidth)}
+          {@render tileShell(focusedTile, focusItemWidth, immersiveFocus)}
+
+          <div
+            class="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 transition-opacity duration-100 {shouldHide && 'opacity-0'} {hideOthers ? 'bottom-3' : '-bottom-10'}"
+          >
+            <div
+              data-controls
+              class="rounded-md bg-background/80 pointer-events-auto"
+            >
+              <Button
+                variant="ghost"
+                class="flex gap-1 px-2"
+                data-no-focus-toggle
+                onclick={() => {
+                  hideOthers = !hideOthers;
+                  updateFocusLayout();
+                }}
+              >
+                <Users class="size-4" />
+                {#if hideOthers}
+                  <ChevronUp class="size-4" />
+                {:else}
+                  <ChevronDown class="size-4" />
+                {/if}
+              </Button>
+            </div>
+          </div>
         </div>
 
         {#if !hideOthers && secondaryTiles.length > 0}
@@ -596,31 +654,15 @@
   <div
     class="pointer-events-none absolute inset-0 transition-opacity duration-100 {shouldHide && 'opacity-0'}"
   >
-    <div class="flex w-full justify-end p-2"></div>
+    <div
+      class="pointer-events-none absolute inset-x-0 bottom-0 h-28"
+      style="background: linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 20%, rgba(0, 0, 0, 0.1) 60%, rgba(0, 0, 0, 0) 100%);"
+    ></div>
 
     <div
       class="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2"
     >
-      <div>
-        {#if layoutMode === "focus"}
-          <div
-            data-controls
-            class="rounded-md bg-background/80 pointer-events-auto"
-          >
-            <Button
-              size="sm"
-              variant="ghost"
-              data-no-focus-toggle
-              onclick={() => {
-                hideOthers = !hideOthers;
-                updateFocusLayout();
-              }}
-            >
-              {hideOthers ? "Show others" : "Hide others"}
-            </Button>
-          </div>
-        {/if}
-      </div>
+      <div></div>
 
       <div
         data-controls

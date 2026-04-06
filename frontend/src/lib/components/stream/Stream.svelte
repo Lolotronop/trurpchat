@@ -12,8 +12,15 @@
     server: Server;
     player: OvenPlayerController;
     shouldHideInfo?: boolean;
+    edgeToEdge?: boolean;
   };
-  let { user, server, player, shouldHideInfo = false }: Props = $props();
+  let {
+    user,
+    server,
+    player,
+    shouldHideInfo = false,
+    edgeToEdge = false,
+  }: Props = $props();
 
   const watcherUsers = $derived.by(() => {
     return user.watchedBy
@@ -45,10 +52,13 @@
 </script>
 
 <div
-  class="aspect-video flex w-full items-center justify-center rounded-md relative bg-black"
+  class="aspect-video flex w-full items-center justify-center relative bg-black {edgeToEdge ? "rounded-none" : "rounded-md"}"
 >
   {#if player.state === "playing"}
-    <div class="h-full w-full" {@attach attachPlayerHost}></div>
+    <div
+      class="h-full w-full {edgeToEdge ? "stream-host-edge-to-edge" : ""}"
+      {@attach attachPlayerHost}
+    ></div>
   {:else if player.state === "disconnected"}
     <Button
       variant="ghost"
@@ -87,7 +97,7 @@
       class="absolute inset-0 flex flex-col justify-between pointer-events-none"
     >
       {#if !shouldHideInfo}
-        <div id="watchers" class="flex w-full items-start justify-end p-2">
+        <div class="flex w-full items-start justify-end p-2">
           {#if watcherUsers.length > 0}
             {@render watchersTooltip()}
           {/if}
@@ -97,7 +107,7 @@
       {/if}
 
       {#if !shouldHideInfo}
-        <div id="controls" class="flex items-end justify-between gap-2 p-2">
+        <div class="flex items-end justify-between gap-2 p-2">
           <div
             data-controls
             class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
@@ -166,24 +176,11 @@
 {/snippet}
 
 <style>
-  #watchers {
-    background: linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0.45) 0%,
-      rgba(0, 0, 0, 0.22) 35%,
-      rgba(0, 0, 0, 0) 100%
-    );
-    border-top-left-radius: inherit;
-    border-top-right-radius: inherit;
+  .stream-host-edge-to-edge > :global(div) {
+    border-radius: 0;
   }
 
-  #controls {
-    background: linear-gradient(
-      to top,
-      rgba(0, 0, 0, 0.5) 0%,
-      rgba(0, 0, 0, 0.4) 20%,
-      rgba(0, 0, 0, 0.1) 60%,
-      rgba(0, 0, 0, 0) 100%
-    );
+  .stream-host-edge-to-edge > :global(div) > :global(video) {
+    border-radius: 0;
   }
 </style>

@@ -10,6 +10,7 @@
     camera: boolean;
     cameraStream?: MediaStream;
     shouldHideInfo?: boolean;
+    edgeToEdge?: boolean;
   };
   const {
     name,
@@ -19,8 +20,8 @@
     camera,
     cameraStream,
     shouldHideInfo = false,
-  }: Props =
-    $props();
+    edgeToEdge = false,
+  }: Props = $props();
 
   function attachCamera(el: HTMLVideoElement) {
     if (!cameraStream) {
@@ -28,15 +29,22 @@
     }
     el.srcObject = cameraStream;
   }
+
+  $inspect(speaking);
 </script>
 
 <div
-  class="aspect-video flex w-full justify-center items-center rounded-md relative {camera && cameraStream ? "bg-black" : "bg-accent"} {speaking ? "outline outline-green-500" : ""}"
+  class="aspect-video flex w-full justify-center items-center relative {edgeToEdge ? 'rounded-none' : 'rounded-md'} {camera && cameraStream ? 'bg-black' : 'bg-accent'} {speaking ? 'outline-8 outline-green-500' : ''}"
 >
   {#if camera && cameraStream !== undefined}
-    <video class="w-full h-full object-fit" {@attach attachCamera} autoplay muted></video>
+    <video
+      class="w-full h-full object-fit {edgeToEdge ? 'rounded-none' : 'rounded-md'}"
+      {@attach attachCamera}
+      autoplay
+      muted
+    ></video>
   {:else}
-    <Avatar name={name} class="size-8"></Avatar>
+    <Avatar {name} class="size-8"></Avatar>
   {/if}
   {#if !shouldHideInfo}
     <div class="absolute bottom-0 flex w-full justify-between p-2">
