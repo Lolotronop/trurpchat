@@ -339,14 +339,6 @@
     return player;
   }
 
-  function isStreamMuted(userId: number) {
-    return getStreamPlayer(userId).gain === 0;
-  }
-
-  function setStreamMuted(userId: number, muted: boolean) {
-    getStreamPlayer(userId).setMuted(muted);
-  }
-
   function getFocusedGain() {
     if (focusedPeer) {
       return focusedPeer.volume;
@@ -529,28 +521,13 @@
       {/if}
     {:else}
       {@const player = getStreamPlayer(user.id)}
-      {#if user.id === server.user.id}
-        <Stream
-          {server}
-          {user}
-          {player}
-          shouldHideInfo={shouldHide}
-          {edgeToEdge}
-        />
-      {:else}
-        <LoudnessContext
-          bind:gain={player.gain}
-          bind:muted={() => isStreamMuted(user.id), (muted) => setStreamMuted(user.id, muted)}
-        >
-          <Stream
-            {server}
-            {user}
-            {player}
-            shouldHideInfo={shouldHide}
-            {edgeToEdge}
-          />
-        </LoudnessContext>
-      {/if}
+      <Stream
+        {server}
+        {user}
+        {player}
+        shouldHideInfo={shouldHide}
+        {edgeToEdge}
+      />
     {/if}
   {/if}
 {/snippet}

@@ -2,10 +2,16 @@
   import { DoorOpen, Loader2, Monitor, Tv } from "@lucide/svelte";
   import type { ConnectedUser, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
+  import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
   import { Button } from "$lib/components/ui/button";
+  import * as ContextMenu from "$lib/components/ui/context-menu";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import type { Server } from "$lib/servers.svelte";
   import type { OvenPlayerController } from "./ovenplayer.svelte";
+
+  type VirtualAnchor = {
+    getBoundingClientRect: () => DOMRect;
+  };
 
   type Props = {
     user: ConnectedUser;
@@ -36,6 +42,9 @@
     Math.max(watcherUsers.length - MAX_VISIBLE_WATCHERS, 0),
   );
 
+  let contextOpen = $state(false);
+  let contextAnchor = $state<VirtualAnchor | null>(null);
+
   $effect(() => {
     return () => {
       player.unmount();
@@ -49,89 +58,126 @@
       player.unmount();
     };
   }
+
+  function handleContextMenu(event: MouseEvent) {
+    event.preventDefault();
+
+    contextAnchor = {
+      getBoundingClientRect: () =>
+        DOMRect.fromRect({
+          x: event.clientX,
+          y: event.clientY,
+          width: 0,
+          height: 0,
+        }),
+    };
+    contextOpen = true;
+  }
+
+  function isMuted() {
+    return player.gain === 0;
+  }
+
+  function setMuted(value: boolean) {
+    player.setMuted(value);
+  }
 </script>
 
-<div
-  class="aspect-video flex w-full items-center justify-center relative bg-black {edgeToEdge ? "rounded-none" : "rounded-md"}"
->
-  {#if player.state === "playing"}
+<ContextMenu.Root bind:open={contextOpen}>
+  <ContextMenu.Trigger>
     <div
-      class="h-full w-full {edgeToEdge ? "stream-host-edge-to-edge" : ""}"
-      {@attach attachPlayerHost}
-    ></div>
-  {:else if player.state === "disconnected"}
-    <Button
-      variant="ghost"
-      class="w-full h-full flex flex-col items-center justify-center"
-      onclick={() => {
-        player.start();
-      }}
+      class="aspect-video flex w-full items-center justify-center relative bg-black {edgeToEdge ? "rounded-none" : "rounded-md"}"
+      oncontextmenucapture={handleContextMenu}
     >
-      <div class="flex items-center gap-2 p-2">
-        <Tv class="size-6" />
-        Стрим {user.name}
-      </div>
+      {#if player.state === "playing"}
+        <div
+          class="h-full w-full {edgeToEdge ? "stream-host-edge-to-edge" : ""}"
+          {@attach attachPlayerHost}
+        ></div>
+      {:else if player.state === "disconnected"}
+        <Button
+          variant="ghost"
+          class="w-full h-full flex flex-col items-center justify-center"
+          onclick={() => {
+            player.start();
+          }}
+        >
+          <div class="flex items-center gap-2 p-2">
+            <Tv class="size-6" />
+            Стрим {user.name}
+          </div>
 
-      {#if watcherUsers.length > 0 && !shouldHideInfo}
-        {@render watchersTooltip()}
-      {/if}
-    </Button>
-  {:else}
-    <div class="flex flex-col items-center justify-center gap-2">
-      <Loader2 class="size-8 animate-spin" />
-      <Button
-        variant="ghost"
-        class="hover:bg-destructive/20!"
-        onclick={() => {
-          player.stop();
-        }}
-      >
-        <DoorOpen class="size-4" />
-        Выйти
-      </Button>
-    </div>
-  {/if}
-
-  {#if player.state === "playing"}
-    <div
-      class="absolute inset-0 flex flex-col justify-between pointer-events-none"
-    >
-      {#if !shouldHideInfo}
-        <div class="flex w-full items-start justify-end p-2">
-          {#if watcherUsers.length > 0}
+          {#if watcherUsers.length > 0 && !shouldHideInfo}
             {@render watchersTooltip()}
           {/if}
-        </div>
+        </Button>
       {:else}
-        <div></div>
-      {/if}
-
-      {#if !shouldHideInfo}
-        <div class="flex items-end justify-between gap-2 p-2">
-          <div
-            data-controls
-            class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
-          >
-            <p class="text-foreground text-sm px-2 flex items-center gap-1">
-              <Monitor class="size-4" />
-              {user.name}
-            </p>
-
-            <Button
-              class="p-0 hover:bg-destructive/50!"
-              variant="ghost"
-              onclick={() => {
+        <div class="flex flex-col items-center justify-center gap-2">
+          <Loader2 class="size-8 animate-spin" />
+          <Button
+            variant="ghost"
+            class="hover:bg-destructive/20!"
+            onclick={() => {
               player.stop();
             }}
-            >
-              <DoorOpen class="size-4" />
-            </Button>
-          </div>
+          >
+            <DoorOpen class="size-4" />
+            Выйти
+          </Button>
+        </div>
+      {/if}
+
+      {#if player.state === "playing"}
+        <div
+          class="absolute inset-0 flex flex-col justify-between pointer-events-none"
+        >
+          {#if !shouldHideInfo}
+            <div class="flex w-full items-start justify-end p-2">
+              {#if watcherUsers.length > 0}
+                {@render watchersTooltip()}
+              {/if}
+            </div>
+          {:else}
+            <div></div>
+          {/if}
+
+          {#if !shouldHideInfo}
+            <div class="flex items-end justify-between gap-2 p-2">
+              <div
+                data-controls
+                class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
+              >
+                <p class="text-foreground text-sm px-2 flex items-center gap-1">
+                  <Monitor class="size-4" />
+                  {user.name}
+                </p>
+
+                <Button
+                  class="p-0 hover:bg-destructive/50!"
+                  variant="ghost"
+                  onclick={() => {
+                    player.stop();
+                  }}
+                >
+                  <DoorOpen class="size-4" />
+                </Button>
+              </div>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
-  {/if}
-</div>
+  </ContextMenu.Trigger>
+  <ContextMenu.Content
+    class="min-h-12 min-w-64 overflow-visible"
+    customAnchor={contextAnchor}
+  >
+    <LoudnessContextMenu
+      bind:gain={player.gain}
+      bind:muted={() => isMuted(), (muted) => setMuted(muted)}
+    />
+  </ContextMenu.Content>
+</ContextMenu.Root>
 
 {#snippet watchersTooltip()}
   <Tooltip.Root>
