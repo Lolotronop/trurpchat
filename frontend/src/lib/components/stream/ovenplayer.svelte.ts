@@ -46,7 +46,7 @@ function toStreamPlayerState(state: OvenPlayerState): StreamPlayerState {
     return "playing";
   }
 
-  if (state === "error") {
+  if (state === "error" || state === "idle") {
     return "disconnected";
   }
 
@@ -60,6 +60,7 @@ export class OvenPlayerController {
   host: HTMLElement | undefined = $state(undefined);
 
   #gain = $state(DEFAULT_GAIN);
+  #lastAudibleGain = DEFAULT_GAIN;
   #watching = false;
   #stream: MediaStream | undefined;
   #rootEl: HTMLDivElement | undefined;
@@ -90,7 +91,27 @@ export class OvenPlayerController {
 
   set gain(value: number) {
     this.#gain = value;
+    if (value > 0) {
+      this.#lastAudibleGain = value;
+    }
     this.gainnode.gain.setTargetAtTime(value, audioctx().currentTime, 0.01);
+  }
+
+  setMuted(value: boolean) {
+    if (value) {
+      if (this.gain > 0) {
+        this.#lastAudibleGain = this.gain;
+      }
+      this.gain = 0;
+      return;
+    }
+
+    this.gain =
+      this.#lastAudibleGain > 0 ? this.#lastAudibleGain : DEFAULT_GAIN;
+  }
+
+  toggleMuted() {
+    this.setMuted(this.gain > 0);
   }
 
   mount(host: HTMLElement) {
@@ -144,7 +165,12 @@ export class OvenPlayerController {
   }
 
   #createPlayer() {
-    if (!browser || this.#player || !this.server.overServerUrl || !this.server.iceConfig) {
+    if (
+      !browser ||
+      this.#player ||
+      !this.server.overServerUrl ||
+      !this.server.iceConfig
+    ) {
       return;
     }
 
@@ -174,11 +200,17 @@ export class OvenPlayerController {
       ],
     });
 
+    const el = this.#player.getContainerElement();
+    // prevents the default ovenplayer context menu from showing up
+    el.addEventListener("contextmenu", (e) => e.stopImmediatePropagation(), {
+      capture: true,
+    });
+
     this.#player.on("stateChanged", (event) => {
       this.state = toStreamPlayerState(event.newstate);
 
       if (event.newstate === "playing") {
-        this.#syncAudio();
+        this.#attachAudio();
         this.#sendWatch();
         return;
       }
@@ -190,7 +222,7 @@ export class OvenPlayerController {
     });
   }
 
-  #syncAudio() {
+  #attachAudio() {
     const mediaElement = this.#player?.getMediaElement();
     const stream = mediaElement?.srcObject;
 

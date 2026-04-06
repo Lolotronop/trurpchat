@@ -41,8 +41,6 @@
   let timeout: NodeJS.Timeout | undefined;
   let shouldHide = $state(true);
   let isFullscreen = $state(false);
-  let prevgain = 0.75;
-
   $effect(() => {
     return () => {
       clearTimeout(timeout);
@@ -195,12 +193,7 @@
               variant="ghost"
               class="p-0"
               onclick={() => {
-                if (player.gain === 0) {
-                  player.gain = prevgain;
-                } else {
-                  prevgain = player.gain;
-                  player.gain = 0;
-                }
+                player.toggleMuted();
               }}
             >
               {#if player.gain === 0}

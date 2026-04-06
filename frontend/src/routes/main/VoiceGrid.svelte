@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ConnectedUser } from "trurpchat-backend";
+  import LoudnessContext from "$lib/components/LoudnessContext.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { OvenPlayerController } from "$lib/components/stream/ovenplayer.svelte";
   import { Button } from "$lib/components/ui/button";
@@ -44,7 +45,7 @@
       });
 
       if (user.streaming) {
-        nextTiles.push({
+        nextTiles.unshift({
           id: `stream:${user.id}`,
           kind: "stream",
           userId: user.id,
@@ -120,7 +121,10 @@
     const availableWidth = Math.max(containerWidth - CONTAINER_PADDING, 0);
     const availableHeight = Math.max(containerHeight - CONTAINER_PADDING, 0);
 
-    return Math.max(Math.min(availableWidth, availableHeight * ASPECT_RATIO), 0);
+    return Math.max(
+      Math.min(availableWidth, availableHeight * ASPECT_RATIO),
+      0,
+    );
   }
 
   function getWrappedBlockHeight(
@@ -200,10 +204,13 @@
       return false;
     }
 
-    return Boolean(target.closest("button, input, [data-controls], [data-no-focus-toggle]"));
+    return Boolean(
+      target.closest("button, input, [data-controls], [data-no-focus-toggle]"),
+    );
   }
 
-  function findConnectedUser(userId: number) {
+  function findConnectedUser(userId: number | undefined) {
+    if (!userId) return;
     const user = server.findUser(userId);
     return user?.online ? user : undefined;
   }
@@ -217,6 +224,14 @@
     }
 
     return player;
+  }
+
+  function isStreamMuted(userId: number) {
+    return getStreamPlayer(userId).gain === 0;
+  }
+
+  function setStreamMuted(userId: number, muted: boolean) {
+    getStreamPlayer(userId).setMuted(muted);
   }
 
   function toggleTileFocus(tileId: string) {
@@ -312,7 +327,7 @@
 </script>
 
 {#snippet tileContent(tile: Tile)}
-  {@const user = findConnectedUser(tile.userId)}
+  {@const user = findConnectedUser(tile?.userId)}
   {#if user}
     {#if tile.kind === "user"}
       {@const peer = server.rtc.peers.get(user.id)}
@@ -325,18 +340,39 @@
           camera={user.camera}
           cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
         />
+      {:else if peer}
+        <LoudnessContext bind:gain={peer.volume} bind:muted={peer.mute}>
+          <VoiceUserCard
+            name={user.name}
+            speaking={peer?.speaking || false}
+            muted={peer?.mute || user.muted || false}
+            deafened={user.deafened || false}
+            camera={user.camera}
+            cameraStream={peer?.cameraStream}
+          />
+        </LoudnessContext>
       {:else}
         <VoiceUserCard
           name={user.name}
-          speaking={peer?.speaking || false}
-          muted={peer?.mute || user.muted || false}
+          speaking={false}
+          muted={user.muted || false}
           deafened={user.deafened || false}
           camera={user.camera}
-          cameraStream={peer?.cameraStream}
+          cameraStream={undefined}
         />
       {/if}
     {:else}
-      <Stream {server} {user} player={getStreamPlayer(user.id)} />
+      {@const player = getStreamPlayer(user.id)}
+      {#if user.id === server.user.id}
+        <Stream {server} {user} {player} />
+      {:else}
+        <LoudnessContext
+          bind:gain={player.gain}
+          bind:muted={() => isStreamMuted(user.id), (muted) => setStreamMuted(user.id, muted)}
+        >
+          <Stream {server} {user} {player} />
+        </LoudnessContext>
+      {/if}
     {/if}
   {/if}
 {/snippet}
@@ -385,18 +421,18 @@
       </div>
 
       {#if !hideOthers && secondaryTiles.length > 0}
-      <div
-        class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
-        bind:this={secondaryContainer}
-        {@attach function(el) {
+        <div
+          class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
+          bind:this={secondaryContainer}
+          {@attach function(el) {
           secondaryContainer = el;
           return observeResize(el, updateFocusLayout);
         }}
-      >
-        {#each secondaryTiles as tile (tile.id)}
-          {@render tileShell(tile, secondaryItemWidth)}
-        {/each}
-      </div>
+        >
+          {#each secondaryTiles as tile (tile.id)}
+            {@render tileShell(tile, secondaryItemWidth)}
+          {/each}
+        </div>
       {/if}
     </div>
   </div>

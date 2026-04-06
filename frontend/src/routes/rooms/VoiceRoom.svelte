@@ -1,13 +1,10 @@
 <script lang="ts">
   import { Volume2 } from "@lucide/svelte";
   import type { VoiceChat } from "trurpchat-backend";
-  import GainSlider from "$lib/components/GainSlider.svelte";
+  import LoudnessContext from "$lib/components/LoudnessContext.svelte";
   import { Button } from "$lib/components/ui/button";
-  import { Checkbox } from "$lib/components/ui/checkbox";
-  import * as ContextMenu from "$lib/components/ui/context-menu/index.js";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
-  import { toDb } from "$lib/utils.svelte";
   import type { WebRTC } from "$lib/webrtc.svelte";
   import RoomContextMenu from "./RoomContextMenu.svelte";
   import VoiceUser from "./VoiceUser.svelte";
@@ -52,8 +49,8 @@
           speaking={g.mic.speaking && !g.muted}
         />
       {:else}
-        <ContextMenu.Root>
-          <ContextMenu.Trigger>
+        {#if peer}
+          <LoudnessContext bind:gain={peer.volume} bind:muted={peer.mute}>
             <VoiceUser
               {user}
               {rtc}
@@ -61,38 +58,16 @@
               mutedByMe={peer?.mute ?? false}
               speaking={peer?.speaking ?? false}
             />
-          </ContextMenu.Trigger>
-          <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">
-            {#if peer}
-              <Button
-                variant="ghost"
-                class="flex w-full flex-row justify-between"
-                onclick={() => {
-                  peer.mute = !peer.mute;
-                }}
-              >
-                <p>Замутить</p>
-                <Checkbox checked={peer.mute} />
-              </Button>
-
-              <div class="flex flex-col gap-2 w-full p-2 px-4">
-                <div
-                  class="flex flex-row items-center justify-between gap-2 text-sm font-normal"
-                >
-                  <p>Громкость</p>
-                  <p>{(peer.volume * 100).toFixed(0)}%</p>
-                </div>
-                <GainSlider
-                  bind:value={peer.volume}
-                  max={toDb(3)}
-                  ticks={[0]}
-                />
-              </div>
-            {:else}
-              <p>:(</p>
-            {/if}
-          </ContextMenu.Content>
-        </ContextMenu.Root>
+          </LoudnessContext>
+        {:else}
+          <VoiceUser
+            {user}
+            {rtc}
+            {room}
+            mutedByMe={false}
+            speaking={false}
+          />
+        {/if}
       {/if}
     {/if}
   {/each}
