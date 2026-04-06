@@ -29,8 +29,6 @@
     }
     el.srcObject = cameraStream;
   }
-
-  $inspect(speaking);
 </script>
 
 <div

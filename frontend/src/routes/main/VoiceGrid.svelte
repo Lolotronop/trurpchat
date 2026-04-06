@@ -506,8 +506,8 @@
         <LoudnessContext bind:gain={peer.volume} bind:muted={peer.mute}>
           <VoiceUserCard
             name={user.name}
-            speaking={peer.speaking || false}
-            muted={peer.mute || user.muted || false}
+            speaking={peer.speaking ?? false}
+            muted={peer.mute ?? user.muted ?? false}
             deafened={user.deafened || false}
             camera={user.camera}
             cameraStream={peer.cameraStream}
@@ -519,8 +519,8 @@
         <VoiceUserCard
           name={user.name}
           speaking={false}
-          muted={user.muted || false}
-          deafened={user.deafened || false}
+          muted={user.muted ?? false}
+          deafened={user.deafened ?? false}
           camera={user.camera}
           cameraStream={undefined}
           shouldHideInfo={shouldHide}
