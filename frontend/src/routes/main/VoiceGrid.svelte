@@ -67,6 +67,7 @@
   let gridContainer: HTMLDivElement | undefined = $state(undefined);
   let secondaryContainer: HTMLDivElement | undefined = $state(undefined);
   let focusContainer: HTMLDivElement | undefined = $state(undefined);
+  let focusControlsContainer: HTMLDivElement | undefined = $state(undefined);
 
   let gridItemWidth = $state(0);
   let secondaryItemWidth = $state(0);
@@ -120,6 +121,61 @@
     const availableHeight = Math.max(containerHeight - CONTAINER_PADDING, 0);
 
     return Math.max(Math.min(availableWidth, availableHeight * ASPECT_RATIO), 0);
+  }
+
+  function getWrappedBlockHeight(
+    containerWidth: number,
+    itemWidth: number,
+    items: number,
+  ) {
+    if (items === 0 || itemWidth <= 0) {
+      return 0;
+    }
+
+    const availableWidth = Math.max(containerWidth - CONTAINER_PADDING, 0);
+    const cols = Math.max(
+      1,
+      Math.floor((availableWidth + GAP) / (itemWidth + GAP)),
+    );
+    const rows = Math.ceil(items / cols);
+    const itemHeight = itemWidth / ASPECT_RATIO;
+
+    return rows * itemHeight + Math.max(rows - 1, 0) * GAP;
+  }
+
+  function updateFocusLayout() {
+    if (!focusContainer || layoutMode !== "focus") {
+      return;
+    }
+
+    const controlsHeight = focusControlsContainer?.offsetHeight ?? 0;
+    const availableWidth = focusContainer.clientWidth;
+    const availableHeight = focusContainer.clientHeight;
+    const secondaryHeightBudget = hideOthers
+      ? 0
+      : Math.min(Math.max(availableHeight * 0.28, 120), 320);
+
+    secondaryItemWidth = hideOthers
+      ? 0
+      : getOptimalTileWidth(
+          availableWidth,
+          secondaryHeightBudget,
+          secondaryTiles.length,
+        );
+
+    const secondaryHeight = hideOthers
+      ? 0
+      : getWrappedBlockHeight(
+          availableWidth,
+          secondaryItemWidth,
+          secondaryTiles.length,
+        );
+
+    const reservedHeight =
+      controlsHeight + (controlsHeight > 0 ? GAP : 0) + secondaryHeight;
+    const focusHeight = Math.max(availableHeight - reservedHeight - GAP, 0);
+
+    focusItemWidth = getFocusTileWidth(availableWidth, focusHeight);
   }
 
   function observeResize(el: HTMLDivElement, onResize: () => void) {
@@ -250,10 +306,7 @@
 
   $effect(() => {
     if (focusContainer && layoutMode === "focus") {
-      focusItemWidth = getFocusTileWidth(
-        focusContainer.clientWidth,
-        focusContainer.clientHeight,
-      );
+      updateFocusLayout();
     }
   });
 </script>
@@ -302,57 +355,54 @@
 {/snippet}
 
 {#if layoutMode === "focus" && focusedTile}
-  <div class="flex h-full w-full min-h-0 flex-col gap-2 p-2">
-    <div class="flex justify-end">
-      <Button
-        size="sm"
-        variant="secondary"
-        data-no-focus-toggle
-        onclick={() => {
-          hideOthers = !hideOthers;
-        }}
-      >
-        {hideOthers ? "Show others" : "Hide others"}
-      </Button>
-    </div>
-
+  <div
+    class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden p-2"
+    bind:this={focusContainer}
+    {@attach function(el) {
+      focusContainer = el;
+      return observeResize(el, updateFocusLayout);
+    }}
+  >
     <div
-      class="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
-      bind:this={focusContainer}
-      {@attach function(el) {
-        focusContainer = el;
-        return observeResize(el, () => {
-          focusItemWidth = getFocusTileWidth(el.clientWidth, el.clientHeight);
-        });
-      }}
+      class="flex max-h-full w-full max-w-full flex-col items-center justify-center gap-2 overflow-hidden"
     >
-      {@render tileShell(focusedTile, focusItemWidth)}
-    </div>
+      <div class="flex w-full justify-end" bind:this={focusControlsContainer}>
+        <Button
+          size="sm"
+          variant="secondary"
+          data-no-focus-toggle
+          onclick={() => {
+            hideOthers = !hideOthers;
+            updateFocusLayout();
+          }}
+        >
+          {hideOthers ? "Show others" : "Hide others"}
+        </Button>
+      </div>
 
-    {#if !hideOthers && secondaryTiles.length > 0}
+      <div class="flex max-w-full items-center justify-center overflow-hidden">
+        {@render tileShell(focusedTile, focusItemWidth)}
+      </div>
+
+      {#if !hideOthers && secondaryTiles.length > 0}
       <div
-        class="flex max-h-1/3 min-h-0 flex-wrap content-start justify-center gap-2 overflow-y-auto"
+        class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
         bind:this={secondaryContainer}
         {@attach function(el) {
           secondaryContainer = el;
-          return observeResize(el, () => {
-            secondaryItemWidth = getOptimalTileWidth(
-              el.clientWidth,
-              el.clientHeight,
-              secondaryTiles.length,
-            );
-          });
+          return observeResize(el, updateFocusLayout);
         }}
       >
         {#each secondaryTiles as tile (tile.id)}
           {@render tileShell(tile, secondaryItemWidth)}
         {/each}
       </div>
-    {/if}
+      {/if}
+    </div>
   </div>
 {:else}
   <div
-    class="flex h-full w-full flex-wrap content-center justify-center gap-2 overflow-auto p-2"
+    class="flex h-full w-full min-h-0 min-w-0 flex-wrap content-center justify-center gap-2 overflow-auto p-2"
     bind:this={gridContainer}
     {@attach function(el) {
       gridContainer = el;

@@ -7,7 +7,7 @@
   const g = gitGud();
 </script>
 
-<main class="flex h-screen w-screen">
+<main class="flex h-screen w-full overflow-hidden">
   <div class="flex h-full flex-col border-r p-2">
     <ServerSelector servers={g.servers}></ServerSelector>
   </div>

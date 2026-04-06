@@ -30,8 +30,8 @@
   });
 </script>
 
-<div class="flex h-full w-full">
-  <div class="flex h-full flex-col min-w-80 border-r">
+<div class="flex h-full w-full min-h-0 min-w-0 overflow-hidden">
+  <div class="flex h-full shrink-0 flex-col min-w-80 border-r">
     <div class="flex p-2 px-2 text-xl justify-between">
       <p class="pl-2">{server.definition.name || "Select a server"}</p>
       <ServerSettings {server} />
@@ -40,7 +40,7 @@
     <div class="w-full p-0.5"><BottomControls {server} /></div>
   </div>
   <div
-    class="flex grow-0 h-full w-full flex-col items-center justify-center min-h-0 min-w-0"
+    class="flex grow-0 h-full w-full flex-col items-center justify-center min-h-0 min-w-0 overflow-hidden"
   >
     {#if selectedRoom?.type === "voice"}
       <!-- <Stream {server} id={server.rtc?.watching} /> -->
@@ -54,7 +54,7 @@
       It is what it is man
     {/if}
   </div>
-  <div class="flex h-full border-l p-2">
+  <div class="flex h-full shrink-0 overflow-hidden border-l p-2">
     <Users online={onlineUsers ?? []} offline={offlineUsers ?? []} />
   </div>
 </div>
