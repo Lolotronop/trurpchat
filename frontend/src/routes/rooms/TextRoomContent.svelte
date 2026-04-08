@@ -86,6 +86,7 @@
   onMount(() => {
     return () => {
       clearTimeout(shrinkTimer);
+      cache.visibleBlocks = [];
     };
   });
 
@@ -370,7 +371,7 @@
       <button
         type="button"
         onclick={() => {
-        cache.prune();
+        cache.pruneMemory();
     }}
       >
         Prune
