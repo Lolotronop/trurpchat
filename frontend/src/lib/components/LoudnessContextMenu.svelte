@@ -9,10 +9,7 @@
     muted: boolean;
   };
 
-  let {
-    gain = $bindable(),
-    muted = $bindable(),
-  }: Props = $props();
+  let { gain = $bindable(), muted = $bindable() }: Props = $props();
 </script>
 
 <Button
@@ -27,9 +24,19 @@
 </Button>
 
 <div class="flex w-full flex-col gap-2 p-2 px-4">
-  <div class="flex flex-row items-center justify-between gap-2 text-sm font-normal">
+  <div
+    class="flex flex-row items-center justify-between gap-2 text-sm font-normal"
+  >
     <p>Громкость</p>
-    <p>{(gain * 100).toFixed(0)}%</p>
+    <span>
+      <input
+        class="w-[6ch] text-right p-1"
+        type="text"
+        bind:value={() => {return (gain * 100).toFixed(0)},
+      (g) => {gain = Number(g) / 100}}
+      >
+      %
+    </span>
   </div>
   <GainSlider bind:value={gain} max={toDb(3)} ticks={[0]} />
 </div>

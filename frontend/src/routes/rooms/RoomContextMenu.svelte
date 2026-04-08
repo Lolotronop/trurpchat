@@ -48,9 +48,9 @@
   <ContextMenu.Trigger>{@render children()}</ContextMenu.Trigger>
   <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">
     {#if server.user.permissions === 1}
-      <ContextMenu.Item onclick={() => editOpen = true}
-        >Изменить</ContextMenu.Item
-      >
+      <ContextMenu.Item onclick={() => editOpen = true}>
+        Изменить
+      </ContextMenu.Item>
       <ContextMenu.Item variant="destructive" onclick={onRoomDelete}>
         Удалить
       </ContextMenu.Item>

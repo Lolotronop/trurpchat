@@ -28,7 +28,7 @@
     }
 
     return () => {
-      observer.disconnect();
+      observer?.disconnect();
       observer = null;
     };
     // cache.renderBlocks = [cache.lastBlockId()];

@@ -86,12 +86,12 @@
 <ContextMenu.Root bind:open={contextOpen}>
   <ContextMenu.Trigger>
     <div
-      class="aspect-video flex w-full items-center justify-center relative bg-black {edgeToEdge ? "rounded-none" : "rounded-md"}"
+      class="aspect-video flex w-full items-center justify-center relative bg-black {edgeToEdge ? 'rounded-none' : 'rounded-md'}"
       oncontextmenucapture={handleContextMenu}
     >
       {#if player.state === "playing"}
         <div
-          class="h-full w-full {edgeToEdge ? "stream-host-edge-to-edge" : ""}"
+          class="h-full w-full {edgeToEdge ? 'stream-host-edge-to-edge' : ''}"
           {@attach attachPlayerHost}
         ></div>
       {:else if player.state === "disconnected"}

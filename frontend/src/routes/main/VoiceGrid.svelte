@@ -9,7 +9,8 @@
   } from "@lucide/svelte";
   import type { ConnectedUser } from "trurpchat-backend";
   import GainSlider from "$lib/components/GainSlider.svelte";
-  import LoudnessContext from "$lib/components/LoudnessContext.svelte";
+  import ContextMenu from "$lib/components/ContextMenu.svelte";
+  import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { OvenPlayerController } from "$lib/components/stream/ovenplayer.svelte";
   import { Button } from "$lib/components/ui/button";
@@ -484,18 +485,32 @@
     {#if tile.kind === "user"}
       {@const peer = server.rtc.peers.get(user.id)}
       {#if user.id === server.user.id}
-        <VoiceUserCard
-          name={user.name}
-          speaking={g.mic.speaking && !g.muted}
-          muted={g.muted}
-          deafened={g.deafened}
-          camera={user.camera}
-          cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
-          shouldHideInfo={shouldHide}
-          {edgeToEdge}
-        />
+        <ContextMenu>
+          {#snippet menu()}
+            <LoudnessContextMenu
+              bind:gain={g.mic.gain}
+              bind:muted={g.mic.muted}
+            />
+          {/snippet}
+          <VoiceUserCard
+            name={user.name}
+            speaking={g.mic.speaking && !g.muted}
+            muted={g.muted}
+            deafened={g.deafened}
+            camera={user.camera}
+            cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
+            shouldHideInfo={shouldHide}
+            {edgeToEdge}
+          />
+        </ContextMenu>
       {:else if peer}
-        <LoudnessContext bind:gain={peer.volume} bind:muted={peer.mute}>
+        <ContextMenu>
+          {#snippet menu()}
+            <LoudnessContextMenu
+              bind:gain={peer.volume}
+              bind:muted={peer.mute}
+            />
+          {/snippet}
           <VoiceUserCard
             name={user.name}
             speaking={peer.speaking ?? false}
@@ -506,7 +521,7 @@
             shouldHideInfo={shouldHide}
             {edgeToEdge}
           />
-        </LoudnessContext>
+        </ContextMenu>
       {:else}
         <VoiceUserCard
           name={user.name}

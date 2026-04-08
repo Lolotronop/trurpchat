@@ -1,13 +1,14 @@
 <script lang="ts">
   import { Volume2 } from "@lucide/svelte";
   import type { VoiceChat } from "trurpchat-backend";
-  import LoudnessContext from "$lib/components/LoudnessContext.svelte";
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
   import type { WebRTC } from "$lib/webrtc.svelte";
   import RoomContextMenu from "./RoomContextMenu.svelte";
   import VoiceUser from "./VoiceUser.svelte";
+  import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
+  import ContextMenu from "$lib/components/ContextMenu.svelte";
 
   const g = gitGud();
 
@@ -41,16 +42,31 @@
     {#if user?.online}
       {@const peer = rtc?.peers.get(user.id)}
       {#if user.id === server?.user.id}
-        <VoiceUser
-          {user}
-          {rtc}
-          {room}
-          mutedByMe={false}
-          speaking={g.mic.speaking && !g.muted}
-        />
+        <ContextMenu>
+          {#snippet menu()}
+            <LoudnessContextMenu
+              bind:gain={g.mic.gain}
+              bind:muted={g.mic.muted}
+            />
+          {/snippet}
+          <VoiceUser
+            {user}
+            {rtc}
+            {room}
+            mutedByMe={false}
+            speaking={g.mic.speaking && !g.muted}
+          />
+        </ContextMenu>
       {:else}
         {#if peer}
-          <LoudnessContext bind:gain={peer.volume} bind:muted={peer.mute}>
+          <ContextMenu>
+            {#snippet menu()}
+              <LoudnessContextMenu
+                bind:gain={peer.volume}
+                bind:muted={peer.mute}
+              />
+            {/snippet}
+
             <VoiceUser
               {user}
               {rtc}
@@ -58,15 +74,9 @@
               mutedByMe={peer?.mute ?? false}
               speaking={peer?.speaking ?? false}
             />
-          </LoudnessContext>
+          </ContextMenu>
         {:else}
-          <VoiceUser
-            {user}
-            {rtc}
-            {room}
-            mutedByMe={false}
-            speaking={false}
-          />
+          <VoiceUser {user} {rtc} {room} mutedByMe={false} speaking={false} />
         {/if}
       {/if}
     {/if}
