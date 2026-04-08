@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { DoorOpen, Loader2, Monitor, Tv } from "@lucide/svelte";
+  import { DoorOpen, Loader2, Monitor, Tv, VolumeOff } from "@lucide/svelte";
   import type { ConnectedUser, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
@@ -141,8 +141,8 @@
             <div></div>
           {/if}
 
-          {#if !shouldHideInfo}
-            <div class="flex items-end justify-between gap-2 p-2">
+          <div class="flex items-end justify-between gap-2 p-2">
+            {#if !shouldHideInfo}
               <div
                 data-controls
                 class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
@@ -162,8 +162,22 @@
                   <DoorOpen class="size-4" />
                 </Button>
               </div>
-            </div>
-          {/if}
+            {:else}
+              <div></div>
+            {/if}
+            {#if player.gain === 0}
+              <Button
+                data-controls
+                variant="ghost"
+                class="flex items-center gap-2 p-2 hover:bg-accent/50 pointer-events-auto"
+                onclick={() => {
+                  player.setMuted(false);
+                }}
+              >
+                <VolumeOff class="size-4" />
+              </Button>
+            {/if}
+          </div>
         </div>
       {/if}
     </div>
