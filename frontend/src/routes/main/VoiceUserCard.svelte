@@ -1,27 +1,26 @@
 <script lang="ts">
   import Avatar from "$lib/components/Avatar.svelte";
   import { Camera, HeadphoneOff, MicOff } from "@lucide/svelte";
+  import type { ConnectedUser } from "trurpchat-backend";
 
   type Props = {
-    name: string;
-    muted: boolean;
-    deafened: boolean;
+    user: ConnectedUser;
+    mutedByMe?: boolean;
     speaking: boolean;
-    camera: boolean;
     cameraStream?: MediaStream;
     shouldHideInfo?: boolean;
     edgeToEdge?: boolean;
   };
   const {
-    name,
-    muted,
-    deafened,
+    user,
     speaking,
-    camera,
+    mutedByMe,
     cameraStream,
     shouldHideInfo = false,
     edgeToEdge = false,
   }: Props = $props();
+
+  const { name, muted, deafened, camera } = $derived(user);
 
   function attachCamera(el: HTMLVideoElement) {
     if (!cameraStream) {
@@ -36,6 +35,7 @@
 >
   {#if camera && cameraStream !== undefined}
     <video
+      id="user-{user.id}-camera"
       class="w-full h-full object-fit {edgeToEdge ? 'rounded-none' : 'rounded-md'}"
       {@attach attachCamera}
       autoplay
@@ -48,8 +48,10 @@
     <div
       class="flex items-center gap-2 bg-background rounded-md p-0 min-w-0 min-h-0 has-first:p-2"
     >
-      {#if muted}
-        <MicOff class="size-4 m-0.5 text-destructive" />
+      {#if muted || mutedByMe}
+        <MicOff
+          class="size-4 m-0.5 {mutedByMe ? 'text-yellow-600' : 'text-destructive'}"
+        />
       {/if}
       {#if deafened}
         <HeadphoneOff class="size-4 m-0.5 text-destructive" />

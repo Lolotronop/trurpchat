@@ -1,5 +1,6 @@
 <script lang="ts">
   import GainSlider from "$lib/components/GainSlider.svelte";
+  import { Item } from "$lib/components/ui/context-menu";
   import { Button } from "$lib/components/ui/button";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { toDb } from "$lib/utils.svelte";
@@ -12,20 +13,20 @@
   let { gain = $bindable(), muted = $bindable() }: Props = $props();
 </script>
 
-<Button
-  variant="ghost"
+<Item
   class="flex w-full flex-row justify-between"
-  onclick={() => {
+  onclick={(e) => {
+    e.preventDefault();
     muted = !muted;
   }}
 >
   <p>Замутить</p>
   <Checkbox checked={muted} />
-</Button>
+</Item>
 
-<div class="flex w-full flex-col gap-2 p-2 px-4">
+<Item onclick={(e) => e.preventDefault()} class="flex flex-col pb-4">
   <div
-    class="flex flex-row items-center justify-between gap-2 text-sm font-normal"
+    class="flex flex-row items-center justify-between gap-2 text-sm font-normal w-full"
   >
     <p>Громкость</p>
     <span>
@@ -38,5 +39,5 @@
       %
     </span>
   </div>
-  <GainSlider bind:value={gain} max={toDb(3)} ticks={[0]} />
-</div>
+  <GainSlider class="w-full" bind:value={gain} max={toDb(3)} ticks={[0]} />
+</Item>

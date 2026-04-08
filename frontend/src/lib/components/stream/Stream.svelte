@@ -1,8 +1,16 @@
 <script lang="ts">
-  import { DoorOpen, Loader2, Monitor, Tv, VolumeOff } from "@lucide/svelte";
+  import {
+    DoorOpen,
+    Loader2,
+    Monitor,
+    PictureInPicture,
+    Tv,
+    VolumeOff,
+  } from "@lucide/svelte";
   import type { ConnectedUser, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
+  import { Item as ContextItem } from "$lib/components/ui/context-menu";
   import { Button } from "$lib/components/ui/button";
   import * as ContextMenu from "$lib/components/ui/context-menu";
   import * as Tooltip from "$lib/components/ui/tooltip";
@@ -190,6 +198,16 @@
       bind:gain={player.gain}
       bind:muted={() => isMuted(), (muted) => setMuted(muted)}
     />
+
+    <ContextItem
+      class="flex items-center justify-between"
+      onclick={() => {
+        player.requestPictureInPicture();
+      }}
+    >
+      Picture in picture
+      <PictureInPicture />
+    </ContextItem>
   </ContextMenu.Content>
 </ContextMenu.Root>
 

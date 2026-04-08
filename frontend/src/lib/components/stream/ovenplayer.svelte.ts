@@ -114,6 +114,16 @@ export class OvenPlayerController {
     this.setMuted(this.gain > 0);
   }
 
+  requestPictureInPicture() {
+    if (!this.#player) {
+      return;
+    }
+
+    const el = this.#player.getMediaElement();
+    if (!el) return;
+    el.requestPictureInPicture();
+  }
+
   mount(host: HTMLElement) {
     this.#ensureElements();
     this.host = host;

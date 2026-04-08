@@ -3,6 +3,7 @@
     ChevronDown,
     ChevronUp,
     Fullscreen,
+    PictureInPicture,
     Users,
     Volume2,
     VolumeOff,
@@ -11,6 +12,7 @@
   import GainSlider from "$lib/components/GainSlider.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
+  import { Item as ContextItem } from "$lib/components/ui/context-menu";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { OvenPlayerController } from "$lib/components/stream/ovenplayer.svelte";
   import { Button } from "$lib/components/ui/button";
@@ -493,11 +495,8 @@
             />
           {/snippet}
           <VoiceUserCard
-            name={user.name}
+            {user}
             speaking={g.mic.speaking && !g.muted}
-            muted={g.muted}
-            deafened={g.deafened}
-            camera={user.camera}
             cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
             shouldHideInfo={shouldHide}
             {edgeToEdge}
@@ -510,13 +509,28 @@
               bind:gain={peer.volume}
               bind:muted={peer.mute}
             />
+            {#if peer.cameraStream}
+              <ContextItem
+                class="flex items-center justify-between"
+                onclick={() => {
+                  const video = document.getElementById(
+                    `user-${user.id}-camera`,
+                  ) as HTMLVideoElement;
+                  if (!video) {
+                    return;
+                  }
+                  video.requestPictureInPicture();
+                }}
+              >
+                Picture in picture
+                <PictureInPicture />
+              </ContextItem>
+            {/if}
           {/snippet}
           <VoiceUserCard
-            name={user.name}
             speaking={peer.speaking ?? false}
-            muted={peer.mute ?? user.muted ?? false}
-            deafened={user.deafened || false}
-            camera={user.camera}
+            mutedByMe={peer?.mute}
+            {user}
             cameraStream={peer.cameraStream}
             shouldHideInfo={shouldHide}
             {edgeToEdge}
@@ -524,11 +538,8 @@
         </ContextMenu>
       {:else}
         <VoiceUserCard
-          name={user.name}
           speaking={false}
-          muted={user.muted ?? false}
-          deafened={user.deafened ?? false}
-          camera={user.camera}
+          {user}
           cameraStream={undefined}
           shouldHideInfo={shouldHide}
           {edgeToEdge}
