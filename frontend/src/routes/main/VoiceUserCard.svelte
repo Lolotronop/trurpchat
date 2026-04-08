@@ -1,5 +1,6 @@
 <script lang="ts">
   import Avatar from "$lib/components/Avatar.svelte";
+  import SpeakingBorder from "$lib/components/SpeakingBorder.svelte";
   import { Camera, HeadphoneOff, MicOff } from "@lucide/svelte";
   import type { ConnectedUser } from "trurpchat-backend";
 
@@ -30,8 +31,10 @@
   }
 </script>
 
-<div
-  class="aspect-video flex w-full justify-center items-center relative {edgeToEdge ? 'rounded-none' : 'rounded-md'} {camera && cameraStream ? 'bg-black' : 'bg-accent'} {speaking ? 'outline-8 outline-green-500' : ''}"
+<SpeakingBorder
+  {speaking}
+  rounded={!edgeToEdge}
+  class="aspect-video flex w-full justify-center items-center overflow-hidden {edgeToEdge ? 'rounded-none' : 'rounded-md'} {camera && cameraStream ? 'bg-black' : 'bg-accent'}"
 >
   {#if camera && cameraStream !== undefined}
     <video
@@ -42,7 +45,7 @@
       muted
     ></video>
   {:else}
-    <Avatar {name} class="size-8"></Avatar>
+    <Avatar {name} class="size-8 shrink-0 rounded-full"></Avatar>
   {/if}
   <div class="absolute bottom-0 flex w-full justify-between p-2">
     <div
@@ -64,4 +67,4 @@
       {/if}
     </div>
   </div>
-</div>
+</SpeakingBorder>

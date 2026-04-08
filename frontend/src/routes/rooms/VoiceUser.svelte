@@ -2,6 +2,7 @@
   import { Camera, HeadphoneOff, MicOff, TvMinimalPlay } from "@lucide/svelte";
   import type { ConnectedUser, VoiceChat } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
+  import SpeakingBorder from "$lib/components/SpeakingBorder.svelte";
   import type { WebRTC } from "$lib/webrtc.svelte";
 
   type Props = {
@@ -19,10 +20,9 @@
   class="hover:bg-accent/50 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
 >
   <div class="flex flex-row items-center gap-2 min-w-0">
-    <Avatar
-      class="size-6 shrink-0 {speaking ? "border-2 border-green-500" : ""}"
-      name={user.name}
-    ></Avatar>
+    <SpeakingBorder speaking={speaking} rounded class="size-6 shrink-0 rounded-full">
+      <Avatar class="size-full" name={user.name}></Avatar>
+    </SpeakingBorder>
     <p class="truncate flex-1 {rtc?.room?.id === room.id ? "" : "text-muted-foreground"}">
       {user.name}
     </p>
