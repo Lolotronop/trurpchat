@@ -20,7 +20,6 @@
 
   let target: number = $state(cache.lastBlockId());
   let targetMsg = $state(0);
-  // let target = $state(0);
 
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
@@ -33,8 +32,9 @@
     return () => {
       observer?.disconnect();
       observer = null;
+      clearTimeout(shrinkTimer);
+      cache.visibleBlocks = [];
     };
-    // cache.renderBlocks = [cache.lastBlockId()];
   });
 
   let se = $state<HTMLElement>();
@@ -81,13 +81,6 @@
     if (!block) return;
     block.messages.length;
     autoscroll();
-  });
-
-  onMount(() => {
-    return () => {
-      clearTimeout(shrinkTimer);
-      cache.visibleBlocks = [];
-    };
   });
 
   let shouldAutoscroll = $state(false);
