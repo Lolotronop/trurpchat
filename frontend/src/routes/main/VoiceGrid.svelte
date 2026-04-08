@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { BitsConfig } from "bits-ui";
   import {
     ChevronDown,
     ChevronUp,
@@ -106,6 +107,7 @@
   );
 
   let gridShell: HTMLDivElement | undefined = $state(undefined);
+  let portalHost: HTMLDivElement | undefined = $state(undefined);
   let gridContainer: HTMLDivElement | undefined = $state(undefined);
   let secondaryContainer: HTMLDivElement | undefined = $state(undefined);
   let focusContainer: HTMLDivElement | undefined = $state(undefined);
@@ -571,134 +573,138 @@
   </div>
 {/snippet}
 
-<div
-  class="relative h-full w-full overflow-hidden"
-  class:cursor-none={shouldHide}
-  bind:this={gridShell}
-  {@attach attachGridShell}
->
-  {#if layoutMode === "focus" && focusedTile}
-    <div
-      class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden {immersiveFocus ? 'p-0' : 'p-2'}"
-      bind:this={focusContainer}
-      {@attach function(el) {
-        focusContainer = el;
-        return observeResize(el, updateFocusLayout);
-      }}
-    >
+<BitsConfig defaultPortalTo={isFullscreen ? portalHost : undefined}>
+  <div
+    class="relative h-full w-full overflow-hidden"
+    class:cursor-none={shouldHide}
+    bind:this={gridShell}
+    {@attach attachGridShell}
+  >
+    <div bind:this={portalHost} class="contents"></div>
+
+    {#if layoutMode === "focus" && focusedTile}
       <div
-        class="flex max-h-full w-full max-w-full flex-col items-center justify-center gap-2 overflow-hidden"
+        class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden {immersiveFocus ? 'p-0' : 'p-2'}"
+        bind:this={focusContainer}
+        {@attach function(el) {
+          focusContainer = el;
+          return observeResize(el, updateFocusLayout);
+        }}
       >
         <div
-          class="relative flex max-w-full items-center justify-center overflow-visible"
+          class="flex max-h-full w-full max-w-full flex-col items-center justify-center gap-2 overflow-hidden"
         >
-          {@render tileShell(focusedTile, focusItemWidth, immersiveFocus)}
-
           <div
-            class="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 transition-opacity duration-100 {shouldHide && 'opacity-0'} {hideOthers ? 'bottom-3' : '-bottom-10'}"
+            class="relative flex max-w-full items-center justify-center overflow-visible"
           >
+            {@render tileShell(focusedTile, focusItemWidth, immersiveFocus)}
+
             <div
-              data-controls
-              class="rounded-md bg-background/80 pointer-events-auto"
+              class="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 transition-opacity duration-100 {shouldHide && 'opacity-0'} {hideOthers ? 'bottom-3' : '-bottom-10'}"
             >
-              <Button
-                variant="ghost"
-                class="flex gap-1 px-2"
-                data-no-focus-toggle
-                onclick={() => {
-                  hideOthers = !hideOthers;
-                  updateFocusLayout();
-                }}
+              <div
+                data-controls
+                class="rounded-md bg-background/80 pointer-events-auto"
               >
-                <Users class="size-4" />
-                {#if hideOthers}
-                  <ChevronUp class="size-4" />
-                {:else}
-                  <ChevronDown class="size-4" />
-                {/if}
-              </Button>
+                <Button
+                  variant="ghost"
+                  class="flex gap-1 px-2"
+                  data-no-focus-toggle
+                  onclick={() => {
+                    hideOthers = !hideOthers;
+                    updateFocusLayout();
+                  }}
+                >
+                  <Users class="size-4" />
+                  {#if hideOthers}
+                    <ChevronUp class="size-4" />
+                  {:else}
+                    <ChevronDown class="size-4" />
+                  {/if}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {#if !hideOthers && secondaryTiles.length > 0}
-          <div
-            class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
-            bind:this={secondaryContainer}
-            {@attach function(el) {
-              secondaryContainer = el;
-              return observeResize(el, updateFocusLayout);
-            }}
-          >
-            {#each secondaryTiles as tile (tile.id)}
-              {@render tileShell(tile, secondaryItemWidth)}
-            {/each}
-          </div>
-        {/if}
-      </div>
-    </div>
-  {:else}
-    <div
-      class="flex h-full w-full min-h-0 min-w-0 flex-wrap content-center justify-center gap-2 overflow-auto p-2"
-      bind:this={gridContainer}
-      {@attach function(el) {
-        gridContainer = el;
-        return observeResize(el, () => {
-          gridItemWidth = getOptimalTileWidth(el.clientWidth, el.clientHeight, tiles.length);
-        });
-      }}
-    >
-      {#each tiles as tile (tile.id)}
-        {@render tileShell(tile, gridItemWidth)}
-      {/each}
-    </div>
-  {/if}
-
-  <div
-    class="pointer-events-none absolute inset-0 transition-opacity duration-100 {shouldHide && 'opacity-0'}"
-  >
-    <div
-      class="pointer-events-none absolute inset-x-0 bottom-0 h-28"
-      style="background: linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 20%, rgba(0, 0, 0, 0.1) 60%, rgba(0, 0, 0, 0) 100%);"
-    ></div>
-
-    <div
-      class="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2"
-    >
-      <div></div>
-
-      <div
-        data-controls
-        class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
-      >
-        {#if layoutMode === "focus" && focusedCanAdjustVolume}
-          <div class="w-36 flex items-center gap-2">
-            <Button
-              variant="ghost"
-              class="p-0"
-              onclick={() => {
-                setFocusedMuted(!isFocusedMuted());
+          {#if !hideOthers && secondaryTiles.length > 0}
+            <div
+              class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
+              bind:this={secondaryContainer}
+              {@attach function(el) {
+                secondaryContainer = el;
+                return observeResize(el, updateFocusLayout);
               }}
             >
-              {#if isFocusedMuted()}
-                <VolumeOff class="size-4" />
-              {:else}
-                <Volume2 class="size-4" />
-              {/if}
+              {#each secondaryTiles as tile (tile.id)}
+                {@render tileShell(tile, secondaryItemWidth)}
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
+    {:else}
+      <div
+        class="flex h-full w-full min-h-0 min-w-0 flex-wrap content-center justify-center gap-2 overflow-auto p-2"
+        bind:this={gridContainer}
+        {@attach function(el) {
+          gridContainer = el;
+          return observeResize(el, () => {
+            gridItemWidth = getOptimalTileWidth(el.clientWidth, el.clientHeight, tiles.length);
+          });
+        }}
+      >
+        {#each tiles as tile (tile.id)}
+          {@render tileShell(tile, gridItemWidth)}
+        {/each}
+      </div>
+    {/if}
+
+    <div
+      class="pointer-events-none absolute inset-0 transition-opacity duration-100 {shouldHide && 'opacity-0'}"
+    >
+      <div
+        class="pointer-events-none absolute inset-x-0 bottom-0 h-28"
+        style="background: linear-gradient(to top, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.4) 20%, rgba(0, 0, 0, 0.1) 60%, rgba(0, 0, 0, 0) 100%);"
+      ></div>
+
+      <div
+        class="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2"
+      >
+        <div></div>
+
+        <div
+          data-controls
+          class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
+        >
+          {#if layoutMode === "focus" && focusedCanAdjustVolume}
+            <div class="w-36 flex items-center gap-2">
+              <Button
+                variant="ghost"
+                class="p-0"
+                onclick={() => {
+                  setFocusedMuted(!isFocusedMuted());
+                }}
+              >
+                {#if isFocusedMuted()}
+                  <VolumeOff class="size-4" />
+                {:else}
+                  <Volume2 class="size-4" />
+                {/if}
+              </Button>
+              <GainSlider
+                class="w-full mt-1"
+                bind:value={() => getFocusedGain(), (value) => setFocusedGain(value)}
+                ticks={[1]}
+              />
+            </div>
+          {/if}
+          <div class="rounded-md bg-background/80 pointer-events-auto">
+            <Button class="p-0" variant="ghost" onclick={toggleGridFullscreen}>
+              <Fullscreen class="size-4" />
             </Button>
-            <GainSlider
-              class="w-full mt-1"
-              bind:value={() => getFocusedGain(), (value) => setFocusedGain(value)}
-              ticks={[1]}
-            />
           </div>
-        {/if}
-        <div class="rounded-md bg-background/80 pointer-events-auto">
-          <Button class="p-0" variant="ghost" onclick={toggleGridFullscreen}>
-            <Fullscreen class="size-4" />
-          </Button>
         </div>
       </div>
     </div>
   </div>
-</div>
+</BitsConfig>
