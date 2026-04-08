@@ -29,3 +29,21 @@ export function debounce<Args extends unknown[]>(
 export async function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export function minmax(arr: number[]): [number, number] {
+  let min = Infinity;
+  let max = -Infinity;
+  if (arr.length < 2) {
+    return [min, max];
+  }
+
+  for (const n of arr) {
+    if (n < min) {
+      min = n;
+    }
+    if (n > max) {
+      max = n;
+    }
+  }
+  return [min, max];
+}

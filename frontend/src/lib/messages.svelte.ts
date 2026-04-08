@@ -38,23 +38,6 @@ export class TextRoomCache {
     readonly room: Extract<Room, { type: "text" }>,
   ) {}
 
-  fetch(blockId: number) {
-    if (this.inFlightBlocks.has(blockId)) {
-      return;
-    }
-
-    const blok = this.blocks.get(blockId);
-    if (blok?.alive) {
-      return;
-    }
-
-    this.inFlightBlocks.add(blockId);
-    tick().then(async () => {
-      DBG_WAIT && (await wait(DBG_WAIT));
-      this.parent.onfetchrequest(this.room.id, blockId);
-    });
-  }
-
   get(blockId: number, fetch = true) {
     this.parent.checkBlockId(blockId);
 
@@ -121,6 +104,23 @@ export class TextRoomCache {
     block.messages[index].text = "";
     block.messages[index].replyTo = null;
     block.messages[index].attachments = null;
+  }
+
+  fetch(blockId: number) {
+    if (this.inFlightBlocks.has(blockId)) {
+      return;
+    }
+
+    const blok = this.blocks.get(blockId);
+    if (blok?.alive) {
+      return;
+    }
+
+    this.inFlightBlocks.add(blockId);
+    tick().then(async () => {
+      DBG_WAIT && (await wait(DBG_WAIT));
+      this.parent.onfetchrequest(this.room.id, blockId);
+    });
   }
 }
 

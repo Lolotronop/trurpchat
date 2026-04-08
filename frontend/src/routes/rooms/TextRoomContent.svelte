@@ -8,6 +8,7 @@
   import type { Server } from "$lib/servers.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
+  import { minmax } from "$lib/utils.svelte";
 
   type Props = {
     cache: TextRoomCache;
@@ -186,20 +187,22 @@
     if (Number.isNaN(blockId)) {
       return;
     }
-    const isIntersecting = entry.isIntersecting;
+    const intersecting = entry.isIntersecting;
+    const includes = cache.visibleBlocks.includes(blockId);
 
-    if (isIntersecting && !cache.visibleBlocks.includes(blockId)) {
+    if (intersecting && !includes) {
       cache.visibleBlocks.push(blockId);
+      expandScope(blockId);
+      return;
     }
 
-    if (!isIntersecting && cache.visibleBlocks.includes(blockId)) {
+    if (!intersecting && includes) {
       const index = cache.visibleBlocks.indexOf(blockId);
       if (index !== -1) {
         cache.visibleBlocks.splice(index, 1);
       }
+      return;
     }
-
-    expandScope(blockId);
   }
 
   function handleLoad(entry: IntersectionObserverEntry) {
@@ -207,8 +210,12 @@
       return;
     }
 
+    if (!entry.isIntersecting) {
+      return;
+    }
+
     const blockId = Number(entry.target.getAttribute("data-block-load"));
-    if (!entry.isIntersecting || Number.isNaN(blockId)) {
+    if (Number.isNaN(blockId)) {
       return;
     }
 
@@ -234,6 +241,45 @@
     if (blockId !== cache.lastBlockId() && next === last + size) {
       cache.renderBlocks.push(next);
     }
+
+    scheduleShrink();
+  }
+
+  let shrinkTimer: NodeJS.Timeout | undefined;
+  const SHRINK_DELAY = 2 * 60 * 1000;
+  // const SHRINK_DELAY = 1000;
+  function scheduleShrink() {
+    if (shrinkTimer !== undefined) {
+      clearTimeout(shrinkTimer);
+    }
+    shrinkTimer = setTimeout(() => {
+      shrinkRenderScope();
+    }, SHRINK_DELAY);
+  }
+
+  function shrinkRenderScope() {
+    const BLOCK_PADDING = 2;
+    let [min, max] = minmax(cache.visibleBlocks);
+    min = Math.max(0, min - cache.parent.BLOCK_SIZE * BLOCK_PADDING);
+    max = Math.min(
+      cache.lastBlockId(),
+      max + cache.parent.BLOCK_SIZE * BLOCK_PADDING,
+    );
+
+    let minIdx = 0;
+    let maxIdx = cache.renderBlocks.length - 1;
+    for (let i = 0; i < cache.renderBlocks.length; i++) {
+      const blockId = cache.renderBlocks[i];
+      if (blockId == min) {
+        minIdx = i;
+      }
+      if (blockId == max) {
+        maxIdx = i;
+      }
+    }
+
+    cache.renderBlocks.splice(0, minIdx);
+    cache.renderBlocks.splice(maxIdx + 1);
   }
 
   let observer: IntersectionObserver | null = null;
@@ -301,6 +347,14 @@
     }}
     >
       Log
+    </button>
+    <button
+      type="button"
+      onclick={() => {
+        shrinkRenderScope();
+    }}
+    >
+      Shrink
     </button>
   </div>
 {/if}
