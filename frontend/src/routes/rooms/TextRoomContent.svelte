@@ -1,19 +1,21 @@
 <script lang="ts">
+  import { ArrowLeft, ArrowRight } from "@lucide/svelte";
   import type { TextMessage as TMessage } from "trurpchat-backend";
+  import Stream from "$lib/components/stream/Stream.svelte";
   import type { TextRoomCache } from "$lib/messages.svelte";
   import { onMount, tick } from "svelte";
   import TextMessage from "$lib/components/TextMessage.svelte";
   import type { Server } from "$lib/servers.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
-  import { ArrowRight } from "@lucide/svelte";
 
   type Props = {
     cache: TextRoomCache;
     server: Server;
+    showCurrentVoiceRoom: () => void;
   };
 
-  const { cache, server }: Props = $props();
+  const { cache, server, showCurrentVoiceRoom }: Props = $props();
 
   let target: number = $state(cache.lastBlockId());
   let targetMsg = $state(0);
@@ -37,6 +39,25 @@
   let se = $state<HTMLElement>();
   let text = $state("");
   let textarea = $state<HTMLTextAreaElement>();
+
+  const activeStream = $derived.by(() => {
+    for (const userId of server.rtc.room?.users ?? []) {
+      const player = server.rtc.streamPlayers.get(userId);
+      if (player?.state !== "playing") {
+        continue;
+      }
+
+      const user = server.findUser(userId);
+      if (!user?.online) {
+        continue;
+      }
+
+      return { user, player };
+    }
+
+    return undefined;
+  });
+
   function sendMessage() {
     const trimmed = text.trim();
     if (!trimmed || trimmed.length === 0) {
@@ -284,92 +305,134 @@
   </div>
 {/if}
 
-<div
-  class="h-full w-full flex overflow-y-scroll flex-col"
-  bind:this={se}
-  onscroll={(e) => {
-    updateAutoscroll();
-    preventTopScrollLock();
-    cache.scrollPosition = e.currentTarget.scrollTop;
-  }}
-  {@attach createObserver}
->
-  <div class="h-full flex shrink-0 flex-col">
-    {#if cache.renderBlocks.length > 0 && cache.renderBlocks[0] !== 0}
-      <div style="height:1px;"></div>
-    {/if}
+<div class="relative flex h-full w-full min-h-0 flex-col overflow-hidden">
+  {#if activeStream}
+    <div
+      class="pointer-events-none absolute right-4 top-4 z-10 w-[min(24rem,calc(100%-2rem))] sm:w-80"
+    >
+      <div
+        class="group pointer-events-auto overflow-hidden rounded-lg border bg-background/85 shadow-lg backdrop-blur-sm"
+        role="button"
+        tabindex="0"
+        ondblclick={showCurrentVoiceRoom}
+        onkeydown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") {
+            return;
+          }
 
-    {#if target === cache.lastBlockId()}
-      <div class="h-full flex"></div>
-    {/if}
-
-    {#each cache?.renderBlocks as blockId (blockId)}
-      {@const block = cache?.get(blockId, false)}
-      {#if block?.alive}
-        <div data-block={blockId} {@attach attachBlock}>
-          {#each partition(block.messages) as part (part[0]?.id ?? 0)}
-            {#each part as message (message.id)}
-              {#if message.deletedAt === null}
-                {@const isFirst = part.indexOf(message) === 0}
-                {@const user = server.findUser(message.userId)}
-                <TextMessage {user} {message} showHeader={isFirst} />
-              {/if}
-            {/each}
-          {/each}
+          event.preventDefault();
+          showCurrentVoiceRoom();
+        }}
+      >
+        <div class="absolute left-2 top-2 z-10">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="opacity-0 transition-opacity group-hover:opacity-100 bg-background/80"
+            onclick={showCurrentVoiceRoom}
+          >
+            <ArrowLeft class="size-4" />
+          </Button>
         </div>
-      {:else}
-        <div
-          class="min-h-dvh w-full flex-col flex justify-between"
-          data-block-load={blockId}
-          {@attach attachBlock}
-        >
-          <div>Loading... {blockId}</div>
-          <div>Loading... {blockId}</div>
-        </div>
-      {/if}
-    {/each}
 
-    {#if target !== cache.lastBlockId()}
-      <div class="h-full flex"></div>
-    {/if}
+        <Stream
+          {server}
+          user={activeStream.user}
+          player={activeStream.player}
+          shouldHideInfo
+          shouldHideUi
+        />
+      </div>
+    </div>
+  {/if}
 
-    <div class="min-h-6"></div>
-  </div>
-</div>
-
-<div class="flex flex-row w-full pb-2 px-2">
-  <InputGroup.Root
-    class="min-h-12 cursor-text"
-    onclick={() => {
-      if (textarea) {
-        textarea.focus();
-      }
+  <div
+    class="h-full w-full flex overflow-y-scroll flex-col"
+    bind:this={se}
+    onscroll={(e) => {
+      updateAutoscroll();
+      preventTopScrollLock();
+      cache.scrollPosition = e.currentTarget.scrollTop;
     }}
+    {@attach createObserver}
   >
-    <textarea
-      data-slot="input-group-control"
-      class="flex field-sizing-content w-full px-3 py-2 resize-none rounded-md bg-transparent text-base transition-[color,box-shadow] outline-none md:text-sm"
-      placeholder={`#${cache.room.name}`}
-      bind:value={text}
-      bind:this={textarea}
-      onkeydown={(e) => {
-        const holdsModifier = e.ctrlKey || e.metaKey || e.shiftKey;
-        if (!holdsModifier && e.key === "Enter") {
-          e.preventDefault();
-          sendMessage();
+    <div class="h-full flex shrink-0 flex-col">
+      {#if cache.renderBlocks.length > 0 && cache.renderBlocks[0] !== 0}
+        <div style="height:1px;"></div>
+      {/if}
+
+      {#if target === cache.lastBlockId()}
+        <div class="h-full flex"></div>
+      {/if}
+
+      {#each cache?.renderBlocks as blockId (blockId)}
+        {@const block = cache?.get(blockId, false)}
+        {#if block?.alive}
+          <div data-block={blockId} {@attach attachBlock}>
+            {#each partition(block.messages) as part (part[0]?.id ?? 0)}
+              {#each part as message (message.id)}
+                {#if message.deletedAt === null}
+                  {@const isFirst = part.indexOf(message) === 0}
+                  {@const user = server.findUser(message.userId)}
+                  <TextMessage {user} {message} showHeader={isFirst} />
+                {/if}
+              {/each}
+            {/each}
+          </div>
+        {:else}
+          <div
+            class="min-h-dvh w-full flex-col flex justify-between"
+            data-block-load={blockId}
+            {@attach attachBlock}
+          >
+            <div>Loading... {blockId}</div>
+            <div>Loading... {blockId}</div>
+          </div>
+        {/if}
+      {/each}
+
+      {#if target !== cache.lastBlockId()}
+        <div class="h-full flex"></div>
+      {/if}
+
+      <div class="min-h-6"></div>
+    </div>
+  </div>
+
+  <div class="flex flex-row w-full pb-2 px-2">
+    <InputGroup.Root
+      class="min-h-12 cursor-text"
+      onclick={() => {
+        if (textarea) {
+          textarea.focus();
         }
       }}
-    ></textarea>
-    <InputGroup.Addon align="inline-end" class="">
-      <Button
-        disabled={!text || text.length === 0}
-        class="ms-auto h-full!"
-        size="sm"
-        variant="ghost"
-        onclick={sendMessage}
-      >
-        <ArrowRight />
-      </Button>
-    </InputGroup.Addon>
-  </InputGroup.Root>
+    >
+      <textarea
+        data-slot="input-group-control"
+        class="flex field-sizing-content w-full px-3 py-2 resize-none rounded-md bg-transparent text-base transition-[color,box-shadow] outline-none md:text-sm"
+        placeholder={`#${cache.room.name}`}
+        bind:value={text}
+        bind:this={textarea}
+        onkeydown={(e) => {
+          const holdsModifier = e.ctrlKey || e.metaKey || e.shiftKey;
+          if (!holdsModifier && e.key === "Enter") {
+            e.preventDefault();
+            sendMessage();
+          }
+        }}
+      ></textarea>
+      <InputGroup.Addon align="inline-end" class="">
+        <Button
+          disabled={!text || text.length === 0}
+          class="ms-auto h-full!"
+          size="sm"
+          variant="ghost"
+          onclick={sendMessage}
+        >
+          <ArrowRight />
+        </Button>
+      </InputGroup.Addon>
+    </InputGroup.Root>
+  </div>
 </div>

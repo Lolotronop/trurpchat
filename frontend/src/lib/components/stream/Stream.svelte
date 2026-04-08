@@ -26,6 +26,7 @@
     server: Server;
     player: OvenPlayerController;
     shouldHideInfo?: boolean;
+    shouldHideUi?: boolean;
     edgeToEdge?: boolean;
   };
   let {
@@ -33,6 +34,7 @@
     server,
     player,
     shouldHideInfo = false,
+    shouldHideUi = false,
     edgeToEdge = false,
   }: Props = $props();
 
@@ -139,7 +141,7 @@
         <div
           class="absolute inset-0 flex flex-col justify-between pointer-events-none"
         >
-          {#if !shouldHideInfo}
+          {#if !shouldHideInfo && !shouldHideUi}
             <div class="flex w-full items-start justify-end p-2">
               {#if watcherUsers.length > 0}
                 {@render watchersTooltip()}
@@ -150,7 +152,7 @@
           {/if}
 
           <div class="flex items-end justify-between gap-2 p-2">
-            {#if !shouldHideInfo}
+            {#if !shouldHideInfo && !shouldHideUi}
               <div
                 data-controls
                 class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
@@ -173,7 +175,7 @@
             {:else}
               <div></div>
             {/if}
-            {#if player.gain === 0}
+            {#if !shouldHideUi && player.gain === 0}
               <Button
                 data-controls
                 variant="ghost"

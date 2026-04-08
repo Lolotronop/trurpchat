@@ -10,10 +10,11 @@ import { debounce } from "./utils.svelte";
 import type { PeerState } from "./webrtc-peer.svelte";
 import { Peer } from "./webrtc-peer.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
+import { tick } from "svelte";
 
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();
-  streamPlayers = new Map<number, OvenPlayerController>();
+  streamPlayers = new SvelteMap<number, OvenPlayerController>();
   store: IPersistantStore = getPlatformStore("webrtc");
   room: VoiceChat | undefined = $state(undefined);
   connected = $derived(this.room !== undefined);
@@ -162,8 +163,10 @@ export class WebRTC {
     let player = this.streamPlayers.get(userId);
 
     if (!player) {
-      player = new OvenPlayerController(this.server, userId, this.headphones);
-      this.streamPlayers.set(userId, player);
+      tick().then(() => {
+        player = new OvenPlayerController(this.server, userId, this.headphones);
+        this.streamPlayers.set(userId, player);
+      });
     }
 
     return player;

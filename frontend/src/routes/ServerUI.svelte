@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Server } from "$lib/servers.svelte";
+  import { tick } from "svelte";
   import BottomControls from "./BottomControls.svelte";
   import VoiceGrid from "./main/VoiceGrid.svelte";
   import RoomList from "./rooms/RoomList.svelte";
@@ -28,6 +29,25 @@
     if (!roomCache) return;
     return roomCache;
   });
+
+  async function showRoom(roomId: number | undefined) {
+    if (selectedRoomId === roomId) {
+      return;
+    }
+
+    selectedRoomId = undefined;
+    await tick();
+    selectedRoomId = roomId;
+  }
+
+  function showCurrentVoiceRoom() {
+    const roomId = server.rtc.room?.id;
+    if (roomId === undefined) {
+      return;
+    }
+
+    void showRoom(roomId);
+  }
 </script>
 
 <div class="flex h-full w-full min-h-0 min-w-0 overflow-hidden">
@@ -48,7 +68,7 @@
       <VoiceGrid {server} />
     {:else if selectedRoom?.type === "text"}
       {#if cache !== undefined}
-        <TextRoomContent {cache} {server} />
+        <TextRoomContent {cache} {server} {showCurrentVoiceRoom} />
       {/if}
     {:else}
       It is what it is man

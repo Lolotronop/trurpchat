@@ -517,13 +517,15 @@
       {/if}
     {:else}
       {@const player = server.rtc.getStreamPlayer(user.id)}
-      <Stream
-        {server}
-        {user}
-        {player}
-        shouldHideInfo={shouldHide}
-        {edgeToEdge}
-      />
+      {#if player}
+        <Stream
+          {server}
+          {user}
+          {player}
+          shouldHideInfo={shouldHide}
+          {edgeToEdge}
+        />
+      {/if}
     {/if}
   {/if}
 {/snippet}
