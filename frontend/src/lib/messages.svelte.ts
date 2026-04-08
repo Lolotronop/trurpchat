@@ -14,6 +14,8 @@ type TextMessageBlock = {
   alive: boolean;
 };
 
+const PRUNE_DELAY = 5 * 60 * 1000;
+// const PRUNE_DELAY = 2000;
 const DBG_WAIT = 0;
 
 export class TextRoomCache {
@@ -32,11 +34,38 @@ export class TextRoomCache {
   }
 
   inFlightBlocks = new Set<number>();
+  pruneTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     readonly parent: TextMessageCache,
     readonly room: Extract<Room, { type: "text" }>,
   ) {}
+
+  pruneMemory() {
+    const last = this.lastBlockId();
+    const recent = Math.max(0, last - this.parent.BLOCK_SIZE * 5);
+
+    const isRendered = this.renderBlocks.length > 0;
+    const renderMin = isRendered ? this.renderBlocks[0] : 0;
+    const renderMax = isRendered
+      ? this.renderBlocks[this.renderBlocks.length - 1]
+      : last;
+
+    for (const block of this.blocks.keys()) {
+      if (block > recent) continue;
+      if (block > renderMin && block < renderMax) continue;
+      this.blocks.delete(block);
+    }
+  }
+
+  schedulePruneMemory() {
+    if (this.pruneTimer !== undefined) {
+      clearTimeout(this.pruneTimer);
+    }
+    this.pruneTimer = setTimeout(() => {
+      this.pruneMemory();
+    }, PRUNE_DELAY);
+  }
 
   get(blockId: number, fetch = true) {
     this.parent.checkBlockId(blockId);
@@ -45,6 +74,7 @@ export class TextRoomCache {
     if (!block && fetch) {
       this.fetch(blockId);
     }
+    this.schedulePruneMemory();
     return block;
   }
 
@@ -54,6 +84,7 @@ export class TextRoomCache {
     this.inFlightBlocks.delete(blockId);
     const block = $state({ messages, alive });
     this.blocks.set(blockId, block);
+    this.schedulePruneMemory();
   }
 
   append(message: TextMessage) {

@@ -278,8 +278,8 @@
       }
     }
 
-    cache.renderBlocks.splice(0, minIdx);
     cache.renderBlocks.splice(maxIdx + 1);
+    cache.renderBlocks.splice(0, minIdx);
   }
 
   let observer: IntersectionObserver | null = null;
@@ -320,42 +320,56 @@
   }
 </script>
 
-{#if false && import.meta.env.DEV}
+{#if true && import.meta.env.DEV}
   <div class="flex flex-col gap-2 w-full justify-center">
     <div class="flex-row gap-2">
       {#each debugAllIds() as blockId}
         <span class={debugDetermineColor(blockId)}> {`${blockId} `} </span>
       {/each}
     </div>
-    <input type="number" bind:value={targetMsg}>
-    <button
-      type="button"
-      onclick={async () => {
+    <div>
+      <input
+        class="border-2 border-foreground"
+        type="number"
+        bind:value={targetMsg}
+      >
+      <button
+        type="button"
+        onclick={async () => {
       target = cache.parent.getBlockId(targetMsg);
       cache.renderBlocks = [];
       shouldAutoscroll = false;
       await tick();
       cache.renderBlocks = [target];
     }}
-    >
-      Jump
-    </button>
-    <button
-      type="button"
-      onclick={() => {
+      >
+        Jump
+      </button>
+      <button
+        type="button"
+        onclick={() => {
       console.log($state.snapshot(cache.renderBlocks));
     }}
-    >
-      Log
-    </button>
-    <button
-      type="button"
-      onclick={() => {
+      >
+        Log
+      </button>
+      <button
+        type="button"
+        onclick={() => {
         shrinkRenderScope();
     }}
-    >
-      Shrink
-    </button>
+      >
+        Shrink
+      </button>
+      <button
+        type="button"
+        onclick={() => {
+        cache.prune();
+    }}
+      >
+        Prune
+      </button>
+    </div>
   </div>
 {/if}
 
