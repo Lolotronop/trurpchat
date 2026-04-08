@@ -1,6 +1,7 @@
 import { SvelteMap } from "svelte/reactivity";
 import type { Message, VoiceChat } from "trurpchat-backend";
 import type { Camera } from "./camera.svelte";
+import { OvenPlayerController } from "./components/stream/ovenplayer.svelte";
 import type { Headphones } from "./headphones.svelte";
 import type { Mic } from "./mic.svelte";
 import type { Server } from "./servers.svelte";
@@ -12,6 +13,7 @@ import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();
+  streamPlayers = new Map<number, OvenPlayerController>();
   store: IPersistantStore = getPlatformStore("webrtc");
   room: VoiceChat | undefined = $state(undefined);
   connected = $derived(this.room !== undefined);
@@ -131,6 +133,12 @@ export class WebRTC {
       this.cleanup();
       return;
     } else if (roomId === this.room?.id) {
+      const player = this.streamPlayers.get(userId);
+      if (player) {
+        player.destroy();
+        this.streamPlayers.delete(userId);
+      }
+
       const peer = this.peers.get(userId);
       if (!peer) {
         return;
@@ -148,6 +156,17 @@ export class WebRTC {
     }
 
     return `${serverId}-${targetId}`;
+  }
+
+  getStreamPlayer(userId: number) {
+    let player = this.streamPlayers.get(userId);
+
+    if (!player) {
+      player = new OvenPlayerController(this.server, userId, this.headphones);
+      this.streamPlayers.set(userId, player);
+    }
+
+    return player;
   }
 
   getPeerStatePersister(key: string) {
@@ -329,6 +348,11 @@ export class WebRTC {
   }
 
   cleanup() {
+    for (const player of this.streamPlayers.values()) {
+      player.destroy();
+    }
+    this.streamPlayers.clear();
+
     for (const peer of this.peers.values()) {
       peer.cleanup();
     }

@@ -15,7 +15,6 @@
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
   import { Item as ContextItem } from "$lib/components/ui/context-menu";
   import Stream from "$lib/components/stream/Stream.svelte";
-  import { OvenPlayerController } from "$lib/components/stream/ovenplayer.svelte";
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
@@ -100,7 +99,7 @@
       return undefined;
     }
 
-    return getStreamPlayer(focusedUser.id);
+    return server.rtc.getStreamPlayer(focusedUser.id);
   });
   const focusedCanAdjustVolume = $derived(
     Boolean(focusedPeer || focusedPlayer),
@@ -116,7 +115,6 @@
   let gridItemWidth = $state(0);
   let secondaryItemWidth = $state(0);
   let focusItemWidth = $state(0);
-  const streamPlayers = new Map<number, OvenPlayerController>();
 
   function getOptimalTileWidth(
     containerWidth: number,
@@ -333,17 +331,6 @@
     return user?.online ? user : undefined;
   }
 
-  function getStreamPlayer(userId: number) {
-    let player = streamPlayers.get(userId);
-
-    if (!player) {
-      player = new OvenPlayerController(server, userId, g.headphones);
-      streamPlayers.set(userId, player);
-    }
-
-    return player;
-  }
-
   function getFocusedGain() {
     if (focusedPeer) {
       return focusedPeer.volume;
@@ -428,27 +415,8 @@
   });
 
   $effect(() => {
-    const activeStreamIds = new Set(
-      roomUsers.filter((user) => user.streaming).map((user) => user.id),
-    );
-
-    for (const [userId, player] of streamPlayers) {
-      if (activeStreamIds.has(userId)) {
-        continue;
-      }
-
-      player.destroy();
-      streamPlayers.delete(userId);
-    }
-  });
-
-  $effect(() => {
     return () => {
       clearTimeout(hideTimeout);
-      for (const player of streamPlayers.values()) {
-        player.destroy();
-      }
-      streamPlayers.clear();
     };
   });
 
@@ -548,7 +516,7 @@
         />
       {/if}
     {:else}
-      {@const player = getStreamPlayer(user.id)}
+      {@const player = server.rtc.getStreamPlayer(user.id)}
       <Stream
         {server}
         {user}
