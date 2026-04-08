@@ -83,6 +83,12 @@
     autoscroll();
   });
 
+  onMount(() => {
+    return () => {
+      clearTimeout(shrinkTimer);
+    };
+  });
+
   let shouldAutoscroll = $state(false);
 
   function updateAutoscroll() {
