@@ -20,7 +20,9 @@
 
   const SLIDER_MIN = 0;
   const SLIDER_MAX = 100;
-  const SLIDER_MID = 50;
+  const DB_SEGMENT_END = 30;
+  const UNITY_SEGMENT_END = 50;
+  const LOWER_LINEAR_GAIN = 0.3;
   const FLOOR_DB = -36;
   const floorGain = dbToGain(FLOOR_DB);
 
@@ -38,32 +40,51 @@
 
   function sliderToGain(position: number) {
     const clamped = clamp(position, SLIDER_MIN, SLIDER_MAX);
+    const maxGain = dbToGain(max);
 
-    if (clamped <= SLIDER_MID) {
-      const unit = clamped / SLIDER_MID;
+    if (clamped <= DB_SEGMENT_END) {
+      const unit = clamped / DB_SEGMENT_END;
       const curved = dbToGain(FLOOR_DB * (1 - unit));
-      return (curved - floorGain) / (1 - floorGain);
+      return ((curved - floorGain) / (1 - floorGain)) * LOWER_LINEAR_GAIN;
     }
 
-    const unit = (clamped - SLIDER_MID) / SLIDER_MID;
-    return dbToGain(max * unit);
+    if (clamped <= UNITY_SEGMENT_END) {
+      const unit =
+        (clamped - DB_SEGMENT_END) / (UNITY_SEGMENT_END - DB_SEGMENT_END);
+      return LOWER_LINEAR_GAIN + unit * (1 - LOWER_LINEAR_GAIN);
+    }
+
+    if (maxGain <= 1) {
+      return 1;
+    }
+
+    const unit =
+      (clamped - UNITY_SEGMENT_END) / (SLIDER_MAX - UNITY_SEGMENT_END);
+    return 1 + unit * (maxGain - 1);
   }
 
   function gainToSlider(gain: number) {
     const clamped = Math.max(0, gain);
+    const maxGain = dbToGain(max);
+
+    if (clamped <= LOWER_LINEAR_GAIN) {
+      const normalized =
+        floorGain + (clamped / LOWER_LINEAR_GAIN) * (1 - floorGain);
+      const unit = 1 - gainToDb(normalized) / FLOOR_DB;
+      return clamp(unit * DB_SEGMENT_END, SLIDER_MIN, DB_SEGMENT_END);
+    }
 
     if (clamped <= 1) {
-      const normalized = floorGain + clamped * (1 - floorGain);
-      const unit = 1 - gainToDb(normalized) / FLOOR_DB;
-      return clamp(unit * SLIDER_MID, SLIDER_MIN, SLIDER_MID);
+      const unit = (clamped - LOWER_LINEAR_GAIN) / (1 - LOWER_LINEAR_GAIN);
+      return DB_SEGMENT_END + unit * (UNITY_SEGMENT_END - DB_SEGMENT_END);
     }
 
-    if (max <= 0) {
-      return SLIDER_MAX;
+    if (maxGain <= 1) {
+      return UNITY_SEGMENT_END;
     }
 
-    const unit = clamp(gainToDb(clamped) / max, 0, 1);
-    return SLIDER_MID + unit * SLIDER_MID;
+    const unit = clamp((clamped - 1) / (maxGain - 1), 0, 1);
+    return UNITY_SEGMENT_END + unit * (SLIDER_MAX - UNITY_SEGMENT_END);
   }
 
   let hovering = $state(false);
@@ -116,13 +137,11 @@
       onmouseleave={() => {
         hovering = false;
       }}
-      bind:value={
-        () => gainToSlider(value),
+      bind:value={() => gainToSlider(value),
         (v) => {
           setActive();
           value = sliderToGain(v);
-        }
-      }
+        }}
     />
   </div>
 {/snippet}
