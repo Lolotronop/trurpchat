@@ -1,9 +1,9 @@
-import { err, ok } from "neverthrow";
-import { send, sendAll } from "$src/send";
-import { createKey, db, keys, users } from "$src/db";
-import type { Handlers } from "./types";
-import type { KeyAction } from "$src/types";
 import { and, eq, getColumns, isNull } from "drizzle-orm";
+import { err, ok } from "neverthrow";
+import { createKey, db, keys, users } from "$src/db";
+import { send, sendAll } from "$src/send";
+import type { KeyAction } from "$src/types";
+import type { Handlers } from "./types";
 
 export const keyHandlers: Handlers<KeyAction> = {
   "action.key.add": async (ctx, ws, msg) => {

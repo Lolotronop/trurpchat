@@ -1,6 +1,6 @@
 import type { Result } from "neverthrow";
 import type { Message } from "$src/types";
-import type { WsClient, Hotel } from "$src/voice";
+import type { Hotel, WsClient } from "$src/voice";
 
 export type MessageNames<T extends { type: string }> = {
   [K in keyof T]: T[K];

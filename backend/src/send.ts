@@ -1,7 +1,7 @@
+import { stringify } from "devalue";
 import { err, ok } from "neverthrow";
 import type { Message, ServerEvent } from "./types";
 import type { WsClient } from "./voice";
-import { stringify } from "devalue";
 
 export function safeSend(client: WsClient, message: Message) {
   let str: string;
