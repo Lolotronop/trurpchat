@@ -13,14 +13,8 @@
 
   const { room, server, selected }: Props = $props();
 
-  const unread = $derived(server.unread.find((u) => u.roomId === room.id));
-
-  const unreadCount = $derived.by(() => {
-    const unreadId = unread?.unreadId ?? 0;
-    const diff = room.nextMessageId - unreadId;
-    return diff;
-  });
-
+  const unread = $derived(server.unread.get(room.id));
+  const unreadCount = $derived(room.nextMessageId - unread);
   const hasUnread = $derived(unreadCount > 0);
 </script>
 

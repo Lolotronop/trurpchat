@@ -1,8 +1,13 @@
 import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
-import type { Room, TextMessage } from "trurpchat-backend";
-import type { Server } from "./servers.svelte";
+import type { Room, TextMessage, Unread } from "trurpchat-backend";
 import { wait } from "./utils.svelte";
+
+export const BLOCK_SIZE = 10;
+export function getBlockId(messageId: number) {
+  const id = messageId - (messageId % BLOCK_SIZE);
+  return id;
+}
 
 type TextMessageBlock = {
   messages: TextMessage[];
@@ -18,6 +23,37 @@ const PRUNE_DELAY = 5 * 60 * 1000;
 // const PRUNE_DELAY = 2000;
 const DBG_WAIT = 0;
 
+type TextMessageFetchCallback = (roomId: number, blockId: number) => void;
+
+export class UnreadThing {
+  unread: Unread[] = $state([]);
+
+  constructor(
+    readonly userId: number,
+    readonly onSet: (roomId: number, messageId: number) => void,
+  ) {}
+
+  set(roomId: number, messageId: number) {
+    const found = this.unread.find((u) => u.roomId === roomId);
+    if (found) {
+      found.unreadId = messageId;
+      return;
+    }
+
+    this.unread.push({
+      roomId,
+      userId: this.userId,
+      unreadId: messageId,
+    });
+
+    this.onSet(roomId, messageId);
+  }
+
+  get(roomId: number) {
+    return this.unread.find((u) => u.roomId === roomId)?.unreadId ?? 0;
+  }
+}
+
 export class TextRoomCache {
   blocks: SvelteMap<number, TextMessageBlock> = new SvelteMap();
   renderBlocks: number[] = $state([]);
@@ -30,11 +66,7 @@ export class TextRoomCache {
   }
 
   lastBlockId() {
-    return this.parent.getBlockId(this.lastMessageId());
-  }
-
-  unreadBlockId() {
-    return this.parent.getBlockId(this.unread());
+    return getBlockId(this.lastMessageId());
   }
 
   inFlightBlocks = new Set<number>();
@@ -43,13 +75,12 @@ export class TextRoomCache {
   constructor(
     readonly parent: TextMessageCache,
     readonly room: Extract<Room, { type: "text" }>,
-    readonly unread: () => number,
-    readonly setUnread: (messageId: number) => void,
+    readonly fetchCallback: TextMessageFetchCallback,
   ) {}
 
   pruneMemory() {
     const last = this.lastBlockId();
-    const recent = Math.max(0, last - this.parent.BLOCK_SIZE * 5);
+    const recent = Math.max(0, last - BLOCK_SIZE * 5);
 
     const isRendered = this.renderBlocks.length > 0;
     const renderMin = isRendered ? this.renderBlocks[0] : 0;
@@ -74,11 +105,9 @@ export class TextRoomCache {
   }
 
   get(blockId: number, fetch = true) {
-    this.parent.checkBlockId(blockId);
-
     const block = this.blocks.get(blockId);
     if (!block && fetch) {
-      this.fetch(blockId);
+      this.fetchCallback(this.room.id, blockId);
     }
     this.schedulePruneMemory();
     return block;
@@ -86,7 +115,6 @@ export class TextRoomCache {
 
   /** Sets the block to be alive by default */
   set(blockId: number, messages: TextMessage[], alive: boolean = true) {
-    this.parent.checkBlockId(blockId);
     this.inFlightBlocks.delete(blockId);
     const block = $state({ messages, alive });
     this.blocks.set(blockId, block);
@@ -94,7 +122,7 @@ export class TextRoomCache {
   }
 
   append(message: TextMessage) {
-    const blockId = this.parent.getBlockId(message.id);
+    const blockId = getBlockId(message.id);
     const block = this.get(blockId, false);
 
     if (block?.alive) {
@@ -107,9 +135,9 @@ export class TextRoomCache {
     // because it's safe to assume that the new message
     // is the first one in the new block
     const isFirstBlock = blockId === 0;
-    const prevBlockId = Math.max(0, blockId - this.parent.BLOCK_SIZE);
+    const prevBlockId = Math.max(0, blockId - BLOCK_SIZE);
     const prevBlock = this.get(prevBlockId, false);
-    const prevBlockFull = prevBlock?.messages.length === this.parent.BLOCK_SIZE;
+    const prevBlockFull = prevBlock?.messages.length === BLOCK_SIZE;
     if (!block && (isFirstBlock || prevBlockFull)) {
       this.set(blockId, [message]);
       if (this.renderBlocks.includes(prevBlockId)) {
@@ -118,12 +146,12 @@ export class TextRoomCache {
       return;
     }
 
-    this.fetch(blockId);
+    this.fetchCallback(this.room.id, blockId);
     return;
   }
 
   edit(message: TextMessage) {
-    const blockId = this.parent.getBlockId(message.id);
+    const blockId = getBlockId(message.id);
     const block = this.blocks.get(blockId);
     if (!block) return;
     const index = block.messages.findIndex((m) => m.id === message.id);
@@ -132,7 +160,7 @@ export class TextRoomCache {
   }
 
   delete(messageId: number) {
-    const blockId = this.parent.getBlockId(messageId);
+    const blockId = getBlockId(messageId);
     const block = this.blocks.get(blockId);
     if (!block) return;
     const index = block.messages.findIndex((m) => m.id === messageId);
@@ -156,72 +184,29 @@ export class TextRoomCache {
     this.inFlightBlocks.add(blockId);
     tick().then(async () => {
       DBG_WAIT && (await wait(DBG_WAIT));
-      this.parent.onfetchrequest(this.room.id, blockId);
+      this.fetchCallback(this.room.id, blockId);
     });
   }
 }
 
 export class TextMessageCache {
-  BLOCK_SIZE = 10;
   /** Map of channel ID to room cache */
   cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
 
-  constructor(readonly server: Server) {}
-
-  checkBlockId(blockId: number) {
-    if (blockId < 0) {
-      throw new Error("Block ID cannot be negative");
-    }
-
-    if (blockId % this.BLOCK_SIZE !== 0) {
-      throw new Error("Block ID must be a aligned multiple of BLOCK_SIZE");
-    }
-  }
-
-  getBlockId(messageId: number) {
-    const id = messageId - (messageId % this.BLOCK_SIZE);
-    this.checkBlockId(id);
-    return id;
-  }
-
-  onfetchrequest: (channelId: number, blockId: number) => void = () => {};
+  constructor(
+    readonly roomCallback: (
+      roomId: number,
+    ) => Extract<Room, { type: "text" }> | undefined,
+    readonly fetchCallback: TextMessageFetchCallback,
+  ) {}
 
   getRoom(roomId: number, create = true) {
-    let room = this.cache.get(roomId);
+    const room = this.cache.get(roomId);
     if (!room && create) {
       tick().then(() => {
-        const room = this.server.findRoom(roomId);
+        const room = this.roomCallback(roomId);
         if (!room) return;
-        if (room.type !== "text") return;
-        const cache = new TextRoomCache(
-          this,
-          room,
-          () =>
-            this.server.unread.find((u) => u.roomId === roomId)?.unreadId ?? 0,
-          (messageId) => {
-            const found = this.server.unread.find((u) => u.roomId === roomId);
-            if (found && found.unreadId === messageId) {
-              return;
-            }
-
-            if (found) {
-              found.unreadId = messageId;
-            } else {
-              this.server.unread.push({
-                roomId,
-                unreadId: messageId,
-                userId: this.server.user.id,
-              });
-            }
-
-            // TODO: remove the sending from here?
-            this.server.gateway.send({
-              type: "action.message.unread",
-              roomId,
-              unreadId: messageId,
-            });
-          },
-        );
+        const cache = new TextRoomCache(this, room, this.fetchCallback);
 
         if (room.nextMessageId === 0) {
           cache.set(0, []);
@@ -234,12 +219,12 @@ export class TextMessageCache {
 
   /** Sets the block to be alive by default */
   set(
-    channelId: number,
+    roomId: number,
     blockId: number,
     messages: TextMessage[],
     alive: boolean = true,
   ) {
-    this.getRoom(channelId)?.set(blockId, messages, alive);
+    this.getRoom(roomId)?.set(blockId, messages, alive);
   }
 
   append(message: TextMessage) {

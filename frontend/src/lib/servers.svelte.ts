@@ -8,11 +8,10 @@ import type {
   Room,
   User,
   Key,
-  Unread,
 } from "trurpchat-backend";
 import { Gateway } from "./gateway.svelte";
 import { gitGud } from "./god.svelte";
-import { TextMessageCache } from "./messages.svelte";
+import { BLOCK_SIZE, TextMessageCache, UnreadThing } from "./messages.svelte";
 import { sound } from "./sound.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
@@ -88,9 +87,40 @@ export class Server {
 
   users: User[] = $state([]);
   keys: Key[] = $state([]);
-  unread: Unread[] = $state([]);
+  unread: UnreadThing = new UnreadThing(this.user.id, (roomId, messageId) => {
+    this.gateway.send({
+      type: "action.message.unread",
+      roomId,
+      unreadId: messageId,
+    });
+  });
 
-  messages: TextMessageCache = new TextMessageCache(this);
+  messages: TextMessageCache = new TextMessageCache(
+    (roomId: number) => {
+      const room = this.findRoom(roomId);
+      if (!room) return;
+      if (room.type !== "text") return;
+      return room;
+    },
+
+    (roomId, blockId) => {
+      const room = this.findRoom(roomId);
+      if (!room) return;
+      if (room.type !== "text") return;
+      if (blockId > room.nextMessageId - 1) {
+        console.error(
+          `onfetchrequest: blockId ${blockId} is greater than nextMessageId ${room.nextMessageId}`,
+        );
+        return;
+      }
+      this.gateway.send({
+        type: "action.message.list",
+        roomId: roomId,
+        fromId: blockId,
+        toId: blockId + BLOCK_SIZE,
+      });
+    },
+  );
 
   constructor(
     definition: ServerDefinition,
@@ -120,25 +150,6 @@ export class Server {
         muted: gitGud().mic.muted,
       });
     });
-
-    this.messages.onfetchrequest = (channelId, blockId) => {
-      const room = this.findRoom(channelId);
-      if (!room) return;
-      if (room.type !== "text") return;
-      if (blockId > room.nextMessageId - 1) {
-        // TODO: figure out why this happens in the first place
-        console.error(
-          `onfetchrequest: blockId ${blockId} is greater than nextMessageId ${room.nextMessageId}`,
-        );
-        return;
-      }
-      this.gateway.send({
-        type: "action.message.list",
-        roomId: channelId,
-        fromId: blockId,
-        toId: blockId + this.messages.BLOCK_SIZE,
-      });
-    };
   }
 
   handleMessage(message: Message) {
@@ -304,7 +315,7 @@ export class Server {
       if (room) room.nextMessageId = message.message.id + 1;
       this.messages.append(message.message);
     } else if (message.type === "event.message.unread.list") {
-      this.unread = message.unread;
+      this.unread.unread = message.unread;
     }
   }
 

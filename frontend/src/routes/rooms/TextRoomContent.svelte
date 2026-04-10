@@ -9,7 +9,11 @@
   import { Item } from "$lib/components/ui/context-menu";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import Separator from "$lib/components/ui/separator/separator.svelte";
-  import type { TextRoomCache } from "$lib/messages.svelte";
+  import {
+    BLOCK_SIZE,
+    getBlockId,
+    type TextRoomCache,
+  } from "$lib/messages.svelte";
   import type { Server } from "$lib/servers.svelte";
   import { minmax } from "$lib/utils.svelte";
 
@@ -21,9 +25,12 @@
 
   const { cache, server, showCurrentVoiceRoom }: Props = $props();
 
+  const unreadId = $derived(server.unread.get(cache.room.id));
+  const unreadBlockId = $derived(getBlockId(unreadId));
+
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
-      const block = Math.min(cache.unreadBlockId(), cache.lastBlockId());
+      const block = Math.min(unreadBlockId, cache.lastBlockId());
       cache.renderBlocks = [block];
     } else if (cache.scrollPosition !== undefined) {
       if (!se) return;
@@ -94,10 +101,10 @@
   }
 
   function markRead() {
-    if (cache.unread() === cache.lastMessageId() + 1) {
+    if (unreadId === cache.lastMessageId() + 1) {
       return;
     }
-    cache.setUnread(cache.lastMessageId() + 1);
+    server.unread.set(cache.room.id, cache.lastMessageId() + 1);
   }
 
   function autoscroll() {
@@ -153,7 +160,7 @@
 
   async function jumpTo(messageId: number) {
     if (!se) return;
-    const blockId = cache.parent.getBlockId(messageId);
+    const blockId = getBlockId(messageId);
     if (cache.renderBlocks.includes(blockId)) {
       const element = se.querySelector<HTMLElement>(
         `[data-message="${messageId}"]`,
@@ -182,7 +189,7 @@
     if (!cache) return [];
     const last = cache.lastBlockId();
     const ids = [];
-    for (let i = 0; i <= last; i += cache.parent.BLOCK_SIZE) {
+    for (let i = 0; i <= last; i += BLOCK_SIZE) {
       ids.push(i);
     }
     return ids;
@@ -270,7 +277,7 @@
   }
 
   function expandScope(blockId: number) {
-    const size = cache.parent.BLOCK_SIZE;
+    const size = BLOCK_SIZE;
     const prev = blockId - size;
     const next = blockId + size;
 
@@ -302,20 +309,17 @@
   function shrinkRenderScope() {
     const BLOCK_PADDING = 2;
     let [min, max] = minmax(cache.visibleBlocks);
-    min = Math.max(0, min - cache.parent.BLOCK_SIZE * BLOCK_PADDING);
-    max = Math.min(
-      cache.lastBlockId(),
-      max + cache.parent.BLOCK_SIZE * BLOCK_PADDING,
-    );
+    min = Math.max(0, min - BLOCK_SIZE * BLOCK_PADDING);
+    max = Math.min(cache.lastBlockId(), max + BLOCK_SIZE * BLOCK_PADDING);
 
     let minIdx = 0;
     let maxIdx = cache.renderBlocks.length - 1;
     for (let i = 0; i < cache.renderBlocks.length; i++) {
       const blockId = cache.renderBlocks[i];
-      if (blockId == min) {
+      if (blockId === min) {
         minIdx = i;
       }
-      if (blockId == max) {
+      if (blockId === max) {
         maxIdx = i;
       }
     }
@@ -440,15 +444,15 @@
     </div>
   {/if}
 
-  {#if cache.unread() <= cache.lastMessageId()}
-    {@const diff = cache.lastMessageId() - cache.unread() + 1}
+  {#if unreadId <= cache.lastMessageId()}
+    {@const diff = cache.lastMessageId() - unreadId + 1}
     <div
       class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-accent text-accent-foreground w-full h-fit rounded-b px-2 py-0.5 flex flex-row justify-between gap-20"
     >
       <button
         class="w-full cursor-pointer flex justify-start"
         onclick={() => {
-          jumpTo(cache.unread());
+          jumpTo(unreadId);
         }}
       >
         {diff}
@@ -475,7 +479,7 @@
         <div style="height:1px;"></div>
       {/if}
 
-      {#if cache.unreadBlockId() >= cache.lastBlockId()}
+      {#if unreadBlockId >= cache.lastBlockId()}
         <div class="h-full flex"></div>
       {/if}
 
@@ -487,13 +491,13 @@
               {#each part as message (message.id)}
                 {#if message.deletedAt === null}
                   {@const isFirst = part.indexOf(message) === 0}
-                  {@const unread = cache.unread() === message.id}
-                  {@const showHeader = isFirst || unread}
+                  {@const isUnread = unreadId === message.id}
+                  {@const showHeader = isFirst || isUnread}
                   {@const user = server.findUser(message.userId)}
                   {#if showHeader}
                     <div
                       class="flex flex-row items-center gap-2 px-4 text-xs text-destructive select-none "
-                      class:opacity-0={!unread}
+                      class:opacity-0={!isUnread}
                     >
                       <Separator class="shrink bg-destructive" />
                       Непрочитанное
@@ -504,7 +508,7 @@
                     {#snippet menu()}
                       <Item
                         onclick={() => {
-                          cache.setUnread(message.id);
+                          server.unread.set(cache.room.id, message.id);
                         }}
                       >
                         Отметить непрочитанным
@@ -531,7 +535,7 @@
         {/if}
       {/each}
 
-      {#if cache.unreadBlockId() < cache.lastBlockId()}
+      {#if unreadBlockId < cache.lastBlockId()}
         <div class="h-full flex"></div>
       {/if}
 
