@@ -36,11 +36,16 @@
   }
 </script>
 
-<div class="h-full p-2">
+<div class="h-full p-2 flex flex-col gap-0.5">
   {#each server.rooms as room (room.id)}
     {#if room.type === "voice"}
       <button type="button" class="contents" onclick={() => setRoomId(room.id)}>
-        <VoiceRoom {room} server={server!} {rtc} />
+        <VoiceRoom
+          {room}
+          server={server!}
+          {rtc}
+          selected={selectedRoomId === room.id}
+        />
       </button>
     {/if}
     {#if room.type === "text"}
@@ -49,7 +54,11 @@
         class="contents {(selectedRoomId !== room.id) && 'text-muted-foreground'}"
         onclick={() => setRoomId(room.id)}
       >
-        <TextRoom {room} server={server!} />
+        <TextRoom
+          {room}
+          server={server!}
+          selected={selectedRoomId === room.id}
+        />
       </button>
     {/if}
   {/each}

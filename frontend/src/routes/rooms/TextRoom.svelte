@@ -8,19 +8,37 @@
   type Props = {
     room: Extract<Room, { type: "text" }>;
     server: Server;
+    selected: boolean;
   };
 
-  const { room, server }: Props = $props();
+  const { room, server, selected }: Props = $props();
+
+  const unread = $derived(server.unread.find((u) => u.roomId === room.id));
+
+  const unreadCount = $derived.by(() => {
+    const unreadId = unread?.unreadId ?? 0;
+    const diff = room.nextMessageId - unreadId;
+    return diff;
+  });
+
+  const hasUnread = $derived(unreadCount > 0);
 </script>
 
 <RoomContextMenu {room} {server}>
   <Button
     variant="ghost"
-    class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal"
+    class="hover:text-foreground! flex w-full flex-row items-center justify-between text-base font-normal {hasUnread ? "text-foreground" : ""} {selected ? "bg-accent/20" : ""}"
   >
     <div class="flex flex-row items-center gap-2">
       <Hash size={16} strokeWidth={3} />
       <p>{room.name}</p>
     </div>
+    {#if hasUnread}
+      <div
+        class="flex flex-row items-center justify-center gap-2 rounded-xl bg-accent px-1 py-0.5 text-accent-foreground text-sm min-w-6"
+      >
+        <p>{unreadCount}</p>
+      </div>
+    {/if}
   </Button>
 </RoomContextMenu>

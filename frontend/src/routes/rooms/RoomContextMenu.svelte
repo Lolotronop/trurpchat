@@ -1,7 +1,12 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { Room } from "trurpchat-backend";
-  import * as ContextMenu from "$lib/components/ui/context-menu";
+  import {
+    Root,
+    Item,
+    Content,
+    Trigger,
+  } from "$lib/components/ui/context-menu";
   import * as Dialog from "$lib/components/ui/dialog";
   import type { Server } from "$lib/servers.svelte";
   import RoomForm, { type EditingRoom } from "./RoomForm.svelte";
@@ -32,6 +37,16 @@
       id: room.id,
     });
   }
+
+  const isText = $derived(room.type === "text");
+  const unread = $derived(server.unread.find((u) => u.roomId === room.id));
+  const unreadCount = $derived.by(() => {
+    const unreadId = unread?.unreadId ?? 0;
+    const diff = room.nextMessageId - unreadId;
+    return diff;
+  });
+
+  const hasUnread = $derived(unreadCount > 0);
 </script>
 
 <Dialog.Root bind:open={editOpen}>
@@ -44,18 +59,36 @@
   </Dialog.Content>
 </Dialog.Root>
 
-<ContextMenu.Root>
-  <ContextMenu.Trigger>{@render children()}</ContextMenu.Trigger>
-  <ContextMenu.Content class="min-h-12 min-w-64 overflow-visible">
-    {#if server.user.permissions === 1}
-      <ContextMenu.Item onclick={() => editOpen = true}>
-        Изменить
-      </ContextMenu.Item>
-      <ContextMenu.Item variant="destructive" onclick={onRoomDelete}>
-        Удалить
-      </ContextMenu.Item>
-    {:else}
-      <p>:(</p>
+<Root>
+  <Trigger>{@render children()}</Trigger>
+  <Content class="min-h-12 min-w-64 overflow-visible">
+    {#if isText && hasUnread}
+      <Item
+        onclick={() => {
+          server.gateway.send({
+            type: "action.message.unread",
+            roomId: room.id,
+            unreadId: room.nextMessageId,
+          });
+
+          if (unread) {
+            unread.unreadId = room.nextMessageId;
+          } else {
+            server.unread.push({
+              roomId: room.id,
+              unreadId: room.nextMessageId,
+              userId: server.user.id,
+            });
+          }
+        }}
+      >
+        Отметить как прочитанное
+      </Item>
     {/if}
-  </ContextMenu.Content>
-</ContextMenu.Root>
+
+    {#if server.user.permissions === 1}
+      <Item onclick={() => editOpen = true}> Изменить </Item>
+      <Item variant="destructive" onclick={onRoomDelete}> Удалить </Item>
+    {/if}
+  </Content>
+</Root>

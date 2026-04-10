@@ -16,9 +16,10 @@
     rtc: WebRTC;
     room: VoiceChat;
     server: Server;
+    selected: boolean;
   };
 
-  const { rtc, room, server }: Props = $props();
+  const { rtc, room, server, selected }: Props = $props();
 </script>
 
 <RoomContextMenu {room} {server}>
@@ -27,7 +28,9 @@
     class="hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {rtc
       ?.room?.id === room.id
       ? ''
-      : 'text-muted-foreground'}"
+      : 'text-muted-foreground'}
+    {selected ? 'bg-accent/20' : ''}
+    "
     onclick={() => server?.joinRoom(room)}
   >
     <div class="flex flex-row items-center gap-2">

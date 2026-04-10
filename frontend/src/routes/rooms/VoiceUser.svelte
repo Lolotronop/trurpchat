@@ -20,7 +20,7 @@
   class="hover:bg-accent/50 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
 >
   <div class="flex flex-row items-center gap-2 min-w-0">
-    <SpeakingBorder speaking={speaking} rounded class="size-6 shrink-0 rounded-full">
+    <SpeakingBorder {speaking} rounded class="size-6 shrink-0 rounded-full">
       <Avatar class="size-full" name={user.name}></Avatar>
     </SpeakingBorder>
     <p class="truncate flex-1 {rtc?.room?.id === room.id ? "" : "text-muted-foreground"}">

@@ -1,15 +1,17 @@
 <script lang="ts">
   import { ArrowLeft, ArrowRight } from "@lucide/svelte";
+  import { onMount, tick } from "svelte";
   import type { TextMessage as TMessage } from "trurpchat-backend";
+  import ContextMenu from "$lib/components/ContextMenu.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
-  import type { TextRoomCache } from "$lib/messages.svelte";
-  import { onMount, tick, untrack } from "svelte";
   import TextMessage from "$lib/components/TextMessage.svelte";
-  import type { Server } from "$lib/servers.svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Item } from "$lib/components/ui/context-menu";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
-  import { minmax } from "$lib/utils.svelte";
   import Separator from "$lib/components/ui/separator/separator.svelte";
+  import type { TextRoomCache } from "$lib/messages.svelte";
+  import type { Server } from "$lib/servers.svelte";
+  import { minmax } from "$lib/utils.svelte";
 
   type Props = {
     cache: TextRoomCache;
@@ -498,9 +500,21 @@
                       <Separator class="shrink bg-destructive" />
                     </div>
                   {/if}
-                  <div data-message={message.id}>
-                    <TextMessage {user} {message} {showHeader} />
-                  </div>
+                  <ContextMenu>
+                    {#snippet menu()}
+                      <Item
+                        onclick={() => {
+                          cache.setUnread(message.id);
+                        }}
+                      >
+                        Отметить непрочитанным
+                      </Item>
+                    {/snippet}
+
+                    <div data-message={message.id}>
+                      <TextMessage {user} {message} {showHeader} />
+                    </div>
+                  </ContextMenu>
                 {/if}
               {/each}
             {/each}
