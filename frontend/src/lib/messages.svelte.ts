@@ -73,7 +73,6 @@ export class TextRoomCache {
   pruneTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
-    readonly parent: TextMessageCache,
     readonly room: Extract<Room, { type: "text" }>,
     readonly fetchCallback: TextMessageFetchCallback,
   ) {}
@@ -206,7 +205,7 @@ export class TextMessageCache {
       tick().then(() => {
         const room = this.roomCallback(roomId);
         if (!room) return;
-        const cache = new TextRoomCache(this, room, this.fetchCallback);
+        const cache = new TextRoomCache(room, this.fetchCallback);
 
         if (room.nextMessageId === 0) {
           cache.set(0, []);
