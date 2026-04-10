@@ -1,6 +1,6 @@
 import { env } from "bun";
 import { and, eq, getColumns, isNull } from "drizzle-orm";
-import { db, getOrCreateServerId, keys, rooms, users } from "./db";
+import { db, getOrCreateServerId, keys, rooms, unread, users } from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
@@ -186,6 +186,16 @@ Bun.serve<ConnectedUser, never>({
       send(ws, {
         type: "event.room.list",
         rooms: thing,
+      });
+
+      const userUnread = await db
+        .select()
+        .from(unread)
+        .where(eq(unread.userId, ws.data.id));
+
+      send(ws, {
+        type: "event.message.unread.list",
+        unread: userUnread,
       });
 
       const users = await getAllUsers(ctx);

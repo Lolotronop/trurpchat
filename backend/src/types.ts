@@ -3,11 +3,14 @@ import type {
   Key,
   Message as MessageData,
   Room as RoomData,
+  Unread,
 } from "./db/schema";
 
 export type {
+  Key,
   Message as TextMessage,
   Room as RoomData,
+  Unread,
   User as DbUser,
 } from "./db/schema";
 
@@ -233,6 +236,11 @@ export type MessageAction =
       fromId: number;
       /** Non-inclusive */
       toId: number;
+    }
+  | {
+      type: "action.message.unread";
+      roomId: number;
+      unreadId: number;
     };
 
 export type MessageEvent =
@@ -255,6 +263,10 @@ export type MessageEvent =
       fromId: number;
       toId: number;
       messages: MessageData[];
+    }
+  | {
+      type: "event.message.unread.list";
+      unread: Unread[];
     };
 
 export type OtherEvent =

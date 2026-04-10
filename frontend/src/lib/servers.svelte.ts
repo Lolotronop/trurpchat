@@ -7,8 +7,9 @@ import type {
   OfflineUser,
   Room,
   User,
+  Key,
+  Unread,
 } from "trurpchat-backend";
-import type { Key } from "trurpchat-backend/src/db";
 import { Gateway } from "./gateway.svelte";
 import { gitGud } from "./god.svelte";
 import { TextMessageCache } from "./messages.svelte";
@@ -84,8 +85,10 @@ export class Server {
     deletedAt: null,
     online: false,
   });
+
   users: User[] = $state([]);
   keys: Key[] = $state([]);
+  unread: Unread[] = $state([]);
 
   messages: TextMessageCache = new TextMessageCache(this);
 
@@ -300,6 +303,8 @@ export class Server {
       const room = this.findRoom(message.message.roomId);
       if (room) room.nextMessageId = message.message.id + 1;
       this.messages.append(message.message);
+    } else if (message.type === "event.message.unread.list") {
+      this.unread = message.unread;
     }
   }
 

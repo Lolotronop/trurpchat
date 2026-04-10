@@ -3,12 +3,13 @@
   import type { TextMessage as TMessage } from "trurpchat-backend";
   import Stream from "$lib/components/stream/Stream.svelte";
   import type { TextRoomCache } from "$lib/messages.svelte";
-  import { onMount, tick } from "svelte";
+  import { onMount, tick, untrack } from "svelte";
   import TextMessage from "$lib/components/TextMessage.svelte";
   import type { Server } from "$lib/servers.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import { minmax } from "$lib/utils.svelte";
+  import Separator from "$lib/components/ui/separator/separator.svelte";
 
   type Props = {
     cache: TextRoomCache;
@@ -18,12 +19,10 @@
 
   const { cache, server, showCurrentVoiceRoom }: Props = $props();
 
-  let target: number = $state(cache.lastBlockId());
-  let targetMsg = $state(0);
-
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
-      cache.renderBlocks = [cache.lastBlockId()];
+      const block = Math.min(cache.unreadBlockId(), cache.lastBlockId());
+      cache.renderBlocks = [block];
     } else if (cache.scrollPosition !== undefined) {
       if (!se) return;
       se.scrollTop = cache.scrollPosition;
@@ -92,6 +91,13 @@
     shouldAutoscroll = lhs > rhs;
   }
 
+  function markRead() {
+    if (cache.unread() === cache.lastMessageId() + 1) {
+      return;
+    }
+    cache.setUnread(cache.lastMessageId() + 1);
+  }
+
   function autoscroll() {
     if (!se) return;
     if (!shouldAutoscroll) return;
@@ -99,6 +105,7 @@
     const last = cache.renderBlocks[cache.renderBlocks.length - 1];
     if (last !== cache.lastBlockId()) return;
     scrollToBottom();
+    markRead();
   }
 
   function scrollToBottom() {
@@ -139,6 +146,33 @@
     const hasScroll = se.scrollHeight > se.clientHeight;
     if (hasScroll && se.scrollTop <= 1) {
       se.scrollTop = 1;
+    }
+  }
+
+  async function jumpTo(messageId: number) {
+    if (!se) return;
+    const blockId = cache.parent.getBlockId(messageId);
+    if (cache.renderBlocks.includes(blockId)) {
+      const element = se.querySelector<HTMLElement>(
+        `[data-message="${messageId}"]`,
+      );
+      if (!element) return;
+
+      let top = element.offsetTop - se.offsetTop - 50;
+      if (top < 1) {
+        top = 1;
+      }
+
+      if (top > se.scrollHeight - se.clientHeight) {
+        top = se.scrollHeight - se.clientHeight - element.clientHeight;
+      }
+
+      se.scrollTo({
+        top,
+        behavior: "smooth",
+      });
+    } else {
+      cache.renderBlocks = [blockId];
     }
   }
 
@@ -189,6 +223,12 @@
     }
     const intersecting = entry.isIntersecting;
     const includes = cache.visibleBlocks.includes(blockId);
+    if (!se) return;
+    const isBottom = se.scrollHeight - se.scrollTop === se.clientHeight;
+
+    if (intersecting && isBottom) {
+      markRead();
+    }
 
     if (intersecting && !includes) {
       cache.visibleBlocks.push(blockId);
@@ -320,7 +360,7 @@
   }
 </script>
 
-{#if true && import.meta.env.DEV}
+{#if false && import.meta.env.DEV}
   <div class="flex flex-col gap-2 w-full justify-center">
     <div class="flex-row gap-2">
       {#each debugAllIds() as blockId}
@@ -328,23 +368,6 @@
       {/each}
     </div>
     <div>
-      <input
-        class="border-2 border-foreground"
-        type="number"
-        bind:value={targetMsg}
-      >
-      <button
-        type="button"
-        onclick={async () => {
-      target = cache.parent.getBlockId(targetMsg);
-      cache.renderBlocks = [];
-      shouldAutoscroll = false;
-      await tick();
-      cache.renderBlocks = [target];
-    }}
-      >
-        Jump
-      </button>
       <button
         type="button"
         onclick={() => {
@@ -373,6 +396,7 @@
   </div>
 {/if}
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="relative flex h-full w-full min-h-0 flex-col overflow-hidden">
   {#if activeStream}
     <div
@@ -414,6 +438,26 @@
     </div>
   {/if}
 
+  {#if cache.unread() <= cache.lastMessageId()}
+    {@const diff = cache.lastMessageId() - cache.unread() + 1}
+    <div
+      class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-accent text-accent-foreground w-full h-fit rounded-b px-2 py-0.5 flex flex-row justify-between gap-20"
+    >
+      <button
+        class="w-full cursor-pointer flex justify-start"
+        onclick={() => {
+          jumpTo(cache.unread());
+        }}
+      >
+        {diff}
+        непрочитанных сообщений
+      </button>
+      <button class="cursor-pointer flex-nowrap text-nowrap" onclick={markRead}>
+        Отметить как прочитанное
+      </button>
+    </div>
+  {/if}
+
   <div
     class="h-full w-full flex overflow-y-scroll flex-col"
     bind:this={se}
@@ -424,12 +468,12 @@
     }}
     {@attach createObserver}
   >
-    <div class="h-full flex shrink-0 flex-col">
+    <div class="h-full flex shrink-0 flex-col relative">
       {#if cache.renderBlocks.length > 0 && cache.renderBlocks[0] !== 0}
         <div style="height:1px;"></div>
       {/if}
 
-      {#if target === cache.lastBlockId()}
+      {#if cache.unreadBlockId() >= cache.lastBlockId()}
         <div class="h-full flex"></div>
       {/if}
 
@@ -441,8 +485,22 @@
               {#each part as message (message.id)}
                 {#if message.deletedAt === null}
                   {@const isFirst = part.indexOf(message) === 0}
+                  {@const unread = cache.unread() === message.id}
+                  {@const showHeader = isFirst || unread}
                   {@const user = server.findUser(message.userId)}
-                  <TextMessage {user} {message} showHeader={isFirst} />
+                  {#if showHeader}
+                    <div
+                      class="flex flex-row items-center gap-2 px-4 text-xs text-destructive select-none "
+                      class:opacity-0={!unread}
+                    >
+                      <Separator class="shrink bg-destructive" />
+                      Непрочитанное
+                      <Separator class="shrink bg-destructive" />
+                    </div>
+                  {/if}
+                  <div data-message={message.id}>
+                    <TextMessage {user} {message} {showHeader} />
+                  </div>
                 {/if}
               {/each}
             {/each}
@@ -459,7 +517,7 @@
         {/if}
       {/each}
 
-      {#if target !== cache.lastBlockId()}
+      {#if cache.unreadBlockId() < cache.lastBlockId()}
         <div class="h-full flex"></div>
       {/if}
 

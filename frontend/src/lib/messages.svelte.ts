@@ -33,12 +33,18 @@ export class TextRoomCache {
     return this.parent.getBlockId(this.lastMessageId());
   }
 
+  unreadBlockId() {
+    return this.parent.getBlockId(this.unread());
+  }
+
   inFlightBlocks = new Set<number>();
   pruneTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
     readonly parent: TextMessageCache,
     readonly room: Extract<Room, { type: "text" }>,
+    readonly unread: () => number,
+    readonly setUnread: (messageId: number) => void,
   ) {}
 
   pruneMemory() {
@@ -187,7 +193,36 @@ export class TextMessageCache {
         const room = this.server.findRoom(roomId);
         if (!room) return;
         if (room.type !== "text") return;
-        const cache = new TextRoomCache(this, room);
+        const cache = new TextRoomCache(
+          this,
+          room,
+          () =>
+            this.server.unread.find((u) => u.roomId === roomId)?.unreadId ?? 0,
+          (messageId) => {
+            const found = this.server.unread.find((u) => u.roomId === roomId);
+            if (found && found.unreadId === messageId) {
+              return;
+            }
+
+            if (found) {
+              found.unreadId = messageId;
+            } else {
+              this.server.unread.push({
+                roomId,
+                unreadId: messageId,
+                userId: this.server.user.id,
+              });
+            }
+
+            // TODO: remove the sending from here?
+            this.server.gateway.send({
+              type: "action.message.unread",
+              roomId,
+              unreadId: messageId,
+            });
+          },
+        );
+
         if (room.nextMessageId === 0) {
           cache.set(0, []);
         }

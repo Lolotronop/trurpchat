@@ -1,6 +1,6 @@
 import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
-import { db, messages, rooms } from "$src/db";
+import { db, messages, rooms, unread } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { MessageAction } from "$src/types";
 import type { Handlers } from "./types";
@@ -195,6 +195,44 @@ export const messageHandlers: Handlers<MessageAction> = {
       fromId,
       toId,
     });
+
+    return ok();
+  },
+
+  "action.message.unread": async (_ctx, ws, { roomId, unreadId }) => {
+    if (unreadId < 0) {
+      return err(new Error("Unread id must be greater than or equal to 0"));
+    }
+
+    const userId = ws.data.id;
+
+    const [room] = await db
+      .select()
+      .from(rooms)
+      .where(eq(rooms.id, roomId))
+      .limit(1);
+    if (!room) {
+      return err(new Error("Room not found"));
+    }
+
+    if (room.type !== "text") {
+      return err(new Error("Room is not a text room"));
+    }
+
+    if (unreadId > room.nextMessageId) {
+      return err(new Error(`Can't mark the future as unread, bud`));
+    }
+
+    console.log(userId, roomId, unreadId);
+    const [updated] = await db
+      .update(unread)
+      .set({ unreadId })
+      .where(and(eq(unread.roomId, roomId), eq(unread.userId, userId)))
+      .returning();
+
+    if (!updated) {
+      await db.insert(unread).values({ roomId, userId, unreadId });
+    }
 
     return ok();
   },

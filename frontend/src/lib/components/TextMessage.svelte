@@ -47,7 +47,9 @@
     {#if showHeader}
       <Avatar name={user?.name ?? "?"} class="mt-1 shrink-0 size-9" />
     {:else}
-      <div class="time transition-opacity opacity-0 flex">
+      <div
+        class="time transition-opacity opacity-0 flex items-start select-none"
+      >
         <Tooltip.Root>
           <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
             {formatTime(message.createdAt, false)}

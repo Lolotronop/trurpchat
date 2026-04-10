@@ -106,8 +106,27 @@ export const messages = table(
   },
   (tb) => [t.primaryKey({ columns: [tb.id, tb.roomId] })],
 );
-
 export type Message = typeof messages.$inferSelect;
+
+export const unread = table(
+  "unread",
+  {
+    roomId: t
+      .integer()
+      .notNull()
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    userId: t
+      .integer()
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    /** The id of the last message in the room that was not read */
+    unreadId: t.integer().notNull().default(0),
+  },
+  (tb) => [t.primaryKey({ columns: [tb.userId, tb.roomId] })],
+);
+
+export type Unread = typeof unread.$inferSelect;
 
 export const relations = defineRelations(
   { users, keys, messages, rooms, serverMeta },

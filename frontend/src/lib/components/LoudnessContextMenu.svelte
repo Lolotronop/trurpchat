@@ -1,7 +1,6 @@
 <script lang="ts">
   import GainSlider from "$lib/components/GainSlider.svelte";
   import { Item } from "$lib/components/ui/context-menu";
-  import { Button } from "$lib/components/ui/button";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { toDb } from "$lib/utils.svelte";
 
