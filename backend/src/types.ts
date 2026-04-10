@@ -3,14 +3,13 @@ import type {
   Key,
   Message as MessageData,
   Room as RoomData,
-  Unread,
+  UnreadRow,
 } from "./db/schema";
 
 export type {
   Key,
   Message as TextMessage,
   Room as RoomData,
-  Unread,
   User as DbUser,
 } from "./db/schema";
 
@@ -24,6 +23,8 @@ export type ConnectedUserState = {
   watchedBy: number[];
   online: true;
 };
+
+export type Unread = Flatten<UnreadRow & { mentiones: number }>;
 
 export type OfflineUser = DbUser & {
   online: false;

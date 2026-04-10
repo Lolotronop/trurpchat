@@ -103,6 +103,9 @@ export const messages = table(
 
     editedAt: t.integer({ mode: "timestamp_ms" }),
     deletedAt: t.integer({ mode: "timestamp_ms" }),
+
+    /** Essentially a cache for the frontend to not recompute this every time */
+    hasMention: t.integer({ mode: "boolean" }).notNull().default(false),
   },
   (tb) => [t.primaryKey({ columns: [tb.id, tb.roomId] })],
 );
@@ -126,7 +129,7 @@ export const unread = table(
   (tb) => [t.primaryKey({ columns: [tb.userId, tb.roomId] })],
 );
 
-export type Unread = typeof unread.$inferSelect;
+export type UnreadRow = typeof unread.$inferSelect;
 
 export const relations = defineRelations(
   { users, keys, messages, rooms, serverMeta },

@@ -5,6 +5,10 @@ import { send, sendAll } from "$src/send";
 import type { MessageAction } from "$src/types";
 import type { Handlers } from "./types";
 
+export function userMention(userId: number) {
+  return `<@${userId}>`;
+}
+
 export const messageHandlers: Handlers<MessageAction> = {
   "action.message.create": async (ctx, ws, { roomId, text, replyTo }) => {
     const userId = ws.data.id;
@@ -41,6 +45,9 @@ export const messageHandlers: Handlers<MessageAction> = {
       }
 
       const id = lastIdRow.nextMessageId;
+      // TODO: consolidate this
+      const regex = /<@[0-9]+>/g;
+      const hasMention = regex.test(text);
 
       await tx
         .update(rooms)
@@ -55,6 +62,7 @@ export const messageHandlers: Handlers<MessageAction> = {
           userId,
           text,
           replyTo,
+          hasMention,
         })
         .returning();
     });
@@ -74,10 +82,11 @@ export const messageHandlers: Handlers<MessageAction> = {
 
   "action.message.edit": async (ctx, ws, { roomId, id, text }) => {
     const userId = ws.data.id;
+    const hasMention = text.includes(userMention(userId));
 
     const [message] = await db
       .update(messages)
-      .set({ text, editedAt: new Date() })
+      .set({ text, editedAt: new Date(), hasMention })
       .where(
         and(
           eq(messages.id, id),

@@ -33,24 +33,38 @@ export class UnreadThing {
     readonly onSet: (roomId: number, messageId: number) => void,
   ) {}
 
-  set(roomId: number, messageId: number) {
+  set(roomId: number, messageId: number, mentiones?: number) {
     const found = this.unread.find((u) => u.roomId === roomId);
     if (found) {
       found.unreadId = messageId;
-      return;
+      if (mentiones !== undefined) {
+        found.mentiones = mentiones;
+      }
+    } else {
+      this.unread.push({
+        roomId,
+        userId: this.userId,
+        unreadId: messageId,
+        mentiones: 0,
+      });
     }
-
-    this.unread.push({
-      roomId,
-      userId: this.userId,
-      unreadId: messageId,
-    });
 
     this.onSet(roomId, messageId);
   }
 
+  incMentiones(roomId: number) {
+    const found = this.unread.find((u) => u.roomId === roomId);
+    if (found) {
+      found.mentiones++;
+    }
+  }
+
   get(roomId: number) {
     return this.unread.find((u) => u.roomId === roomId)?.unreadId ?? 0;
+  }
+
+  getMentions(roomId: number) {
+    return this.unread.find((u) => u.roomId === roomId)?.mentiones ?? 0;
   }
 }
 

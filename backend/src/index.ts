@@ -1,6 +1,14 @@
 import { env } from "bun";
-import { and, eq, getColumns, isNull } from "drizzle-orm";
-import { db, getOrCreateServerId, keys, rooms, unread, users } from "./db";
+import { and, eq, getColumns, gte, isNull } from "drizzle-orm";
+import {
+  db,
+  getOrCreateServerId,
+  keys,
+  messages,
+  rooms,
+  unread,
+  users,
+} from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
@@ -15,6 +23,7 @@ import type {
   User,
 } from "./types";
 import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
+import { userMention } from "./handler/message";
 
 await seed();
 console.log(await getKeys());
@@ -182,20 +191,46 @@ Bun.serve<ConnectedUser, never>({
           and(eq(rooms.type, "text"), isNull(rooms.deletedAt)),
         )) as Extract<Room, { type: "text" }>[];
 
-      const thing = [...ctx.hotel.toJson(), ...textRooms];
+      const allRooms = [...ctx.hotel.toJson(), ...textRooms];
       send(ws, {
         type: "event.room.list",
-        rooms: thing,
+        rooms: allRooms,
       });
 
-      const userUnread = await db
+      const unreadRows = await db
         .select()
         .from(unread)
         .where(eq(unread.userId, ws.data.id));
 
+      const unreadPromises = unreadRows.map(async (u) => {
+        const msgs = await db
+          .select()
+          .from(messages)
+          .where(
+            and(
+              eq(messages.roomId, u.roomId),
+              gte(messages.id, u.unreadId),
+              eq(messages.hasMention, true),
+            ),
+          );
+
+        let mentiones = 0;
+        const pattern = userMention(ws.data.id);
+        for (let i = 0; i < msgs.length; i++) {
+          const m = msgs[i];
+          if (!m) continue;
+          if (m.text.includes(pattern)) {
+            mentiones++;
+          }
+        }
+        return { ...u, mentiones };
+      });
+
+      const usersUnread = await Promise.all(unreadPromises);
+
       send(ws, {
         type: "event.message.unread.list",
-        unread: userUnread,
+        unread: usersUnread,
       });
 
       const users = await getAllUsers(ctx);

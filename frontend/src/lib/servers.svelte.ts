@@ -314,6 +314,13 @@ export class Server {
       const room = this.findRoom(message.message.roomId);
       if (room) room.nextMessageId = message.message.id + 1;
       this.messages.append(message.message);
+
+      if (message.message.hasMention) {
+        const mentionesMe = message.message.text.includes(`<@${this.user.id}>`);
+        if (mentionesMe) {
+          this.unread.incMentiones(message.message.roomId);
+        }
+      }
     } else if (message.type === "event.message.unread.list") {
       this.unread.unread = message.unread;
     }

@@ -104,7 +104,7 @@
     if (unreadId === cache.lastMessageId() + 1) {
       return;
     }
-    server.unread.set(cache.room.id, cache.lastMessageId() + 1);
+    server.unread.set(cache.room.id, cache.lastMessageId() + 1, 0);
   }
 
   function autoscroll() {
