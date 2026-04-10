@@ -223,7 +223,6 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error(`Can't mark the future as unread, bud`));
     }
 
-    console.log(userId, roomId, unreadId);
     const [updated] = await db
       .update(unread)
       .set({ unreadId })
