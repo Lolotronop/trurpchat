@@ -1,5 +1,7 @@
 <script lang="ts">
   import { ArrowLeft, ArrowRight } from "@lucide/svelte";
+  import { isTauri } from "@tauri-apps/api/core";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { onMount, tick } from "svelte";
   import type { TextMessage as TMessage } from "trurpchat-backend";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -29,6 +31,23 @@
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
 
+  let tauriFocused = $state(true);
+  let changedFocus = false;
+  if (isTauri()) {
+    getCurrentWindow().onFocusChanged(({ payload }) => {
+      tauriFocused = payload;
+      changedFocus = true;
+    });
+  }
+
+  function isFocused() {
+    if (isTauri()) {
+      return tauriFocused;
+    } else {
+      return document.hasFocus();
+    }
+  }
+
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
       const block = Math.min(unreadBlockId, cache.lastBlockId());
@@ -40,6 +59,14 @@
 
     if (unreadId <= cache.lastMessageId()) {
       newId = unreadId;
+    }
+
+    if (isTauri()) {
+      getCurrentWindow()
+        .isFocused()
+        .then((focused) => {
+          tauriFocused = focused;
+        });
     }
 
     return () => {
@@ -88,13 +115,25 @@
 
   $effect(() => {
     if (!se) return;
-    if (cache.renderBlocks.length === 0) return;
-    const last = cache.renderBlocks[cache.renderBlocks.length - 1];
-    if (last !== cache.lastBlockId()) return;
-    const block = cache.get(cache.lastBlockId(), false);
-    if (!block) return;
-    block.messages.length;
-    autoscroll();
+
+    if (isFocused()) {
+      if (cache.renderBlocks.length === 0) return;
+      const last = cache.renderBlocks[cache.renderBlocks.length - 1];
+      if (last !== cache.lastBlockId()) return;
+      const block = cache.get(cache.lastBlockId(), false);
+      if (!block) return;
+      block.messages.length;
+      autoscroll();
+    } else {
+      if (changedFocus) {
+        newId = unreadId;
+        changedFocus = false;
+      }
+      const block = cache.get(cache.lastBlockId(), false);
+      if (!block) return;
+      block.messages.length;
+      jumpTo(unreadId);
+    }
   });
 
   let shouldAutoscroll = $state(false);
@@ -173,18 +212,17 @@
       );
       if (!element) return;
 
-      let top = element.offsetTop - se.offsetTop - 50;
+      let top = element.offsetTop - se.offsetTop;
       if (top < 1) {
         top = 1;
       }
 
-      if (top > se.scrollHeight - se.clientHeight) {
-        top = se.scrollHeight - se.clientHeight - element.clientHeight;
-      }
+      // if (top > se.scrollHeight - se.clientHeight) {
+      //   top = se.scrollHeight - se.clientHeight - element.clientHeight;
+      // }
 
       se.scrollTo({
         top,
-        behavior: "smooth",
       });
     } else {
       cache.renderBlocks = [blockId];
@@ -241,7 +279,7 @@
     if (!se) return;
     const isBottom = se.scrollHeight - se.scrollTop === se.clientHeight;
 
-    if (intersecting && isBottom) {
+    if (intersecting && isBottom && isFocused()) {
       markRead();
     }
 
@@ -291,14 +329,14 @@
     const first = cache.renderBlocks[0];
     const last = cache.renderBlocks[cache.renderBlocks.length - 1];
     const len = () => cache.renderBlocks.length;
-    if (blockId !== 0 && prev === first - size) {
+    if (blockId > 0 && prev === first - size) {
       cache.renderBlocks.unshift(prev);
       if (len() > MAX_BLOCKS) {
         cache.renderBlocks.splice(len() - 1, 1);
       }
     }
 
-    if (blockId !== cache.lastBlockId() && next === last + size) {
+    if (blockId < cache.lastBlockId() && next === last + size) {
       cache.renderBlocks.push(next);
       if (len() > MAX_BLOCKS) {
         cache.renderBlocks.splice(0, 1);
