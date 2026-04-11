@@ -31,21 +31,30 @@
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
 
-  let tauriFocused = $state(true);
+  let hasFocus = $state(true);
   let changedFocus = false;
   if (isTauri()) {
     getCurrentWindow().onFocusChanged(({ payload }) => {
-      tauriFocused = payload;
+      hasFocus = payload;
       changedFocus = true;
     });
-  }
+  } else {
+    let prev = document.hasFocus();
 
-  function isFocused() {
-    if (isTauri()) {
-      return tauriFocused;
-    } else {
-      return document.hasFocus();
+    function focusChanged() {
+      const cur = document.hasFocus();
+      if (cur !== prev) {
+        prev = cur;
+      }
+      hasFocus = cur;
+      changedFocus = true;
     }
+
+    window.addEventListener("focus", focusChanged, true);
+    window.addEventListener("blur", focusChanged, true);
+    document.addEventListener("visibilitychange", focusChanged);
+    document.addEventListener("focus", focusChanged, true);
+    document.addEventListener("blur", focusChanged, true);
   }
 
   onMount(() => {
@@ -65,8 +74,10 @@
       getCurrentWindow()
         .isFocused()
         .then((focused) => {
-          tauriFocused = focused;
+          hasFocus = focused;
         });
+    } else {
+      hasFocus = document.hasFocus();
     }
 
     return () => {
@@ -116,22 +127,22 @@
   $effect(() => {
     if (!se) return;
 
-    if (isFocused()) {
+    // subscribe to new messages
+    const block = cache.get(cache.lastBlockId(), false);
+    if (!block?.alive) return;
+    block.messages.length;
+
+    if (hasFocus) {
       if (cache.renderBlocks.length === 0) return;
       const last = cache.renderBlocks[cache.renderBlocks.length - 1];
       if (last !== cache.lastBlockId()) return;
-      const block = cache.get(cache.lastBlockId(), false);
-      if (!block) return;
-      block.messages.length;
       autoscroll();
     } else {
       if (changedFocus) {
         newId = unreadId;
         changedFocus = false;
+        return;
       }
-      const block = cache.get(cache.lastBlockId(), false);
-      if (!block) return;
-      block.messages.length;
       jumpTo(unreadId);
     }
   });
@@ -224,7 +235,7 @@
       se.scrollTo({
         top,
       });
-    } else {
+    } else if (blockId >= 0 && blockId <= cache.lastBlockId()) {
       cache.renderBlocks = [blockId];
     }
   }
@@ -279,7 +290,7 @@
     if (!se) return;
     const isBottom = se.scrollHeight - se.scrollTop === se.clientHeight;
 
-    if (intersecting && isBottom && isFocused()) {
+    if (intersecting && isBottom && hasFocus) {
       markRead();
     }
 
