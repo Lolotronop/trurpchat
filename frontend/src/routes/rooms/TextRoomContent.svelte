@@ -283,18 +283,26 @@
   }
 
   function expandScope(blockId: number) {
+    const MAX_BLOCKS = 10;
     const size = BLOCK_SIZE;
     const prev = blockId - size;
     const next = blockId + size;
 
     const first = cache.renderBlocks[0];
     const last = cache.renderBlocks[cache.renderBlocks.length - 1];
+    const len = () => cache.renderBlocks.length;
     if (blockId !== 0 && prev === first - size) {
       cache.renderBlocks.unshift(prev);
+      if (len() > MAX_BLOCKS) {
+        cache.renderBlocks.splice(len() - 1, 1);
+      }
     }
 
     if (blockId !== cache.lastBlockId() && next === last + size) {
       cache.renderBlocks.push(next);
+      if (len() > MAX_BLOCKS) {
+        cache.renderBlocks.splice(0, 1);
+      }
     }
 
     scheduleShrink();
