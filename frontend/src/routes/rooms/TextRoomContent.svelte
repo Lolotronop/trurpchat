@@ -27,6 +27,7 @@
 
   const unreadId = $derived(server.unread.get(cache.room.id));
   const unreadBlockId = $derived(getBlockId(unreadId));
+  let newId: number | undefined = $state(undefined);
 
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
@@ -35,6 +36,10 @@
     } else if (cache.scrollPosition !== undefined) {
       if (!se) return;
       se.scrollTop = cache.scrollPosition;
+    }
+
+    if (unreadId <= cache.lastMessageId()) {
+      newId = unreadId;
     }
 
     return () => {
@@ -78,6 +83,7 @@
       text: trimmed,
     });
     text = "";
+    newId = undefined;
   }
 
   $effect(() => {
@@ -447,7 +453,7 @@
   {#if unreadId <= cache.lastMessageId()}
     {@const diff = cache.lastMessageId() - unreadId + 1}
     <div
-      class="absolute top-0 left-0 right-0 bottom-0 z-10 bg-accent text-accent-foreground w-full h-fit rounded-b px-2 py-0.5 flex flex-row justify-between gap-20"
+      class="bg-accent text-accent-foreground w-full h-fit rounded-b px-2 py-0.5 flex flex-row justify-between gap-20"
     >
       <button
         class="w-full cursor-pointer flex justify-start"
@@ -491,16 +497,16 @@
               {#each part as message (message.id)}
                 {#if message.deletedAt === null}
                   {@const isFirst = part.indexOf(message) === 0}
-                  {@const isUnread = unreadId === message.id}
-                  {@const showHeader = isFirst || isUnread}
+                  {@const isNew = newId === message.id}
+                  {@const showHeader = isFirst || isNew}
                   {@const user = server.findUser(message.userId)}
                   {#if showHeader}
                     <div
                       class="flex flex-row items-center gap-2 px-4 text-xs text-destructive select-none "
-                      class:opacity-0={!isUnread}
+                      class:opacity-0={!isNew}
                     >
                       <Separator class="shrink bg-destructive" />
-                      Непрочитанное
+                      Новые
                       <Separator class="shrink bg-destructive" />
                     </div>
                   {/if}
