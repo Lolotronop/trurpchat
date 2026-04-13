@@ -213,7 +213,7 @@
                   <Slider
                     type="single"
                     bind:value={g.mic.threshold}
-                    min={-42}
+                    min={-64}
                     max={0}
                     step={0.1}
                   />
@@ -223,7 +223,7 @@
                     <AnalyzerDisplay
                       rms={g.mic.rms}
                       peak={g.mic.peak}
-                      min={-42}
+                      min={-64}
                     />
                   </div>
                 </div>
