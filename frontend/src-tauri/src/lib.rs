@@ -3,7 +3,9 @@ use ffmpeg_rs::{
     self,
     control_plane::{ControlPlane, ControlPlaneData, ControlPlaneState},
 };
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_notification::NotificationExt;
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2Profile4, ICoreWebView2_13, COREWEBVIEW2_PERMISSION_KIND_CAMERA,
     COREWEBVIEW2_PERMISSION_KIND_MICROPHONE, COREWEBVIEW2_PERMISSION_STATE_ALLOW,
@@ -58,11 +60,14 @@ fn start_stream(
     std::thread::spawn({
         let control_plane = state.control_plane.clone();
         move || {
+            let stream_started_at = std::sync::Arc::new(std::sync::Mutex::new(None::<Instant>));
             std::thread::spawn({
                 let control_plane = control_plane.clone();
                 let app = app.clone();
+                let stream_started_at = stream_started_at.clone();
                 move || {
                     if control_plane.wait_started() {
+                        *stream_started_at.lock().unwrap() = Some(Instant::now());
                         if let Err(e) = app.emit("stream-status", true) {
                             println!("Error emitting stream-status: {:?}", e);
                         }
@@ -75,6 +80,20 @@ fn start_stream(
             }
             if let Err(e) = app.emit("stream-status", false) {
                 println!("Error emitting stream-status: {:?}", e);
+            }
+            let started_at = *stream_started_at.lock().unwrap();
+            if let Some(started_at) = started_at {
+                if started_at.elapsed() < Duration::from_millis(500) {
+                    if let Err(e) = app
+                        .notification()
+                        .builder()
+                        .title("Предупреждение")
+                        .body("Стрим завершился слишком быстро. Если окно, которое вы захватываете, было свернуто, такое может произойти. Разверните окно и попробуйте снова.")
+                        .show()
+                    {
+                        println!("Error showing notification: {:?}", e);
+                    }
+                }
             }
         }
     });
@@ -179,6 +198,7 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             greet,
             get_permissions,

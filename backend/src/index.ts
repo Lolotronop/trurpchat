@@ -11,6 +11,7 @@ import {
 } from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
+import { userMention } from "./handler/message";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
 import { send, sendAll } from "./send";
 import type {
@@ -23,7 +24,6 @@ import type {
   User,
 } from "./types";
 import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
-import { userMention } from "./handler/message";
 
 await seed();
 console.log(await getKeys());
