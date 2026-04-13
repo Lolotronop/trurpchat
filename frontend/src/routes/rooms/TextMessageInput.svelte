@@ -12,17 +12,71 @@
   };
 
   const MENTION_REGEX = /<@(\d+)>/g;
+  const MENTION_TRIGGER_REGEX = /(?:^|[\s([{:;,.!?\-])@([^\s@<>]*)$/;
 
   let { server, roomId, roomName, onSent }: Props = $props();
 
   let editor = $state<HTMLDivElement>();
   let text = $state("");
+  let hasEditorFocus = $state(false);
+  let mentionQuery = $state("");
+  let mentionReplaceStart = $state<number | null>(null);
+  let mentionReplaceEnd = $state<number | null>(null);
+  let mentionActiveIndex = $state(0);
 
   const canSend = $derived(text.trim().length > 0);
   const isEmpty = $derived(text.length === 0);
+  const mentionCandidates = $derived.by(() => {
+    if (
+      !hasEditorFocus ||
+      mentionReplaceStart === null ||
+      mentionReplaceEnd === null
+    ) {
+      return [];
+    }
+
+    const query = mentionQuery.trim().toLowerCase();
+    return [...server.users]
+      .map((user) => {
+        const normalized = user.name.toLowerCase();
+        let score = 0;
+
+        if (query.length === 0) {
+          score = 1;
+        } else if (normalized === query) {
+          score = 4;
+        } else if (
+          normalized
+            .split(/\s+/g)
+            .filter(Boolean)
+            .some((word) => word.startsWith(query))
+        ) {
+          score = 3;
+        } else if (normalized.includes(query)) {
+          score = 2;
+        }
+
+        return { user, score };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) {
+          return b.score - a.score;
+        }
+        return a.user.name.localeCompare(b.user.name);
+      });
+  });
+  const mentionOpen = $derived(mentionCandidates.length > 0);
 
   function focusEditor() {
     editor?.focus();
+  }
+
+  function closeMentionPicker() {
+    mentionQuery = "";
+    mentionReplaceStart = null;
+    mentionReplaceEnd = null;
+    mentionActiveIndex = 0;
   }
 
   function getMentionLabel(userId: number) {
@@ -340,6 +394,42 @@
   function syncTextFromEditor() {
     text = serializeEditor();
     renderRawText(text);
+    updateMentionState();
+  }
+
+  function getCaretRawOffset() {
+    const selection = getSelectionOffsets();
+    if (!selection || selection.anchor !== selection.focus) {
+      return null;
+    }
+    return selection.anchor;
+  }
+
+  function updateMentionState() {
+    if (!hasEditorFocus) {
+      closeMentionPicker();
+      return;
+    }
+
+    const caret = getCaretRawOffset();
+    if (caret === null) {
+      closeMentionPicker();
+      return;
+    }
+
+    const beforeCaret = text.slice(0, caret);
+    const match = beforeCaret.match(MENTION_TRIGGER_REGEX);
+    if (!match) {
+      closeMentionPicker();
+      return;
+    }
+
+    mentionQuery = match[1] ?? "";
+    mentionReplaceStart = caret - mentionQuery.length - 1;
+    mentionReplaceEnd = caret;
+    if (mentionActiveIndex >= mentionCandidates.length) {
+      mentionActiveIndex = 0;
+    }
   }
 
   function replaceRawRange(start: number, end: number, replacement: string) {
@@ -348,6 +438,7 @@
     text = `${text.slice(0, from)}${replacement}${text.slice(to)}`;
     renderRawText(text);
     restoreSelection(from + replacement.length, from + replacement.length);
+    updateMentionState();
   }
 
   function getSelectedRawRange() {
@@ -361,9 +452,20 @@
     return { start, end };
   }
 
+  function insertMention(userId: number) {
+    if (mentionReplaceStart === null || mentionReplaceEnd === null) {
+      return;
+    }
+
+    replaceRawRange(mentionReplaceStart, mentionReplaceEnd, `<@${userId}> `);
+    closeMentionPicker();
+    focusEditor();
+  }
+
   function clearEditor() {
     text = "";
     renderRawText(text);
+    closeMentionPicker();
   }
 
   function sendMessage() {
@@ -408,6 +510,15 @@
     syncTextFromEditor();
   }
 
+  function selectNextMention(direction: 1 | -1) {
+    if (!mentionOpen) {
+      return;
+    }
+
+    const len = mentionCandidates.length;
+    mentionActiveIndex = (mentionActiveIndex + direction + len) % len;
+  }
+
   $effect(() => {
     if (!editor) {
       return;
@@ -415,11 +526,12 @@
 
     if (serializeEditor() !== text) {
       renderRawText(text);
+      updateMentionState();
     }
   });
 </script>
 
-<div class="flex flex-row w-full pb-2 px-2">
+<div class="relative flex flex-row w-full pb-2 px-2">
   <InputGroup.Root
     class="h-auto min-h-12 items-stretch cursor-text"
     onclick={focusEditor}
@@ -441,8 +553,44 @@
         aria-multiline="true"
         tabindex="0"
         class="message-input block max-h-40 min-h-[1.25rem] w-full overflow-y-auto px-3 py-2 text-base leading-5 whitespace-pre-wrap break-words bg-transparent outline-none md:text-sm"
+        onfocus={() => {
+          hasEditorFocus = true;
+          updateMentionState();
+        }}
+        onblur={() => {
+          hasEditorFocus = false;
+          closeMentionPicker();
+        }}
         oninput={syncTextFromEditor}
+        onclick={updateMentionState}
+        onkeyup={updateMentionState}
         onkeydown={(event) => {
+          if (mentionOpen) {
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
+              selectNextMention(1);
+              return;
+            }
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
+              selectNextMention(-1);
+              return;
+            }
+            if (event.key === "Escape") {
+              event.preventDefault();
+              closeMentionPicker();
+              return;
+            }
+            if (event.key === "Enter" || event.key === "Tab") {
+              const selected = mentionCandidates[mentionActiveIndex];
+              if (selected) {
+                event.preventDefault();
+                insertMention(selected.user.id);
+                return;
+              }
+            }
+          }
+
           const holdsModifier = event.ctrlKey || event.metaKey || event.shiftKey;
           if (!holdsModifier && event.key === "Enter") {
             event.preventDefault();
@@ -493,4 +641,31 @@
       </Button>
     </InputGroup.Addon>
   </InputGroup.Root>
+
+  {#if mentionOpen}
+    <div
+      class="absolute bottom-full left-2 z-20 mb-2 w-72 max-w-[calc(100%-1rem)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
+    >
+      <div class="max-h-60 overflow-y-auto p-1">
+        {#each mentionCandidates as entry, index (entry.user.id)}
+          <button
+            type="button"
+            class={[
+              "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm",
+              index === mentionActiveIndex && "bg-accent text-accent-foreground",
+            ]}
+            onmouseenter={() => {
+              mentionActiveIndex = index;
+            }}
+            onmousedown={(event) => {
+              event.preventDefault();
+              insertMention(entry.user.id);
+            }}
+          >
+            <span class="truncate">@{entry.user.name}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
 </div>
