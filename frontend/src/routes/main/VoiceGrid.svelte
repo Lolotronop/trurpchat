@@ -450,7 +450,6 @@
     if (layoutMode === "focus" && focusedTileId === tileId) {
       layoutMode = "grid";
       focusedTileId = undefined;
-      hideOthers = false;
       return;
     }
 
@@ -479,7 +478,6 @@
     if (!focusedTileId || !tiles.some((tile) => tile.id === focusedTileId)) {
       layoutMode = "grid";
       focusedTileId = undefined;
-      hideOthers = false;
     }
   });
 
