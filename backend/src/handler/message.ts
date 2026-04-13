@@ -1,9 +1,9 @@
 import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
+import { mentions } from "trurpchat-shared";
 import { db, messages, rooms, unread } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { MessageAction } from "$src/types";
-import { mentions } from "trurpchat-shared";
 import type { Handlers } from "./types";
 
 export const messageHandlers: Handlers<MessageAction> = {

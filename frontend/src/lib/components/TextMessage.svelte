@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { TextMessage, User } from "trurpchat-backend";
+  import { mentions } from "trurpchat-shared";
   import Avatar from "$lib/components/Avatar.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";
 
@@ -7,10 +8,26 @@
     user?: User;
     message: TextMessage;
     showHeader?: boolean;
+    currentUserId?: number;
+    findUser?: (userId: number) => User | undefined;
   };
 
-  let { user, message, showHeader }: Props = $props();
+  let { user, message, showHeader, currentUserId, findUser }: Props = $props();
   showHeader ??= true;
+
+  const mentionParts = $derived(
+    message.hasMention ? mentions.user.split(message.text) : null,
+  );
+  const mentionsCurrentUser = $derived(
+    message.hasMention &&
+      currentUserId !== undefined &&
+      mentions.user.includes(message.text, currentUserId),
+  );
+
+  function getMentionLabel(userId: number) {
+    const mentionUser = findUser?.(userId);
+    return `@${mentionUser?.name ?? userId}`;
+  }
 
   function formatTime(date: Date, showDate = true): string {
     const now = new Date();
@@ -42,7 +59,12 @@
   }
 </script>
 
-<div class="flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors msg">
+<div
+  class={[
+    "flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors msg",
+    mentionsCurrentUser && "bg-accent/20",
+  ]}
+>
   <div class="w-9 flex justify-center">
     {#if showHeader}
       <Avatar name={user?.name ?? "?"} class="mt-1 shrink-0 size-9" />
@@ -79,7 +101,19 @@
       </div>
     {/if}
     <p class="text-sm text-foreground wrap-break-word whitespace-pre-wrap">
-      {message.text}
+      {#if mentionParts}
+        {#each mentionParts as part, index (`${part.type}:${index}:${part.type === "text" ? part.value : part.raw}`)}
+          {#if part.type === "text"}
+            {part.value}
+          {:else}
+            <span class="text-foreground font-medium">
+              {getMentionLabel(part.userId)}
+            </span>
+          {/if}
+        {/each}
+      {:else}
+        {message.text}
+      {/if}
     </p>
   </div>
 </div>

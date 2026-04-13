@@ -7,6 +7,17 @@ export type UserMentionMatch = {
   index: number;
 };
 
+export type UserMentionPart =
+  | {
+      type: "text";
+      value: string;
+    }
+  | {
+      type: "mention";
+      raw: string;
+      userId: number;
+    };
+
 const user = {
   regex: USER_MENTION_REGEX,
   format(userId: number | string) {
@@ -34,6 +45,35 @@ const user = {
   },
   includes(text: string, userId: number) {
     return text.includes(user.format(userId));
+  },
+  split(text: string): UserMentionPart[] {
+    const parts: UserMentionPart[] = [];
+    let lastIndex = 0;
+
+    for (const mention of user.get(text)) {
+      if (mention.index > lastIndex) {
+        parts.push({
+          type: "text",
+          value: text.slice(lastIndex, mention.index),
+        });
+      }
+
+      parts.push({
+        type: "mention",
+        raw: mention.raw,
+        userId: mention.userId,
+      });
+      lastIndex = mention.index + mention.raw.length;
+    }
+
+    if (lastIndex < text.length || parts.length === 0) {
+      parts.push({
+        type: "text",
+        value: text.slice(lastIndex),
+      });
+    }
+
+    return parts;
   },
 } as const;
 

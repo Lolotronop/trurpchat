@@ -563,7 +563,13 @@
                     {/snippet}
 
                     <div data-message={message.id}>
-                      <TextMessage {user} {message} {showHeader} />
+                      <TextMessage
+                        {user}
+                        {message}
+                        {showHeader}
+                        currentUserId={server.user.id}
+                        findUser={(userId) => server.findUser(userId)}
+                      />
                     </div>
                   </ContextMenu>
                 {/if}
