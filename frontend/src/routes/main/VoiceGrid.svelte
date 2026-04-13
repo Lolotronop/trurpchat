@@ -112,6 +112,7 @@
   let focusContainer: HTMLDivElement | undefined = $state(undefined);
 
   let hideTimeout: ReturnType<typeof setTimeout> | undefined;
+  let isInteractingWithControls = $state(false);
   let gridItemWidth = $state(0);
   let secondaryItemWidth = $state(0);
   let focusItemWidth = $state(0);
@@ -248,10 +249,23 @@
     };
   }
 
+  function cancelControlsHide() {
+    clearTimeout(hideTimeout);
+    shouldHide = false;
+  }
+
   function scheduleControlsHide() {
     clearTimeout(hideTimeout);
+
+    if (isInteractingWithControls) {
+      shouldHide = false;
+      return;
+    }
+
     hideTimeout = setTimeout(() => {
-      shouldHide = true;
+      if (!isInteractingWithControls) {
+        shouldHide = true;
+      }
     }, AUTO_HIDE_DELAY);
   }
 
@@ -269,18 +283,62 @@
   }
 
   function attachGridShell(el: HTMLDivElement) {
+    const isControlsTarget = (target: EventTarget | null) => {
+      return target instanceof HTMLElement && Boolean(target.closest("[data-controls]"));
+    };
+
+    function beginControlsInteraction(target: EventTarget | null) {
+      if (!isControlsTarget(target)) {
+        return false;
+      }
+
+      isInteractingWithControls = true;
+      cancelControlsHide();
+      return true;
+    }
+
+    function endControlsInteraction(target: EventTarget | null) {
+      if (!isInteractingWithControls) {
+        return false;
+      }
+
+      isInteractingWithControls = isControlsTarget(target);
+      if (!isInteractingWithControls) {
+        scheduleControlsHide();
+      }
+
+      return true;
+    }
+
     const onMouseMove = (event: MouseEvent) => {
       shouldHide = false;
 
-      const target = event.target as HTMLElement;
-      if (target.closest("[data-controls]")) {
+      if (beginControlsInteraction(event.target)) {
         return;
       }
 
+      isInteractingWithControls = false;
       scheduleControlsHide();
     };
 
+    const onPointerDown = (event: PointerEvent) => {
+      beginControlsInteraction(event.target);
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      endControlsInteraction(event.target);
+    };
+
+    const onFocusIn = (event: FocusEvent) => {
+      beginControlsInteraction(event.target);
+    };
+
+    const onFocusOut = (event: FocusEvent) => {
+      endControlsInteraction(event.relatedTarget);
+    };
+
     const onMouseLeave = () => {
+      isInteractingWithControls = false;
       clearTimeout(hideTimeout);
       shouldHide = true;
     };
@@ -299,6 +357,10 @@
     };
 
     el.addEventListener("mousemove", onMouseMove);
+    el.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("pointerup", onPointerUp);
+    el.addEventListener("focusin", onFocusIn);
+    el.addEventListener("focusout", onFocusOut);
     el.addEventListener("mouseleave", onMouseLeave);
     el.addEventListener("dblclick", onDblClick);
     document.addEventListener("fullscreenchange", onFullscreenChange);
@@ -306,6 +368,10 @@
     return () => {
       clearTimeout(hideTimeout);
       el.removeEventListener("mousemove", onMouseMove);
+      el.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("pointerup", onPointerUp);
+      el.removeEventListener("focusin", onFocusIn);
+      el.removeEventListener("focusout", onFocusOut);
       el.removeEventListener("mouseleave", onMouseLeave);
       el.removeEventListener("dblclick", onDblClick);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
