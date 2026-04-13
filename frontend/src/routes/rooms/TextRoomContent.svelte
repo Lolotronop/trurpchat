@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowLeft, ArrowRight } from "@lucide/svelte";
+  import { ArrowLeft } from "@lucide/svelte";
   import { isTauri } from "@tauri-apps/api/core";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { onMount, tick } from "svelte";
@@ -9,8 +9,8 @@
   import TextMessage from "$lib/components/TextMessage.svelte";
   import { Button } from "$lib/components/ui/button";
   import { Item } from "$lib/components/ui/context-menu";
-  import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import Separator from "$lib/components/ui/separator/separator.svelte";
+  import TextMessageInput from "./TextMessageInput.svelte";
   import {
     BLOCK_SIZE,
     getBlockId,
@@ -89,8 +89,6 @@
   });
 
   let se = $state<HTMLElement>();
-  let text = $state("");
-  let textarea = $state<HTMLTextAreaElement>();
 
   const activeStream = $derived.by(() => {
     for (const userId of server.rtc.room?.users ?? []) {
@@ -109,20 +107,6 @@
 
     return undefined;
   });
-
-  function sendMessage() {
-    const trimmed = text.trim();
-    if (!trimmed || trimmed.length === 0) {
-      return;
-    }
-    server.gateway.send({
-      type: "action.message.create",
-      roomId: cache.room.id,
-      text: trimmed,
-    });
-    text = "";
-    newId = undefined;
-  }
 
   $effect(() => {
     if (!se) return;
@@ -432,7 +416,7 @@
 {#if false && import.meta.env.DEV}
   <div class="flex flex-col gap-2 w-full justify-center">
     <div class="flex-row gap-2">
-      {#each debugAllIds() as blockId}
+      {#each debugAllIds() as blockId (blockId)}
         <span class={debugDetermineColor(blockId)}> {`${blockId} `} </span>
       {/each}
     </div>
@@ -606,40 +590,12 @@
     </div>
   </div>
 
-  <div class="flex flex-row w-full pb-2 px-2">
-    <InputGroup.Root
-      class="min-h-12 cursor-text"
-      onclick={() => {
-        if (textarea) {
-          textarea.focus();
-        }
-      }}
-    >
-      <textarea
-        data-slot="input-group-control"
-        class="flex field-sizing-content w-full px-3 py-2 resize-none rounded-md bg-transparent text-base transition-[color,box-shadow] outline-none md:text-sm"
-        placeholder={`#${cache.room.name}`}
-        bind:value={text}
-        bind:this={textarea}
-        onkeydown={(e) => {
-          const holdsModifier = e.ctrlKey || e.metaKey || e.shiftKey;
-          if (!holdsModifier && e.key === "Enter") {
-            e.preventDefault();
-            sendMessage();
-          }
-        }}
-      ></textarea>
-      <InputGroup.Addon align="inline-end" class="">
-        <Button
-          disabled={!text || text.length === 0}
-          class="ms-auto h-full!"
-          size="sm"
-          variant="ghost"
-          onclick={sendMessage}
-        >
-          <ArrowRight />
-        </Button>
-      </InputGroup.Addon>
-    </InputGroup.Root>
-  </div>
+  <TextMessageInput
+    {server}
+    roomId={cache.room.id}
+    roomName={cache.room.name}
+    onSent={() => {
+      newId = undefined;
+    }}
+  />
 </div>
