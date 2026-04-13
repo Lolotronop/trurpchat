@@ -284,7 +284,10 @@
 
   function attachGridShell(el: HTMLDivElement) {
     const isControlsTarget = (target: EventTarget | null) => {
-      return target instanceof HTMLElement && Boolean(target.closest("[data-controls]"));
+      return (
+        target instanceof HTMLElement &&
+        Boolean(target.closest("[data-controls]"))
+      );
     };
 
     function beginControlsInteraction(target: EventTarget | null) {
@@ -636,7 +639,7 @@
             {@render tileShell(focusedTile, focusItemWidth, immersiveFocus)}
 
             <div
-              class="pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 transition-opacity duration-100 {shouldHide && 'opacity-0'} {hideOthers ? 'bottom-3' : '-bottom-10'}"
+              class="pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 transition-opacity duration-100 {shouldHide && 'opacity-0'} {hideOthers ? 'bottom-3' : '-bottom-10'}"
             >
               <div
                 data-controls
