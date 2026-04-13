@@ -2,10 +2,11 @@
     "name": "syncevents",
     "private": true,
     "scripts": {
-        "build": "cd packages/frontend && bun run build && cd ../../ && cd packages/shared && bun run build"
+        "build": "cd frontend && bun run build"
     },
     "workspaces": [
         "backend",
-        "frontend"
+        "frontend",
+        "shared"
     ]
 }

@@ -11,8 +11,8 @@ import {
 } from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
-import { userMention } from "./handler/message";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
+import { mentions } from "trurpchat-shared";
 import { send, sendAll } from "./send";
 import type {
   ConnectedUser,
@@ -215,11 +215,10 @@ Bun.serve<ConnectedUser, never>({
           );
 
         let mentiones = 0;
-        const pattern = userMention(ws.data.id);
         for (let i = 0; i < msgs.length; i++) {
           const m = msgs[i];
           if (!m) continue;
-          if (m.text.includes(pattern)) {
+          if (mentions.user.includes(m.text, ws.data.id)) {
             mentiones++;
           }
         }

@@ -15,6 +15,7 @@ import { BLOCK_SIZE, TextMessageCache, UnreadThing } from "./messages.svelte";
 import { sound } from "./sound.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
+import { mentions } from "trurpchat-shared";
 
 export type ServerDefinition = {
   id: string | null;
@@ -325,7 +326,10 @@ export class Server {
       this.messages.append(message.message);
 
       if (message.message.hasMention) {
-        const mentionesMe = message.message.text.includes(`<@${this.user.id}>`);
+        const mentionesMe = mentions.user.includes(
+          message.message.text,
+          this.user.id,
+        );
         if (mentionesMe) {
           this.unread.incMentiones(message.message.roomId);
         }

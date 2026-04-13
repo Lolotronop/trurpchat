@@ -1,0 +1,12 @@
+{
+  "name": "trurpchat-shared",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./mentions": "./src/mentions.ts"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

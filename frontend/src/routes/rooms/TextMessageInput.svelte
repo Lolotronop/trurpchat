@@ -3,6 +3,7 @@
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import type { Server } from "$lib/servers.svelte";
+  import { mentions } from "trurpchat-shared";
 
   type Props = {
     server: Server;
@@ -10,9 +11,6 @@
     roomName: string;
     onSent?: () => void;
   };
-
-  const MENTION_REGEX = /<@(\d+)>/g;
-  const MENTION_TRIGGER_REGEX = /(?:^|[\s([{:;,.!?\-])@([^\s@<>]*)$/;
 
   let { server, roomId, roomName, onSent }: Props = $props();
 
@@ -373,14 +371,10 @@
     const fragment = document.createDocumentFragment();
     let lastIndex = 0;
 
-    for (const match of raw.matchAll(MENTION_REGEX)) {
-      const index = match.index ?? 0;
-      const full = match[0];
-      const userId = Number(match[1]);
-
-      appendRawText(fragment, raw.slice(lastIndex, index));
-      fragment.append(createMentionNode(full, userId));
-      lastIndex = index + full.length;
+    for (const mention of mentions.user.get(raw)) {
+      appendRawText(fragment, raw.slice(lastIndex, mention.index));
+      fragment.append(createMentionNode(mention.raw, mention.userId));
+      lastIndex = mention.index + mention.raw.length;
     }
 
     appendRawText(fragment, raw.slice(lastIndex));
@@ -419,15 +413,15 @@
     }
 
     const beforeCaret = text.slice(0, caret);
-    const match = beforeCaret.match(MENTION_TRIGGER_REGEX);
-    if (!match) {
+    const trigger = mentions.trigger(beforeCaret);
+    if (!trigger) {
       closeMentionPicker();
       return;
     }
 
-    mentionQuery = match[1] ?? "";
-    mentionReplaceStart = caret - mentionQuery.length - 1;
-    mentionReplaceEnd = caret;
+    mentionQuery = trigger.query;
+    mentionReplaceStart = trigger.replaceStart;
+    mentionReplaceEnd = trigger.replaceEnd;
     if (mentionActiveIndex >= mentionCandidates.length) {
       mentionActiveIndex = 0;
     }
@@ -458,7 +452,11 @@
       return;
     }
 
-    replaceRawRange(mentionReplaceStart, mentionReplaceEnd, `<@${userId}> `);
+    replaceRawRange(
+      mentionReplaceStart,
+      mentionReplaceEnd,
+      `${mentions.user.format(userId)} `,
+    );
     closeMentionPicker();
     focusEditor();
   }

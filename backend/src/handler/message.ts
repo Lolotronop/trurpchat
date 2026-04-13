@@ -3,11 +3,8 @@ import { err, ok } from "neverthrow";
 import { db, messages, rooms, unread } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { MessageAction } from "$src/types";
+import { mentions } from "trurpchat-shared";
 import type { Handlers } from "./types";
-
-export function userMention(userId: number) {
-  return `<@${userId}>`;
-}
 
 export const messageHandlers: Handlers<MessageAction> = {
   "action.message.create": async (ctx, ws, { roomId, text, replyTo }) => {
@@ -45,9 +42,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       }
 
       const id = lastIdRow.nextMessageId;
-      // TODO: consolidate this
-      const regex = /<@[0-9]+>/g;
-      const hasMention = regex.test(text);
+      const hasMention = mentions.user.has(text);
 
       await tx
         .update(rooms)
@@ -82,7 +77,7 @@ export const messageHandlers: Handlers<MessageAction> = {
 
   "action.message.edit": async (ctx, ws, { roomId, id, text }) => {
     const userId = ws.data.id;
-    const hasMention = text.includes(userMention(userId));
+    const hasMention = mentions.user.has(text);
 
     const [message] = await db
       .update(messages)
