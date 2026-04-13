@@ -246,7 +246,7 @@
     let total = getRawOffset(node, offset);
 
     while (current && current !== editor) {
-      const parent = current.parentNode;
+      const parent: ParentNode | null = current.parentNode;
       if (!parent) {
         break;
       }
@@ -288,6 +288,9 @@
 
       if (node.nodeName === "BR") {
         const parent = node.parentNode ?? editor;
+        if (!parent) {
+          return null;
+        }
         const index = Array.prototype.indexOf.call(parent.childNodes, node);
         if (clamped <= currentOffset) {
           return { container: parent, offset: index };
@@ -301,6 +304,9 @@
       if (node instanceof HTMLElement && node.dataset.mentionRaw) {
         const length = node.dataset.mentionRaw.length;
         const parent = node.parentNode ?? editor;
+        if (!parent) {
+          return null;
+        }
         const index = Array.prototype.indexOf.call(parent.childNodes, node);
         if (clamped <= currentOffset) {
           return { container: parent, offset: index };
@@ -571,7 +577,7 @@
         role="textbox"
         aria-multiline="true"
         tabindex="0"
-        class="message-input block max-h-40 min-h-[1.25rem] w-full overflow-y-auto px-3 py-2 text-base leading-5 whitespace-pre-wrap break-words bg-transparent outline-none md:text-sm"
+        class="message-input block max-h-40 min-h-5 w-full overflow-y-auto px-3 py-2 text-base leading-5 whitespace-pre-wrap wrap-break-word bg-transparent outline-none md:text-sm"
         onfocus={() => {
           hasEditorFocus = true;
           updateMentionState();
