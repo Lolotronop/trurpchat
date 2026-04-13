@@ -255,6 +255,15 @@ export class Server {
       } else {
         const previousUser = this.users[userIndex]!;
         this.users[userIndex] = message.user;
+
+        if (
+          previousUser.online &&
+          previousUser.streaming &&
+          !message.user.streaming
+        ) {
+          this.rtc.streamPlayers.get(message.user.id)?.stop();
+        }
+
         this.handleUserStateSound(previousUser, message.user);
       }
     } else if (message.type === "event.startup.config") {
