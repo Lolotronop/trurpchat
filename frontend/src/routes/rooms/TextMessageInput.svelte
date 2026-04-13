@@ -17,6 +17,7 @@
   let { server, roomId, roomName, onSent }: Props = $props();
 
   let editor = $state<HTMLDivElement>();
+  let mentionList = $state<HTMLDivElement>();
   let text = $state("");
   let hasEditorFocus = $state(false);
   let mentionQuery = $state("");
@@ -510,6 +511,17 @@
     syncTextFromEditor();
   }
 
+  function scrollActiveMentionIntoView() {
+    if (!mentionList) {
+      return;
+    }
+
+    const active = mentionList.querySelector<HTMLElement>(
+      '[data-mention-active="true"]',
+    );
+    active?.scrollIntoView({ block: "nearest" });
+  }
+
   function selectNextMention(direction: 1 | -1) {
     if (!mentionOpen) {
       return;
@@ -518,6 +530,15 @@
     const len = mentionCandidates.length;
     mentionActiveIndex = (mentionActiveIndex + direction + len) % len;
   }
+
+  $effect(() => {
+    if (!mentionOpen) {
+      return;
+    }
+
+    mentionActiveIndex;
+    scrollActiveMentionIntoView();
+  });
 
   $effect(() => {
     if (!editor) {
@@ -646,10 +667,11 @@
     <div
       class="absolute bottom-full left-2 z-20 mb-2 w-72 max-w-[calc(100%-1rem)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
     >
-      <div class="max-h-60 overflow-y-auto p-1">
+      <div bind:this={mentionList} class="max-h-60 overflow-y-auto p-1">
         {#each mentionCandidates as entry, index (entry.user.id)}
           <button
             type="button"
+            data-mention-active={index === mentionActiveIndex ? "true" : undefined}
             class={[
               "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm",
               index === mentionActiveIndex && "bg-accent text-accent-foreground",
