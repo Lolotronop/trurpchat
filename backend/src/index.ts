@@ -1,5 +1,6 @@
 import { env } from "bun";
 import { and, eq, getColumns, gte, isNull } from "drizzle-orm";
+import { mentions } from "trurpchat-shared";
 import {
   db,
   getOrCreateServerId,
@@ -12,7 +13,6 @@ import {
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
-import { mentions } from "trurpchat-shared";
 import { send, sendAll } from "./send";
 import type {
   ConnectedUser,

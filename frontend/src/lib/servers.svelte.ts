@@ -82,6 +82,7 @@ export class Server {
   user: User = $state({
     id: -1,
     name: "T",
+    displayName: "T",
     type: "text",
     permissions: 0,
     deletedAt: null,

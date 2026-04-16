@@ -5,6 +5,7 @@ import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 export const users = table("users", {
   id: t.integer({ mode: "number" }).primaryKey(),
   name: t.text({ length: 255 }).notNull(),
+  displayName: t.text({ length: 255 }),
 
   /** For now, this will be set to 1 for admins and 0 for everyone else
    * In the future, I plan to expand this to support different permissions

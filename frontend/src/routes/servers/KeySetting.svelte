@@ -1,9 +1,19 @@
 <script lang="ts">
-  import { Button } from "$lib/components/ui/button";
-  import type { Server } from "$lib/servers.svelte";
-  import { Clipboard, Loader2, X } from "@lucide/svelte";
+  import {
+    Clipboard,
+    Loader2,
+    Plus,
+    RefreshCw,
+    Settings,
+    Shield,
+    Trash,
+    UserIcon,
+    X,
+  } from "@lucide/svelte";
   import type { User } from "trurpchat-backend";
   import type { Key } from "trurpchat-backend/src/db";
+  import { Button } from "$lib/components/ui/button";
+  import type { Server } from "$lib/servers.svelte";
   import UsernameFeild from "./UsernameFeild.svelte";
 
   type Props = {
@@ -27,8 +37,10 @@
 
   function groupById(items: Key[]): Map<User, Key[]> {
     const map = new Map<User, Key[]>();
-    for (const user of server.users) {
-      map.set(user, []);
+    if (server.user.permissions === 1) {
+      for (const user of server.users) {
+        map.set(user, []);
+      }
     }
     for (const key of items) {
       const user = server.findUser(key.userId);
@@ -41,6 +53,8 @@
   }
 
   const keyByUser = $derived(groupById(server.keys));
+
+  let editingUserId: number | undefined = $state(undefined);
 </script>
 
 <div class="flex flex-row justify-between items-center gap-2">
@@ -50,24 +64,24 @@
       <Button
         variant="secondary"
         onclick={() => {
-        server.gateway.send({
-          type: "action.user.create",
-          name: "New" + Math.random().toString(36).slice(2),
-        });
-      }}
+          server.gateway.send({
+            type: "action.user.create",
+            name: "New" + Math.random().toString(36).slice(2),
+          });
+        }}
       >
-        Добавить
+        <Plus></Plus>
       </Button>
     {/if}
     <Button
       variant="secondary"
       onclick={() => {
-      server.gateway.send({
-        type: "action.key.list",
-      });
-    }}
+        server.gateway.send({
+          type: "action.key.list",
+        });
+      }}
     >
-      Обновить
+      <RefreshCw />
     </Button>
   </div>
 </div>
@@ -76,56 +90,116 @@
     <Loader2 class="animate-spin" />
   {/if}
   {#each keyByUser.entries() as [ user, keys ] (user.id)}
-    <UsernameFeild {server} {user} />
-    {#each keys as key}
+    {#if editingUserId === user.id}
       <div class="flex flex-row items-center justify-between gap-2">
-        <Button
-          variant="secondary"
-          onclick={() => {
-            const url = server.definition.url;
-            // TODO: make this more robust?
-            // get everything before the key
-            const base = url.match(/.*\?key=/);
-            if (!base || base.length < 1) {
-              return;
-            }
-            navigator.clipboard.writeText(base + key.key);
+        <p>@{user.name}</p>
+        <div>
+          {#if server.user.permissions === 1}
+            <Button
+              variant="secondary"
+              onclick={() => {
+                server.gateway.send({
+                  type: "action.user.delete",
+                  id: user.id,
+                });
+              }}
+            >
+              <Trash />
+            </Button>
+
+            <Button
+              variant="secondary"
+              onclick={() => {
+                const perm = user.permissions === 1 ? 0 : 1;
+                server.gateway.send({
+                  type: "action.user.update",
+                  id: user.id,
+                  permissions: perm,
+                });
+              }}
+            >
+              {#if user.permissions === 1}
+                <Shield />
+              {:else}
+                <UserIcon />
+              {/if}
+            </Button>
+          {/if}
+          <Button
+            variant="secondary"
+            onclick={() => {
+            editingUserId = undefined;
           }}
-        >
-          <Clipboard />
-        </Button>
-        <div
-          class="flex flex-row items-center justify-between w-[80%] text-left"
-        >
-          <p class="text-muted-foreground text-base">{key.id}</p>
-          <p class="text-muted-foreground text-base">
-            {formatDate(new Date(key.lastSeen))}
-          </p>
+          >
+            <Settings></Settings>
+          </Button>
         </div>
+      </div>
+      <UsernameFeild field="name" {server} {user} />
+      <UsernameFeild field="displayName" {server} {user} />
+      {#each keys as key}
+        <div class="flex flex-row items-center justify-between gap-2">
+          <Button
+            variant="secondary"
+            onclick={() => {
+              const url = server.definition.url;
+              // TODO: make this more robust?
+              // get everything before the key
+              const base = url.match(/.*\?key=/);
+              if (!base || base.length < 1) {
+                return;
+              }
+              navigator.clipboard.writeText(base + key.key);
+            }}
+          >
+            <Clipboard />
+          </Button>
+          <div
+            class="flex flex-row items-center justify-between w-[80%] text-left"
+          >
+            <p class="text-muted-foreground text-base">{key.id}</p>
+            <p class="text-muted-foreground text-base">
+              {formatDate(new Date(key.lastSeen))}
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            onclick={() => {
+              server.gateway.send({
+                type: "action.key.remove",
+                keyId: key.id,
+              });
+            }}
+          >
+            <X />
+          </Button>
+        </div>
+      {/each}
+      <Button
+        variant="secondary"
+        class="mb-4"
+        onclick={() => {
+          server.gateway.send({
+            type: "action.key.add",
+            userId: user.id,
+          });
+        }}
+      >
+        +
+      </Button>
+    {:else}
+      <div class="flex flex-row items-center justify-between gap-2">
+        <p>@{user.name}</p>
+        <p>{user.displayName}</p>
         <Button
           variant="secondary"
           onclick={() => {
-            server.gateway.send({
-              type: "action.key.remove",
-              keyId: key.id,
-            });
+            editingUserId = user.id;
           }}
         >
-          <X />
+          <Settings />
         </Button>
       </div>
-    {/each}
-    <Button
-      variant="secondary"
-      class="mb-4"
-      onclick={() => {
-        server.gateway.send({
-          type: "action.key.add",
-          userId: user.id,
-        });
-      }}
-    >
-      +
-    </Button>
+    {/if}
   {/each}
 </div>
