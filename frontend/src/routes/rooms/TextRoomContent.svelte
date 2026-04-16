@@ -1,9 +1,8 @@
 <script lang="ts">
   import { ArrowLeft } from "@lucide/svelte";
-  import { isTauri } from "@tauri-apps/api/core";
-  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { onMount, tick } from "svelte";
   import type { TextMessage as TMessage } from "trurpchat-backend";
+  import { changedFocus, focused } from "$lib/focus.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
   import TextMessage from "$lib/components/TextMessage.svelte";
@@ -31,32 +30,6 @@
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
 
-  let hasFocus = $state(true);
-  let changedFocus = false;
-  if (isTauri()) {
-    getCurrentWindow().onFocusChanged(({ payload }) => {
-      hasFocus = payload;
-      changedFocus = true;
-    });
-  } else {
-    let prev = document.hasFocus();
-
-    function focusChanged() {
-      const cur = document.hasFocus();
-      if (cur !== prev) {
-        prev = cur;
-      }
-      hasFocus = cur;
-      changedFocus = true;
-    }
-
-    window.addEventListener("focus", focusChanged, true);
-    window.addEventListener("blur", focusChanged, true);
-    document.addEventListener("visibilitychange", focusChanged);
-    document.addEventListener("focus", focusChanged, true);
-    document.addEventListener("blur", focusChanged, true);
-  }
-
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
       const block = Math.min(unreadBlockId, cache.lastBlockId());
@@ -68,16 +41,6 @@
 
     if (unreadId <= cache.lastMessageId()) {
       newId = unreadId;
-    }
-
-    if (isTauri()) {
-      getCurrentWindow()
-        .isFocused()
-        .then((focused) => {
-          hasFocus = focused;
-        });
-    } else {
-      hasFocus = document.hasFocus();
     }
 
     return () => {
@@ -116,15 +79,14 @@
     if (!block?.alive) return;
     block.messages.length;
 
-    if (hasFocus) {
+    if (focused()) {
       if (cache.renderBlocks.length === 0) return;
       const last = cache.renderBlocks[cache.renderBlocks.length - 1];
       if (last !== cache.lastBlockId()) return;
       autoscroll();
     } else {
-      if (changedFocus) {
+      if (changedFocus()) {
         newId = unreadId;
-        changedFocus = false;
         return;
       }
       jumpTo(unreadId);
@@ -274,7 +236,7 @@
     if (!se) return;
     const isBottom = se.scrollHeight - se.scrollTop === se.clientHeight;
 
-    if (intersecting && isBottom && hasFocus) {
+    if (intersecting && isBottom && focused()) {
       markRead();
     }
 
