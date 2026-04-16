@@ -139,6 +139,7 @@
       </div>
       <UsernameFeild field="name" {server} {user} />
       <UsernameFeild field="displayName" {server} {user} />
+      <p>Ключи</p>
       {#each keys as key}
         <div class="flex flex-row items-center justify-between gap-2">
           <Button
@@ -166,6 +167,7 @@
           </div>
           <Button
             variant="secondary"
+            disabled={server.user.permissions !== 1 && keys.length === 1}
             onclick={() => {
               server.gateway.send({
                 type: "action.key.remove",
