@@ -17,6 +17,7 @@ import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { mentions } from "trurpchat-shared";
 import { focused } from "./focus.svelte";
+import { sendNotification } from "@tauri-apps/plugin-notification";
 
 export type ServerDefinition = {
   id: string | null;
@@ -345,6 +346,23 @@ export class Server {
             !room?.isAtBottom
           ) {
             sound.play("message");
+            const room = this.findRoom(message.message.roomId);
+            const author = this.findUser(message.message.userId);
+            if (!author || !room) return;
+            let body = "";
+            const parts = mentions.user.split(message.message.text);
+            // TODO: consolidate this in the mentions module
+            for (let i = 0; i < parts.length; i++) {
+              const part = parts[i];
+              if (part.type === "text") {
+                body += part.value;
+              } else {
+                const user = this.findUser(part.userId);
+                if (!user) continue;
+                body += `@${user.name} `;
+              }
+            }
+            sendNotification({ title: `#${room.name} @${author.name}`, body });
             return;
           }
         }
