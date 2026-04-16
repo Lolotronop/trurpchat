@@ -4,6 +4,7 @@
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import type { Server } from "$lib/servers.svelte";
   import { mentions } from "trurpchat-shared";
+  import { username } from "$lib/utils.svelte";
 
   type Props = {
     server: Server;
@@ -80,7 +81,8 @@
 
   function getMentionLabel(userId: number) {
     const user = server.findUser(userId);
-    return `@${user?.name ?? userId}`;
+    const name = user?.name ? username(user) : `#${userId}`;
+    return `@${name}`;
   }
 
   function createMentionNode(raw: string, userId: number) {
@@ -677,7 +679,7 @@
             type="button"
             data-mention-active={index === mentionActiveIndex ? "true" : undefined}
             class={[
-              "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm",
+              "flex w-full justify-between items-center rounded-sm px-2 py-1.5 text-left text-sm",
               index === mentionActiveIndex && "bg-accent text-accent-foreground",
             ]}
             onmouseenter={() => {
@@ -689,6 +691,7 @@
             }}
           >
             <span class="truncate">@{entry.user.name}</span>
+            <span class="truncate">{entry.user.displayName}</span>
           </button>
         {/each}
       </div>

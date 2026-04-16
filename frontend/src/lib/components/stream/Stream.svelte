@@ -16,6 +16,7 @@
   import * as Tooltip from "$lib/components/ui/tooltip";
   import type { Server } from "$lib/servers.svelte";
   import type { OvenPlayerController } from "./ovenplayer.svelte";
+  import { username } from "$lib/utils.svelte";
 
   type VirtualAnchor = {
     getBoundingClientRect: () => DOMRect;
@@ -114,7 +115,7 @@
         >
           <div class="flex items-center gap-2 p-2">
             <Tv class="size-6" />
-            Стрим {user.name}
+            Стрим {username(user)}
           </div>
 
           {#if watcherUsers.length > 0 && !shouldHideInfo}
@@ -159,7 +160,7 @@
               >
                 <p class="text-foreground text-sm px-2 flex items-center gap-1">
                   <Monitor class="size-4" />
-                  {user.name}
+                  {username(user)}
                 </p>
 
                 <Button

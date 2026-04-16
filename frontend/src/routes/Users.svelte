@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ConnectedUser, OfflineUser, User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
+  import { username } from "$lib/utils.svelte";
 
   type Props = {
     online: ConnectedUser[];
@@ -11,9 +12,9 @@
 
 {#snippet u(user: User, online: boolean)}
   <div class="flex flex-row items-center gap-2">
-    <Avatar class="size-6" name={user.name}></Avatar>
+    <Avatar class="size-6" name={username(user)}></Avatar>
     <p class="truncate {online ? "text-foreground" : "text-muted-foreground"}">
-      {user.name}
+      {username(user)}
     </p>
   </div>
 {/snippet}

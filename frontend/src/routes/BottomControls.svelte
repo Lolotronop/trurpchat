@@ -21,6 +21,7 @@
   import { StreamSettings as StreamSettingsClass } from "$lib/stream-settings.svelte";
   import Settings from "./Settings.svelte";
   import StreamSettings from "./StreamSettings.svelte";
+  import { username } from "$lib/utils.svelte";
 
   const g = gitGud();
 
@@ -78,7 +79,7 @@
               {#if user?.online && user.id !== server.user.id}
                 {@const peer = rtc.peers.get(user.id)}
                 <div class="flex w-full flex-row justify-between">
-                  <p>{user.name}</p>
+                  <p>{username(user)}</p>
                   <p>{peer?.ping ?? "N/A"}ms</p>
                 </div>
               {/if}
@@ -200,11 +201,11 @@
     class="bg-background flex h-16 flex-row shrink items-center justify-between"
   >
     <div class="flex grow shrink flex-row items-center gap-1 min-w-0">
-      <Avatar class="size-10 shrink-0" name={server.user.name}></Avatar>
+      <Avatar class="size-10 shrink-0" name={username(server.user)}></Avatar>
 
       <Tooltip.Root delayDuration={100}>
         <Tooltip.Trigger class="flex min-w-0 flex-1">
-          <p class="text-foreground truncate">{server.user.name}</p>
+          <p class="text-foreground truncate">{username(server.user)}</p>
         </Tooltip.Trigger>
         <Tooltip.Content>{server.user.name}</Tooltip.Content>
       </Tooltip.Root>

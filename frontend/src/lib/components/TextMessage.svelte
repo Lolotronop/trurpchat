@@ -3,6 +3,7 @@
   import { mentions } from "trurpchat-shared";
   import Avatar from "$lib/components/Avatar.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";
+  import { username } from "$lib/utils.svelte";
 
   type Props = {
     user?: User;
@@ -26,7 +27,8 @@
 
   function getMentionLabel(userId: number) {
     const mentionUser = findUser?.(userId);
-    return `@${mentionUser?.name ?? userId}`;
+    const name = mentionUser?.name ? username(mentionUser) : `#${userId}`;
+    return `@${name}`;
   }
 
   function formatTime(date: Date, showDate = true): string {

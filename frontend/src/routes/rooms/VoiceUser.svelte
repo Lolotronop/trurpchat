@@ -4,6 +4,7 @@
   import Avatar from "$lib/components/Avatar.svelte";
   import SpeakingBorder from "$lib/components/SpeakingBorder.svelte";
   import type { WebRTC } from "$lib/webrtc.svelte";
+  import { username } from "$lib/utils.svelte";
 
   type Props = {
     user: ConnectedUser;
@@ -21,10 +22,10 @@
 >
   <div class="flex flex-row items-center gap-2 min-w-0">
     <SpeakingBorder {speaking} rounded class="size-6 shrink-0 rounded-full">
-      <Avatar class="size-full" name={user.name}></Avatar>
+      <Avatar class="size-full" name={username(user)}></Avatar>
     </SpeakingBorder>
     <p class="truncate flex-1 {rtc?.room?.id === room.id ? "" : "text-muted-foreground"}">
-      {user.name}
+      {username(user)}
     </p>
   </div>
   <div class="flex h-6 flex-row shrink-0 items-center gap-2 pr-2">

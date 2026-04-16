@@ -1,3 +1,13 @@
+import type { User } from "trurpchat-backend";
+
+export function username(user: User) {
+  if (user.displayName && user.displayName.length > 0) {
+    return user.displayName;
+  }
+
+  return user.name;
+}
+
 export function toDb(value: number) {
   return value === 0 ? -Infinity : 20 * Math.log10(value);
 }
