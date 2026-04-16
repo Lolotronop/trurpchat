@@ -13,6 +13,7 @@
   import type { User } from "trurpchat-backend";
   import type { Key } from "trurpchat-backend/src/db";
   import { Button } from "$lib/components/ui/button";
+  import { Separator } from "$lib/components/ui/separator";
   import type { Server } from "$lib/servers.svelte";
   import UsernameFeild from "./UsernameFeild.svelte";
 
@@ -90,6 +91,7 @@
     <Loader2 class="animate-spin" />
   {/if}
   {#each keyByUser.entries() as [ user, keys ] (user.id)}
+    <Separator />
     {#if editingUserId === user.id}
       <div class="flex flex-row items-center justify-between gap-2">
         <p>@{user.name}</p>
