@@ -17,6 +17,7 @@ const sounds = [
   "voice disconnected",
   "ptt activate",
   "ptt deactivate",
+  "message",
 ] as const;
 export type SoundName = (typeof sounds)[number];
 

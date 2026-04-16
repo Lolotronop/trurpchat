@@ -74,6 +74,7 @@ export class TextRoomCache {
   visibleBlocks: number[] = $state([]);
 
   scrollPosition = $state<number | undefined>(undefined);
+  isAtBottom = $state(false);
 
   lastMessageId() {
     return this.room.nextMessageId - 1;

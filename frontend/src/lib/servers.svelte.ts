@@ -16,6 +16,7 @@ import { sound } from "./sound.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { mentions } from "trurpchat-shared";
+import { focused } from "./focus.svelte";
 
 export type ServerDefinition = {
   id: string | null;
@@ -122,6 +123,9 @@ export class Server {
       });
     },
   );
+
+  selectedRoomId: number | undefined = $state(undefined);
+  selectedRoom = $derived(this.rooms.find((r) => r.id === this.selectedRoomId));
 
   constructor(
     definition: ServerDefinition,
@@ -332,6 +336,17 @@ export class Server {
         );
         if (mentionesMe) {
           this.unread.incMentiones(message.message.roomId);
+
+          const room = this.messages.getRoom(message.message.roomId, false);
+
+          if (
+            !focused() ||
+            this.selectedRoomId !== message.message.roomId ||
+            !room?.isAtBottom
+          ) {
+            sound.play("message");
+            return;
+          }
         }
       }
     } else if (message.type === "event.message.unread.list") {

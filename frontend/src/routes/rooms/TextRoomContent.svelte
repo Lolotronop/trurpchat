@@ -479,7 +479,10 @@
     onscroll={(e) => {
       updateAutoscroll();
       preventTopScrollLock();
-      cache.scrollPosition = e.currentTarget.scrollTop;
+      const t = e.currentTarget;
+      cache.scrollPosition = t.scrollTop;
+      const isBottom = t.scrollHeight - t.scrollTop === t.clientHeight;
+      cache.isAtBottom = isBottom;
     }}
     {@attach createObserver}
   >

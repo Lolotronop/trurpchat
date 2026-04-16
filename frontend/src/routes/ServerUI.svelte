@@ -16,28 +16,23 @@
   const onlineUsers = $derived(server.users.filter((u) => u.online));
   const offlineUsers = $derived(server.users.filter((u) => !u.online));
 
-  let selectedRoomId: number | undefined = $state(undefined);
-  const selectedRoom = $derived(
-    server.rooms.find((r) => r.id === selectedRoomId),
-  );
-
   // TODO: this hacky
   const cache = $derived.by(() => {
-    if (!selectedRoom) return;
-    if (selectedRoom.type !== "text") return;
-    const roomCache = server.messages.getRoom(selectedRoom.id);
+    if (!server.selectedRoom) return;
+    if (server.selectedRoom.type !== "text") return;
+    const roomCache = server.messages.getRoom(server.selectedRoom.id);
     if (!roomCache) return;
     return roomCache;
   });
 
   async function showRoom(roomId: number | undefined) {
-    if (selectedRoomId === roomId) {
+    if (server.selectedRoomId === roomId) {
       return;
     }
 
-    selectedRoomId = undefined;
+    server.selectedRoomId = undefined;
     await tick();
-    selectedRoomId = roomId;
+    server.selectedRoomId = roomId;
   }
 
   function showCurrentVoiceRoom() {
@@ -56,17 +51,17 @@
       <p class="pl-2">{server.definition.name || "Select a server"}</p>
       <ServerSettings {server} />
     </div>
-    <RoomList {server} bind:selectedRoomId />
+    <RoomList {server} bind:selectedRoomId={server.selectedRoomId} />
     <div class="w-full p-0.5"><BottomControls {server} /></div>
   </div>
   <div
     class="flex grow-0 h-full w-full flex-col items-center justify-center min-h-0 min-w-0 overflow-hidden"
   >
-    {#if selectedRoom?.type === "voice"}
+    {#if server.selectedRoom?.type === "voice"}
       <!-- <Stream {server} id={server.rtc?.watching} /> -->
       <!-- <div class="flex w-full flex-row justify-between px-16"></div> -->
       <VoiceGrid {server} />
-    {:else if selectedRoom?.type === "text"}
+    {:else if server.selectedRoom?.type === "text"}
       {#if cache !== undefined}
         <TextRoomContent {cache} {server} {showCurrentVoiceRoom} />
       {/if}
