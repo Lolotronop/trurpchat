@@ -1,3 +1,5 @@
+import type { User } from "trurpchat-backend";
+
 export const USER_MENTION_REGEX = /<@(\d+)>/g;
 export const USER_MENTION_TRIGGER_REGEX = /(?:^|[\s([{:;,.!?-])@([^\s@<>]*)$/;
 
@@ -20,8 +22,21 @@ export type UserMentionPart =
 
 const user = {
   regex: USER_MENTION_REGEX,
-  format(userId: number | string) {
-    return `<@${userId}>`;
+  format: {
+    raw(userId: number | string) {
+      return `<@${userId}>`;
+    },
+    name(user: User | number | undefined) {
+      if (typeof user === "number") {
+        return `@#${user}`;
+      }
+      if (user) {
+        const name = user.displayName ?? user.name;
+        return `@${name}`;
+      }
+
+      return "@#unknown";
+    },
   },
   get(text: string): UserMentionMatch[] {
     const matches: UserMentionMatch[] = [];
@@ -44,7 +59,7 @@ const user = {
     return user.get(text).length > 0;
   },
   includes(text: string, userId: number) {
-    return text.includes(user.format(userId));
+    return text.includes(user.format.raw(userId));
   },
   split(text: string): UserMentionPart[] {
     const parts: UserMentionPart[] = [];

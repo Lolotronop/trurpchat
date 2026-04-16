@@ -64,6 +64,9 @@
     },
     "shared": {
       "name": "trurpchat-shared",
+      "dependencies": {
+        "trurpchat-backend": "workspace:*",
+      },
       "peerDependencies": {
         "typescript": "^5",
       },

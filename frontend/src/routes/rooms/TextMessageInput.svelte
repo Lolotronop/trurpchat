@@ -81,8 +81,7 @@
 
   function getMentionLabel(userId: number) {
     const user = server.findUser(userId);
-    const name = user?.name ? username(user) : `#${userId}`;
-    return `@${name}`;
+    return mentions.user.format.name(user ?? userId);
   }
 
   function createMentionNode(raw: string, userId: number) {
@@ -463,7 +462,7 @@
     replaceRawRange(
       mentionReplaceStart,
       mentionReplaceEnd,
-      `${mentions.user.format(userId)} `,
+      `${mentions.user.format.raw(userId)} `,
     );
     closeMentionPicker();
     focusEditor();

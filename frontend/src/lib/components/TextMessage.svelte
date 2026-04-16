@@ -27,8 +27,7 @@
 
   function getMentionLabel(userId: number) {
     const mentionUser = findUser?.(userId);
-    const name = mentionUser?.name ? username(mentionUser) : `#${userId}`;
-    return `@${name}`;
+    return mentions.user.format.name(mentionUser ?? userId);
   }
 
   function formatTime(date: Date, showDate = true): string {

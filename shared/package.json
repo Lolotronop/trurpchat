@@ -6,6 +6,9 @@
     ".": "./src/index.ts",
     "./mentions": "./src/mentions.ts"
   },
+  "dependencies": {
+    "trurpchat-backend": "workspace:*"
+  },
   "peerDependencies": {
     "typescript": "^5"
   }
