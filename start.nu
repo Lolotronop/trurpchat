@@ -12,7 +12,9 @@ def main [] {
   let root = $env.FILE_PWD
   let frontend_dir = ($root | path join "frontend")
   let backend_dir = ($root | path join "backend")
+  let shared_dir = ($root | path join "shared")
 
   make-tab "frontend" $frontend_dir "bun run tauri dev"
   make-tab "backend" $backend_dir "bun run dev"
+  make-tab "shared" $shared_dir "bun run dev"
 }
