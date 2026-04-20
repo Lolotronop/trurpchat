@@ -152,12 +152,12 @@ export class Mic {
 
   async init() {
     this.deviceId = await this.store.get("deviceId");
-    this.muted = (await this.store.get("muted")) || false;
-    this.#isPushToTalk = (await this.store.get("isPushToTalk")) || false;
-    this.#playPttSound = (await this.store.get("playPttSound")) || true;
-    this.effects.nodes.gain.gain = (await this.store.get("gain")) || 1;
+    this.muted = (await this.store.get("muted")) ?? false;
+    this.#isPushToTalk = (await this.store.get("isPushToTalk")) ?? false;
+    this.#playPttSound = (await this.store.get("playPttSound")) ?? true;
+    this.effects.nodes.gain.gain = (await this.store.get("gain")) ?? 1;
     this.effects.nodes.gate.threshold =
-      (await this.store.get("gateThreshold")) || -30;
+      (await this.store.get("gateThreshold")) ?? -30;
     this.applyInputMode();
 
     this.hasPermissions = true;
