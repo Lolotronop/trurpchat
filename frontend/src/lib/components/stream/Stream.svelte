@@ -43,7 +43,7 @@
     return user.watchedBy
       .map((id) => server.findUser(id))
       .filter((watcher): watcher is User => watcher !== undefined)
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => username(a).localeCompare(username(b)));
   });
   const MAX_VISIBLE_WATCHERS = 4;
   const visibleWatcherUsers = $derived(
@@ -223,7 +223,7 @@
       <div class="flex -space-x-2">
         {#each visibleWatcherUsers as watcher (watcher.id)}
           <Avatar
-            name={watcher.name}
+            name={username(watcher)}
             class="size-6 border-2 border-background/90 bg-background"
           />
         {/each}
@@ -246,8 +246,8 @@
         <div class="space-y-1">
           {#each watcherUsers as watcher (watcher.id)}
             <div class="flex items-center gap-2">
-              <Avatar name={watcher.name} class="size-6 shrink-0" />
-              <span class="truncate text-sm">{watcher.name}</span>
+              <Avatar name={username(watcher)} class="size-6 shrink-0" />
+              <span class="truncate text-sm">{username(watcher)}</span>
             </div>
           {/each}
         </div>

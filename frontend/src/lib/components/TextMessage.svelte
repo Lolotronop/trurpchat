@@ -68,7 +68,7 @@
 >
   <div class="w-9 flex justify-center">
     {#if showHeader}
-      <Avatar name={user?.name ?? "?"} class="mt-1 shrink-0 size-9" />
+      <Avatar name={user ? username(user) : "?"} class="mt-1 shrink-0 size-9" />
     {:else}
       <div
         class="time transition-opacity opacity-0 flex items-start select-none"
@@ -88,7 +88,7 @@
     {#if showHeader}
       <div class="flex items-baseline gap-2">
         <p class="font-medium text-sm text-foreground">
-          {user?.name ?? "Deleted"}
+          {user ? username(user) : "Deleted"}
         </p>
         <Tooltip.Root>
           <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">

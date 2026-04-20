@@ -364,7 +364,7 @@ export class Server {
                 body += `@${username(user)} `;
               }
             }
-            sendNotification({ title: `#${room.name} @${author.name}`, body });
+            sendNotification({ title: `#${room.name} @${username(author)}`, body });
             return;
           }
         }
