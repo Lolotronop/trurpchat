@@ -8,8 +8,12 @@ import type {
   UserRole,
 } from "trurpchat-backend";
 
+export type RoleWithColorHex = Role & {
+  colorHex: string;
+};
+
 type UserComputedFields = {
-  roles: Role[];
+  roles: RoleWithColorHex[];
   username: string;
   colorHex: string | undefined;
 };
@@ -64,8 +68,15 @@ function toColorHex(color: number) {
 
 export class UserStore {
   rawUsers: User[] = $state([]);
-  roles: Role[] = $state([]);
+  rawRoles: Role[] = $state([]);
   roleAssignments: UserRole[] = $state([]);
+
+  roles = $derived.by(() => {
+    return this.rawRoles.map((role) => ({
+      ...role,
+      colorHex: toColorHex(role.color),
+    }));
+  });
 
   #rolesById = $derived.by(() => {
     return new Map(this.roles.map((role) => [role.id, role]));
@@ -102,7 +113,7 @@ export class UserStore {
         ...user,
         roles,
         username: resolveUsername(user),
-        colorHex: primaryRole ? toColorHex(primaryRole.color) : undefined,
+        colorHex: primaryRole?.colorHex,
       };
     });
   });
@@ -128,7 +139,7 @@ export class UserStore {
   }
 
   setRoles(roles: Role[], roleAssignments: UserRole[]) {
-    this.roles = roles;
+    this.rawRoles = roles;
     this.roleAssignments = roleAssignments;
   }
 
@@ -215,25 +226,25 @@ export class UserStore {
   }
 
   createRole(role: Role) {
-    this.roles.push(role);
+    this.rawRoles.push(role);
   }
 
   updateRole(role: Role) {
-    const roleIndex = this.roles.findIndex(
+    const roleIndex = this.rawRoles.findIndex(
       (existing) => existing.id === role.id,
     );
     if (roleIndex === -1) {
-      this.roles.push(role);
+      this.rawRoles.push(role);
       return;
     }
 
-    this.roles[roleIndex] = role;
+    this.rawRoles[roleIndex] = role;
   }
 
   deleteRole(roleId: number) {
-    const roleIndex = this.roles.findIndex((role) => role.id === roleId);
+    const roleIndex = this.rawRoles.findIndex((role) => role.id === roleId);
     if (roleIndex !== -1) {
-      this.roles.splice(roleIndex, 1);
+      this.rawRoles.splice(roleIndex, 1);
     }
 
     this.roleAssignments = this.roleAssignments.filter(
