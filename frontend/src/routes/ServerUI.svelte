@@ -66,7 +66,7 @@
       It is what it is man
     {/if}
   </div>
-  <div class="flex h-full shrink-0 overflow-hidden border-l p-2">
+  <div class="flex h-full shrink-0 overflow-hidden border-l">
     <Users users={server.users} />
   </div>
 </div>
