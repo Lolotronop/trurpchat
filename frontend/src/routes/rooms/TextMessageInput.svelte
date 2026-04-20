@@ -4,7 +4,6 @@
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import type { Server } from "$lib/servers.svelte";
   import { mentions } from "trurpchat-shared";
-  import { username } from "$lib/utils.svelte";
 
   type Props = {
     server: Server;

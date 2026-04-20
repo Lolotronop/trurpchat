@@ -4,7 +4,8 @@
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
   import type { Server } from "$lib/servers.svelte";
-  import KeySetting from "./KeySetting.svelte";
+  import KeySettings from "./KeySettings.svelte";
+  import RoleSettings from "./RoleSettings.svelte";
 
   type Props = {
     server: Server;
@@ -27,7 +28,8 @@
           <p>Настройки сервера</p>
         </Dialog.Title>
         <Dialog.Description class="flex flex-col gap-8 px-6 pb-6">
-          <div class="flex flex-col gap-2"><KeySetting {server} /></div>
+          <div class="flex flex-col gap-2"><KeySettings {server} /></div>
+          <div class="flex flex-col gap-2"><RoleSettings {server} /></div>
         </Dialog.Description>
       </Dialog.Header>
     </ScrollArea>
