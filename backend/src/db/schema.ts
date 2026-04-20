@@ -17,6 +17,34 @@ export const users = table("users", {
 
 export type User = typeof users.$inferSelect;
 
+export const roles = table("roles", {
+  id: t.integer({ mode: "number" }).primaryKey(),
+  name: t.text({ length: 255 }).notNull(),
+  color: t.integer({ mode: "number" }).notNull(),
+  permissions: t.integer({ mode: "number" }).notNull().default(0),
+  order: t.real().notNull().default(0),
+  deletedAt: t.integer({ mode: "timestamp_ms" }),
+});
+
+export type Role = typeof roles.$inferSelect;
+
+export const userRoles = table(
+  "user_roles",
+  {
+    userId: t
+      .integer({ mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    roleId: t
+      .integer({ mode: "number" })
+      .notNull()
+      .references(() => roles.id, { onDelete: "cascade" }),
+  },
+  (tb) => [t.primaryKey({ columns: [tb.userId, tb.roleId] })],
+);
+
+export type UserRole = typeof userRoles.$inferSelect;
+
 export const serverMeta = table("server_meta", {
   id: t.text(),
 });
@@ -133,7 +161,7 @@ export const unread = table(
 export type UnreadRow = typeof unread.$inferSelect;
 
 export const relations = defineRelations(
-  { users, keys, messages, rooms, serverMeta },
+  { users, roles, userRoles, keys, messages, rooms, serverMeta },
   (r) => ({
     keys: {
       user: r.one.users({
@@ -143,7 +171,21 @@ export const relations = defineRelations(
     },
     users: {
       keys: r.many.keys(),
+      userRoles: r.many.userRoles(),
       messages: r.many.messages(),
+    },
+    roles: {
+      userRoles: r.many.userRoles(),
+    },
+    userRoles: {
+      user: r.one.users({
+        from: r.userRoles.userId,
+        to: r.users.id,
+      }),
+      role: r.one.roles({
+        from: r.userRoles.roleId,
+        to: r.roles.id,
+      }),
     },
     rooms: {
       messages: r.many.messages(),

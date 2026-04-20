@@ -2,18 +2,24 @@ import type {
   User as DbUser,
   Key,
   Message as MessageData,
+  Role as DbRole,
   Room as RoomData,
   UnreadRow,
+  UserRole as DbUserRole,
 } from "./db/schema";
 
 export type {
   Key,
   Message as TextMessage,
+  Role as DbRole,
   Room as RoomData,
   User as DbUser,
+  UserRole as DbUserRole,
 } from "./db/schema";
 
 type Flatten<T> = { [K in keyof T]: T[K] } & {};
+
+type Select<T, K extends keyof T> = Pick<T, K>;
 
 export type ConnectedUserState = {
   muted: boolean;
@@ -130,6 +136,71 @@ export type KeyEvent = {
   type: "event.key.list";
   keys: Key[];
 };
+
+export type Role = Select<DbRole, "id" | "name" | "color" | "permissions" | "order">;
+export type UserRole = Select<DbUserRole, "userId" | "roleId">;
+
+export type RoleCreate = Select<DbRole, "name" | "color" | "permissions"> &
+  Partial<Select<DbRole, "order">>;
+
+export type RoleUpdate = Select<DbRole, "id"> &
+  Partial<Select<DbRole, "name" | "color" | "permissions" | "order">>;
+
+export type RoleAction =
+  | {
+      type: "action.role.list";
+    }
+  | {
+      type: "action.role.create";
+      role: RoleCreate;
+    }
+  | {
+      type: "action.role.update";
+      role: RoleUpdate;
+    }
+  | {
+      type: "action.role.delete";
+      id: Role["id"];
+    }
+  | {
+      type: "action.role.assign";
+      userId: UserRole["userId"];
+      roleId: UserRole["roleId"];
+    }
+  | {
+      type: "action.role.unassign";
+      userId: UserRole["userId"];
+      roleId: UserRole["roleId"];
+    };
+
+export type RoleEvent =
+  | {
+      type: "event.role.list";
+      roles: Role[];
+      assignments: UserRole[];
+    }
+  | {
+      type: "event.role.created";
+      role: Role;
+    }
+  | {
+      type: "event.role.updated";
+      role: Role;
+    }
+  | {
+      type: "event.role.deleted";
+      roleId: Role["id"];
+    }
+  | {
+      type: "event.role.assigned";
+      userId: UserRole["userId"];
+      roleId: UserRole["roleId"];
+    }
+  | {
+      type: "event.role.unassigned";
+      userId: UserRole["userId"];
+      roleId: UserRole["roleId"];
+    };
 
 export type UserAction =
   | {
@@ -286,6 +357,7 @@ export type OtherEvent =
 export type ClientAction =
   | VoiceAction
   | KeyAction
+  | RoleAction
   | UserAction
   | RoomAction
   | MessageAction
@@ -293,6 +365,7 @@ export type ClientAction =
 export type ServerEvent =
   | VoiceEvent
   | KeyEvent
+  | RoleEvent
   | UserEvent
   | RtcMessage
   | RoomEvent

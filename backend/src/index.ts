@@ -12,6 +12,7 @@ import {
 } from "./db";
 import { getKeys, seed } from "./devseed";
 import { type HandlerContext, handleMessage } from "./handler";
+import { sendRoleList } from "./handler/role";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
 import { send, sendAll } from "./send";
 import type {
@@ -231,6 +232,8 @@ Bun.serve<ConnectedUser, never>({
         type: "event.message.unread.list",
         unread: usersUnread,
       });
+
+      await sendRoleList(ws);
 
       const users = await getAllUsers(ctx);
       send(ws, {

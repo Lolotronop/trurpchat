@@ -1,6 +1,6 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
-import { createKey, db, keys, users } from "$src/db";
+import { createKey, db, keys, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { UserAction } from "$src/types";
 import type { Handlers } from "./types";
@@ -131,6 +131,7 @@ export const userHandlers: Handlers<UserAction> = {
     }
 
     await db.delete(keys).where(eq(keys.userId, msg.id));
+    await db.delete(userRoles).where(eq(userRoles.userId, msg.id));
 
     // this has to be done after the keys are already deleted
     // otherwise the client might reconnect

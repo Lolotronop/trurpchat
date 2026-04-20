@@ -3,6 +3,7 @@ import type { ClientAction, Message } from "$src/types";
 import type { WsClient } from "$src/voice";
 import { keyHandlers } from "./key";
 import { messageHandlers } from "./message";
+import { roleHandlers } from "./role";
 import { roomHandlers } from "./room";
 import { rtcHandlers } from "./rtc";
 import type { HandlerContext } from "./types";
@@ -15,6 +16,7 @@ const handlers = {
   ...rtcHandlers,
   ...voiceHandlers,
   ...keyHandlers,
+  ...roleHandlers,
   ...userHandlers,
   ...roomHandlers,
   ...messageHandlers,
