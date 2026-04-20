@@ -67,6 +67,6 @@
     {/if}
   </div>
   <div class="flex h-full shrink-0 overflow-hidden border-l p-2">
-    <Users users={server.userStore} />
+    <Users users={server.users} />
   </div>
 </div>

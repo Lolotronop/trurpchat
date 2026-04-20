@@ -41,7 +41,7 @@
 </RoomContextMenu>
 <div class="flex flex-col pl-8">
   {#each room.users as userId (userId)}
-    {@const user = server.findUser(userId)}
+    {@const user = server.users.find(userId)}
     {#if user?.online}
       {@const peer = rtc?.peers.get(user.id)}
       {#if user.id === server?.user.id}

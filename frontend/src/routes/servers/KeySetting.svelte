@@ -39,12 +39,12 @@
   function groupById(items: Key[]): Map<User, Key[]> {
     const map = new Map<User, Key[]>();
     if (server.user.permissions === 1) {
-      for (const user of server.users) {
+      for (const user of server.users.list) {
         map.set(user, []);
       }
     }
     for (const key of items) {
-      const user = server.findUser(key.userId);
+      const user = server.users.find(key.userId);
       if (!user) continue;
       const arr = map.get(user);
       if (arr) arr.push(key);

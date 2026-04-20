@@ -79,27 +79,27 @@ export class UserStore {
     return byUserId;
   });
 
-  users = $derived.by(() => {
+  list = $derived.by(() => {
     return this.rawUsers.map((user) => ({
       ...user,
       roles: this.#rolesByUserId.get(user.id) ?? [],
     }));
   });
 
-  onlineUsers = $derived.by(() => {
-    return this.users.filter(
+  online = $derived.by(() => {
+    return this.list.filter(
       (user): user is ConnectedUserWithRoles => user.online,
     );
   });
 
-  offlineUsers = $derived.by(() => {
-    return this.users.filter(
+  offline = $derived.by(() => {
+    return this.list.filter(
       (user): user is OfflineUserWithRoles => !user.online,
     );
   });
 
-  findUser(id: number) {
-    return this.users.find((user) => user.id === id);
+  find(id: number) {
+    return this.list.find((user) => user.id === id);
   }
 
   setUsers(users: User[]) {
@@ -143,7 +143,9 @@ export class UserStore {
   }
 
   upsertCreatedUser(user: OfflineUser) {
-    const userIndex = this.rawUsers.findIndex((existing) => existing.id === user.id);
+    const userIndex = this.rawUsers.findIndex(
+      (existing) => existing.id === user.id,
+    );
     if (userIndex === -1) {
       this.rawUsers.push(user);
     } else {
@@ -152,7 +154,9 @@ export class UserStore {
   }
 
   patchDbUser(user: DbUser) {
-    const userIndex = this.rawUsers.findIndex((existing) => existing.id === user.id);
+    const userIndex = this.rawUsers.findIndex(
+      (existing) => existing.id === user.id,
+    );
     if (userIndex === -1) {
       this.rawUsers.push(toOfflineUser(user));
       return;
@@ -167,7 +171,9 @@ export class UserStore {
   }
 
   setUserState(user: ConnectedUser) {
-    const userIndex = this.rawUsers.findIndex((existing) => existing.id === user.id);
+    const userIndex = this.rawUsers.findIndex(
+      (existing) => existing.id === user.id,
+    );
     if (userIndex === -1) {
       this.rawUsers.push(user);
       return;
@@ -192,7 +198,9 @@ export class UserStore {
   }
 
   updateRole(role: Role) {
-    const roleIndex = this.roles.findIndex((existing) => existing.id === role.id);
+    const roleIndex = this.roles.findIndex(
+      (existing) => existing.id === role.id,
+    );
     if (roleIndex === -1) {
       this.roles.push(role);
       return;
@@ -214,7 +222,8 @@ export class UserStore {
 
   assignRole(userId: number, roleId: number) {
     const existing = this.roleAssignments.find(
-      (assignment) => assignment.userId === userId && assignment.roleId === roleId,
+      (assignment) =>
+        assignment.userId === userId && assignment.roleId === roleId,
     );
     if (existing) {
       return;
@@ -225,7 +234,8 @@ export class UserStore {
 
   unassignRole(userId: number, roleId: number) {
     const assignmentIndex = this.roleAssignments.findIndex(
-      (assignment) => assignment.userId === userId && assignment.roleId === roleId,
+      (assignment) =>
+        assignment.userId === userId && assignment.roleId === roleId,
     );
     if (assignmentIndex === -1) {
       return;

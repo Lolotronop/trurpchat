@@ -27,7 +27,7 @@
   );
 
   function getMentionLabel(userId: number) {
-    const mentionUser = users.findUser(userId);
+    const mentionUser = users.find(userId);
     return mentions.user.format.name(mentionUser ?? userId);
   }
 

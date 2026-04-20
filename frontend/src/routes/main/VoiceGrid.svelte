@@ -43,7 +43,7 @@
     const userIds = server.rtc.room?.users ?? [];
 
     return userIds
-      .map((userId) => server.findUser(userId))
+      .map((userId) => server.users.find(userId))
       .filter((user): user is ConnectedUserWithRoles => user?.online === true);
   });
 
@@ -396,7 +396,7 @@
       return undefined;
     }
 
-    const user = server.findUser(userId);
+    const user = server.users.find(userId);
     return user?.online ? user : undefined;
   }
 

@@ -63,7 +63,7 @@
     }
 
     const query = mentionQuery.trim().toLowerCase();
-    return [...server.users]
+    return [...server.users.list]
       .map((user) => {
         const usernameScore = matchScore(user.name, query);
         const displayNameScore = matchScore(user.displayName ?? "", query);
@@ -99,7 +99,7 @@
   }
 
   function getMentionLabel(userId: number) {
-    const user = server.findUser(userId);
+    const user = server.users.find(userId);
     return mentions.user.format.name(user ?? userId);
   }
 

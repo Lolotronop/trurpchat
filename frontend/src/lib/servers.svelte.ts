@@ -52,7 +52,7 @@ export class Server {
     online: false,
   });
 
-  userStore: UserStore = new UserStore();
+  users: UserStore = new UserStore();
   keys: Key[] = $state([]);
   unread: UnreadThing = new UnreadThing(this.user.id, (roomId, messageId) => {
     this.gateway.send({
@@ -153,32 +153,32 @@ export class Server {
     } else if (message.type === "event.connected") {
       this.user = message.user;
     } else if (message.type === "event.role.list") {
-      this.userStore.setRoles(message.roles, message.assignments);
+      this.users.setRoles(message.roles, message.assignments);
     } else if (message.type === "event.role.created") {
-      this.userStore.createRole(message.role);
+      this.users.createRole(message.role);
     } else if (message.type === "event.role.updated") {
-      this.userStore.updateRole(message.role);
+      this.users.updateRole(message.role);
     } else if (message.type === "event.role.deleted") {
-      this.userStore.deleteRole(message.roleId);
+      this.users.deleteRole(message.roleId);
     } else if (message.type === "event.role.assigned") {
-      this.userStore.assignRole(message.userId, message.roleId);
+      this.users.assignRole(message.userId, message.roleId);
     } else if (message.type === "event.role.unassigned") {
-      this.userStore.unassignRole(message.userId, message.roleId);
+      this.users.unassignRole(message.userId, message.roleId);
     } else if (message.type === "event.user.list") {
-      this.userStore.setUsers(message.users);
+      this.users.setUsers(message.users);
     } else if (message.type === "event.user.online") {
-      this.userStore.setUserOnline(message.userId);
+      this.users.setUserOnline(message.userId);
     } else if (message.type === "event.user.offline") {
-      this.userStore.setUserOffline(message.userId);
+      this.users.setUserOffline(message.userId);
     } else if (message.type === "event.user.created") {
-      this.userStore.upsertCreatedUser(message.user);
+      this.users.upsertCreatedUser(message.user);
     } else if (message.type === "event.user.updated") {
-      this.userStore.patchDbUser(message.user);
+      this.users.patchDbUser(message.user);
     } else if (message.type === "event.user.deleted") {
-      this.userStore.deleteUser(message.userId);
+      this.users.deleteUser(message.userId);
     } else if (message.type === "event.user.state") {
-      const previousUser = this.findUser(message.user.id);
-      this.userStore.setUserState(message.user);
+      const previousUser = this.users.find(message.user.id);
+      this.users.setUserState(message.user);
 
       if (
         previousUser?.online &&
@@ -266,7 +266,7 @@ export class Server {
           ) {
             sound.play("message");
             const room = this.findRoom(message.message.roomId);
-            const author = this.findUser(message.message.userId);
+            const author = this.users.find(message.message.userId);
             if (!author || !room) return;
             let body = "";
             const parts = mentions.user.split(message.message.text);
@@ -276,12 +276,15 @@ export class Server {
               if (part.type === "text") {
                 body += part.value;
               } else {
-                const user = this.findUser(part.userId);
+                const user = this.users.find(part.userId);
                 if (!user) continue;
                 body += `@${username(user)} `;
               }
             }
-            sendNotification({ title: `#${room.name} @${username(author)}`, body });
+            sendNotification({
+              title: `#${room.name} @${username(author)}`,
+              body,
+            });
             return;
           }
         }
@@ -300,14 +303,6 @@ export class Server {
 
   get connected() {
     return this.gateway.connected;
-  }
-
-  get users() {
-    return this.userStore.users;
-  }
-
-  findUser(id: number) {
-    return this.userStore.findUser(id);
   }
 
   findRoom(id: number) {

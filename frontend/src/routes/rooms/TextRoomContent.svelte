@@ -60,7 +60,7 @@
         continue;
       }
 
-      const user = server.findUser(userId);
+      const user = server.users.find(userId);
       if (!user?.online) {
         continue;
       }
@@ -505,7 +505,7 @@
                   {@const isFirst = part.indexOf(message) === 0}
                   {@const isNew = newId === message.id}
                   {@const showHeader = isFirst || isNew}
-                  {@const user = server.findUser(message.userId)}
+                  {@const user = server.users.find(message.userId)}
                   {#if showHeader}
                     <div
                       class="flex flex-row items-center gap-2 px-4 text-xs text-destructive select-none "
@@ -533,7 +533,7 @@
                         {message}
                         {showHeader}
                         currentUserId={server.user.id}
-                        users={server.userStore}
+                        users={server.users}
                       />
                     </div>
                   </ContextMenu>

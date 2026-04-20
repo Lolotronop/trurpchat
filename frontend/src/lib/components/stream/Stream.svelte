@@ -44,7 +44,7 @@
 
   const watcherUsers = $derived.by(() => {
     return user.watchedBy
-      .map((id) => server.findUser(id))
+      .map((id) => server.users.find(id))
       .filter((watcher): watcher is UserWithRoles => watcher !== undefined)
       .sort((a, b) => username(a).localeCompare(username(b)));
   });
