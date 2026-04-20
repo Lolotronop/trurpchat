@@ -21,6 +21,26 @@
     return user.roles.find((role) => role.section);
   }
 
+  function getUserColor(user: UserWithRoles, offline = false) {
+    if (!offline) {
+      return user.colorHex;
+    }
+
+    if (!user.colorHex) {
+      return undefined;
+    }
+
+    return `color-mix(in srgb, ${user.colorHex} 45%, var(--muted-foreground) 55%)`;
+  }
+
+  function getHoverUserColor(user: UserWithRoles, offline = false) {
+    if (!offline) {
+      return user.colorHex;
+    }
+
+    return user.colorHex ?? "var(--foreground)";
+  }
+
   const onlineSectioned = $derived.by(() => {
     const byRoleId = new Map<UserSection["id"], UserSection>();
 
@@ -77,16 +97,28 @@
     class="group hover:bg-accent/20 -mx-1 flex flex-row items-center gap-2 rounded-xs px-2 py-1 transition-colors"
   >
     <Avatar class="size-6 shrink-0" name={user.username}></Avatar>
-    <p
-      class="truncate text-sm text-foreground transition-colors"
-      class:text-muted-foreground={offline}
-      class:group-hover:text-foreground={offline}
-      style:color={offline ? undefined : user.colorHex}
-    >
-      {user.username}
+    <p class="truncate text-sm text-foreground transition-colors">
+      <span
+        class="user-name transition-colors"
+        class:text-muted-foreground={offline && !user.colorHex}
+        style:--user-color={getUserColor(user, offline)}
+        style:--hover-user-color={getHoverUserColor(user, offline)}
+      >
+        {user.username}
+      </span>
     </p>
   </div>
 {/snippet}
+
+<style>
+  .user-name {
+    color: var(--user-color, inherit);
+  }
+
+  .group:hover .user-name {
+    color: var(--hover-user-color, inherit);
+  }
+</style>
 
 {#snippet sectionHeader(name: string, count: number, colorHex: string | undefined, muted = false)}
   <div class="flex items-center justify-between gap-2 px-1 text-sm">
