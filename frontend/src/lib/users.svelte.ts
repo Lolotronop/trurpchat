@@ -71,7 +71,7 @@ export class UserStore {
   rawRoles: Role[] = $state([]);
   roleAssignments: UserRole[] = $state([]);
 
-  roles = $derived.by(() => {
+  roles: RoleWithColorHex[] = $derived.by(() => {
     return this.rawRoles.map((role) => ({
       ...role,
       colorHex: toColorHex(role.color),
@@ -83,7 +83,7 @@ export class UserStore {
   });
 
   #rolesByUserId = $derived.by(() => {
-    const byUserId = new Map<number, Role[]>();
+    const byUserId = new Map<number, RoleWithColorHex[]>();
 
     for (const assignment of this.roleAssignments) {
       const role = this.#rolesById.get(assignment.roleId);
@@ -102,7 +102,7 @@ export class UserStore {
     return byUserId;
   });
 
-  list = $derived.by(() => {
+  list: UserWithRoles[] = $derived.by(() => {
     return this.rawUsers.map((user) => {
       const roles = [...(this.#rolesByUserId.get(user.id) ?? [])].sort(
         (a, b) => b.order - a.order,
