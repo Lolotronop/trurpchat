@@ -4,16 +4,17 @@
   import Avatar from "$lib/components/Avatar.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { username } from "$lib/utils.svelte";
+  import type { UserStore } from "$lib/users.svelte";
 
   type Props = {
     user?: User;
     message: TextMessage;
     showHeader?: boolean;
     currentUserId?: number;
-    findUser?: (userId: number) => User | undefined;
+    users: UserStore;
   };
 
-  let { user, message, showHeader, currentUserId, findUser }: Props = $props();
+  let { user, message, showHeader, currentUserId, users }: Props = $props();
   showHeader ??= true;
 
   const mentionParts = $derived(
@@ -26,7 +27,7 @@
   );
 
   function getMentionLabel(userId: number) {
-    const mentionUser = findUser?.(userId);
+    const mentionUser = users.findUser(userId);
     return mentions.user.format.name(mentionUser ?? userId);
   }
 

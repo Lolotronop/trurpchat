@@ -9,7 +9,7 @@
     Volume2,
     VolumeOff,
   } from "@lucide/svelte";
-  import type { ConnectedUser } from "trurpchat-backend";
+  import type { ConnectedUserWithRoles } from "$lib/users.svelte";
   import GainSlider from "$lib/components/GainSlider.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
@@ -44,7 +44,7 @@
 
     return userIds
       .map((userId) => server.findUser(userId))
-      .filter((user): user is ConnectedUser => user?.online === true);
+      .filter((user): user is ConnectedUserWithRoles => user?.online === true);
   });
 
   const tiles = $derived.by(() => {

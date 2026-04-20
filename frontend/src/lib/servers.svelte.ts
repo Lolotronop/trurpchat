@@ -1,14 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import type {
-  ConnectedUserState,
-  DbUser,
-  IceConfig,
-  Message,
-  OfflineUser,
-  Room,
-  User,
-  Key,
-} from "trurpchat-backend";
+import type { IceConfig, Message, Room, User, Key } from "trurpchat-backend";
 import { Gateway } from "./gateway.svelte";
 import { gitGud } from "./god.svelte";
 import { BLOCK_SIZE, TextMessageCache, UnreadThing } from "./messages.svelte";
@@ -19,42 +10,13 @@ import { mentions } from "trurpchat-shared";
 import { focused } from "./focus.svelte";
 import { sendNotification } from "@tauri-apps/plugin-notification";
 import { username } from "./utils.svelte";
+import { UserStore } from "./users.svelte";
 
 export type ServerDefinition = {
   id: string | null;
   name: string;
   url: string;
 };
-
-function createDefaultConnectedUserState(): ConnectedUserState {
-  return {
-    muted: false,
-    deafened: false,
-    camera: false,
-    streaming: false,
-    watchedBy: [],
-    online: true,
-  };
-}
-
-function patchUser(base: User, patch: DbUser): User {
-  if (!base.online) {
-    return toOfflineUser(patch);
-  }
-
-  return {
-    ...base,
-    ...patch,
-    online: true,
-  };
-}
-
-function toOfflineUser(user: DbUser): OfflineUser {
-  return {
-    ...user,
-    online: false,
-  };
-}
 
 function findAddedIds(previous: number[], next: number[]) {
   return next.filter((id) => !previous.includes(id));
@@ -90,7 +52,7 @@ export class Server {
     online: false,
   });
 
-  users: User[] = $state([]);
+  userStore: UserStore = new UserStore();
   keys: Key[] = $state([]);
   unread: UnreadThing = new UnreadThing(this.user.id, (roomId, messageId) => {
     this.gateway.send({
@@ -190,88 +152,43 @@ export class Server {
       this.rooms.splice(roomIndex, 1);
     } else if (message.type === "event.connected") {
       this.user = message.user;
+    } else if (message.type === "event.role.list") {
+      this.userStore.setRoles(message.roles, message.assignments);
+    } else if (message.type === "event.role.created") {
+      this.userStore.createRole(message.role);
+    } else if (message.type === "event.role.updated") {
+      this.userStore.updateRole(message.role);
+    } else if (message.type === "event.role.deleted") {
+      this.userStore.deleteRole(message.roleId);
+    } else if (message.type === "event.role.assigned") {
+      this.userStore.assignRole(message.userId, message.roleId);
+    } else if (message.type === "event.role.unassigned") {
+      this.userStore.unassignRole(message.userId, message.roleId);
     } else if (message.type === "event.user.list") {
-      this.users = message.users;
+      this.userStore.setUsers(message.users);
     } else if (message.type === "event.user.online") {
-      const userIndex = this.users.findIndex(
-        (user) => user.id === message.userId,
-      );
-      if (userIndex === -1) {
-        return;
-      }
-
-      const user = this.users[userIndex];
-      if (user.online) {
-        return;
-      }
-
-      this.users[userIndex] = {
-        ...user,
-        ...createDefaultConnectedUserState(),
-      };
+      this.userStore.setUserOnline(message.userId);
     } else if (message.type === "event.user.offline") {
-      const userIndex = this.users.findIndex(
-        (user) => user.id === message.userId,
-      );
-      if (userIndex === -1) {
-        return;
-      }
-
-      const user = this.users[userIndex];
-      if (!user.online) {
-        return;
-      }
-
-      this.users[userIndex] = toOfflineUser(user);
+      this.userStore.setUserOffline(message.userId);
     } else if (message.type === "event.user.created") {
-      const userIndex = this.users.findIndex(
-        (user) => user.id === message.user.id,
-      );
-      if (userIndex === -1) {
-        this.users.push(message.user);
-      } else {
-        this.users[userIndex] = message.user;
-      }
+      this.userStore.upsertCreatedUser(message.user);
     } else if (message.type === "event.user.updated") {
-      const userIndex = this.users.findIndex(
-        (user) => user.id === message.user.id,
-      );
-      if (userIndex === -1) {
-        this.users.push(toOfflineUser(message.user));
-      } else {
-        const user = this.users[userIndex];
-        if (!user) {
-          console.error("user not found", userIndex, message.user.id);
-          return;
-        }
-        this.users[userIndex] = patchUser(user, message.user);
-      }
+      this.userStore.patchDbUser(message.user);
     } else if (message.type === "event.user.deleted") {
-      const userIndex = this.users.findIndex(
-        (user) => user.id === message.userId,
-      );
-      if (userIndex === -1) {
-        return;
-      }
-      this.users.splice(userIndex, 1);
+      this.userStore.deleteUser(message.userId);
     } else if (message.type === "event.user.state") {
-      const userIndex = this.users.findIndex(
-        (user) => user.id === message.user.id,
-      );
-      if (userIndex === -1) {
-        this.users.push(message.user);
-      } else {
-        const previousUser = this.users[userIndex]!;
-        this.users[userIndex] = message.user;
+      const previousUser = this.findUser(message.user.id);
+      this.userStore.setUserState(message.user);
 
-        if (
-          previousUser.online &&
-          previousUser.streaming &&
-          !message.user.streaming
-        ) {
-          this.rtc.streamPlayers.get(message.user.id)?.stop();
-        }
+      if (
+        previousUser?.online &&
+        previousUser.streaming &&
+        !message.user.streaming
+      ) {
+        this.rtc.streamPlayers.get(message.user.id)?.stop();
+      }
 
+      if (previousUser) {
         this.handleUserStateSound(previousUser, message.user);
       }
     } else if (message.type === "event.startup.config") {
@@ -385,9 +302,12 @@ export class Server {
     return this.gateway.connected;
   }
 
+  get users() {
+    return this.userStore.users;
+  }
+
   findUser(id: number) {
-    const user = this.users.find((u) => u.id === id);
-    return user;
+    return this.userStore.findUser(id);
   }
 
   findRoom(id: number) {

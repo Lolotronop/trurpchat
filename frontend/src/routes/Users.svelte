@@ -1,13 +1,13 @@
 <script lang="ts">
-  import type { ConnectedUser, OfflineUser, User } from "trurpchat-backend";
+  import type { User } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
   import { username } from "$lib/utils.svelte";
+  import type { UserStore } from "$lib/users.svelte";
 
   type Props = {
-    online: ConnectedUser[];
-    offline: OfflineUser[];
+    users: UserStore;
   };
-  const { online, offline }: Props = $props();
+  const { users }: Props = $props();
 </script>
 
 {#snippet u(user: User, online: boolean)}
@@ -22,13 +22,13 @@
 <div class="flex flex-col gap-2 w-32 justify-start truncate">
   <h1 class="text-foreground text-lg">Online</h1>
   <div class="flex flex-col gap-2">
-    {#each online as user (user.id)}
+    {#each users.onlineUsers as user (user.id)}
       {@render u(user, true)}
     {/each}
   </div>
   <h1 class="text-foreground text-lg">Offline</h1>
   <div class="flex flex-col gap-2">
-    {#each offline as user (user.id)}
+    {#each users.offlineUsers as user (user.id)}
       {@render u(user, false)}
     {/each}
   </div>

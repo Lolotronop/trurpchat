@@ -533,7 +533,7 @@
                         {message}
                         {showHeader}
                         currentUserId={server.user.id}
-                        findUser={(userId) => server.findUser(userId)}
+                        users={server.userStore}
                       />
                     </div>
                   </ContextMenu>

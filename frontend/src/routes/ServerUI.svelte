@@ -13,9 +13,6 @@
   };
   const { server }: Props = $props();
 
-  const onlineUsers = $derived(server.users.filter((u) => u.online));
-  const offlineUsers = $derived(server.users.filter((u) => !u.online));
-
   // TODO: this hacky
   const cache = $derived.by(() => {
     if (!server.selectedRoom) return;
@@ -70,6 +67,6 @@
     {/if}
   </div>
   <div class="flex h-full shrink-0 overflow-hidden border-l p-2">
-    <Users online={onlineUsers ?? []} offline={offlineUsers ?? []} />
+    <Users users={server.userStore} />
   </div>
 </div>

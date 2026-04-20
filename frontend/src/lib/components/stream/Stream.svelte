@@ -7,7 +7,10 @@
     Tv,
     VolumeOff,
   } from "@lucide/svelte";
-  import type { ConnectedUser, User } from "trurpchat-backend";
+  import type {
+    ConnectedUserWithRoles,
+    UserWithRoles,
+  } from "$lib/users.svelte";
   import Avatar from "$lib/components/Avatar.svelte";
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
   import { Item as ContextItem } from "$lib/components/ui/context-menu";
@@ -23,7 +26,7 @@
   };
 
   type Props = {
-    user: ConnectedUser;
+    user: ConnectedUserWithRoles;
     server: Server;
     player: OvenPlayerController;
     shouldHideInfo?: boolean;
@@ -42,7 +45,7 @@
   const watcherUsers = $derived.by(() => {
     return user.watchedBy
       .map((id) => server.findUser(id))
-      .filter((watcher): watcher is User => watcher !== undefined)
+      .filter((watcher): watcher is UserWithRoles => watcher !== undefined)
       .sort((a, b) => username(a).localeCompare(username(b)));
   });
   const MAX_VISIBLE_WATCHERS = 4;
