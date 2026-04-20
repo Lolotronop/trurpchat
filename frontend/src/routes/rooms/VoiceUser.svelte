@@ -24,7 +24,7 @@
     <SpeakingBorder {speaking} rounded class="size-6 shrink-0 rounded-full">
       <Avatar class="size-full" name={user.username}></Avatar>
     </SpeakingBorder>
-    <p class="truncate flex-1 {rtc?.room?.id === room.id ? "" : "text-muted-foreground"}">
+    <p class="truncate flex-1 text-foreground" style:color={user.colorHex}>
       {user.username}
     </p>
   </div>

@@ -11,7 +11,7 @@
 {#snippet u(user: UserWithRoles, online: boolean)}
   <div class="flex flex-row items-center gap-2">
     <Avatar class="size-6" name={user.username}></Avatar>
-    <p class="truncate {online ? "text-foreground" : "text-muted-foreground"}">
+    <p class="truncate text-foreground" style:color={user.colorHex}>
       {user.username}
     </p>
   </div>

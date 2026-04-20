@@ -8,7 +8,9 @@
     label: string;
     value: string | null | undefined;
     placeholder?: string;
-    onSave: (value: string | null) => boolean | Promise<boolean | undefined> | undefined;
+    onSave: (
+      value: string | null,
+    ) => boolean | Promise<boolean | undefined> | undefined;
   };
 
   let { label, value, placeholder = label, onSave }: Props = $props();
@@ -71,8 +73,6 @@
     {/if}
   </Button>
   {#if editing}
-    <Button variant="secondary" onclick={cancel}>
-      <X />
-    </Button>
+    <Button variant="secondary" onclick={cancel}> <X /> </Button>
   {/if}
 </div>

@@ -160,8 +160,18 @@
             class="flex items-center justify-between gap-3 rounded border px-3 py-2"
           >
             <div class="min-w-0">
-              <p class="truncate text-sm font-medium">{user.username}</p>
-              <p class="text-muted-foreground truncate text-xs">@{user.name}</p>
+              <p
+                class="truncate text-sm font-medium text-foreground"
+                style:color={user.colorHex}
+              >
+                {user.username}
+              </p>
+              <p
+                class="truncate text-xs text-foreground"
+                style:color={user.colorHex}
+              >
+                @{user.name}
+              </p>
             </div>
             <Switch
               {checked}

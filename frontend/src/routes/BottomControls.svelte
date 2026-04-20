@@ -78,8 +78,13 @@
               {@const user = server.users.find(userId)}
               {#if user?.online && user.id !== server.user.id}
                 {@const peer = rtc.peers.get(user.id)}
-                <div class="flex w-full flex-row justify-between">
-                  <p>{user.username}</p>
+                <div class="flex w-full flex-row justify-between gap-2">
+                  <p
+                    class="truncate text-foreground"
+                    style:color={user.colorHex}
+                  >
+                    {user.username}
+                  </p>
                   <p>{peer?.ping ?? "N/A"}ms</p>
                 </div>
               {/if}
@@ -201,13 +206,23 @@
     class="bg-background flex h-16 flex-row shrink items-center justify-between"
   >
     <div class="flex grow shrink flex-row items-center gap-1 min-w-0">
-      <Avatar class="size-10 shrink-0" name={currentUser?.username ?? server.user.name}></Avatar>
+      <Avatar
+        class="size-10 shrink-0"
+        name={currentUser?.username ?? server.user.name}
+      ></Avatar>
 
       <Tooltip.Root delayDuration={100}>
         <Tooltip.Trigger class="flex min-w-0 flex-1">
-          <p class="text-foreground truncate">{currentUser?.username ?? server.user.name}</p>
+          <p
+            class="text-foreground truncate"
+            style:color={currentUser?.colorHex}
+          >
+            {currentUser?.username ?? server.user.name}
+          </p>
         </Tooltip.Trigger>
-        <Tooltip.Content>{server.user.name}</Tooltip.Content>
+        <Tooltip.Content>
+          <span> {currentUser?.username ?? server.user.name} </span>
+        </Tooltip.Content>
       </Tooltip.Root>
     </div>
     <div class="flex flex-row items-center gap-2 shrink-0">

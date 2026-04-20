@@ -707,8 +707,16 @@
               insertMention(entry.user.id);
             }}
           >
-            <span class="truncate">@{entry.user.name}</span>
-            <span class="truncate">{entry.user.displayName}</span>
+            <span
+              class="truncate text-foreground"
+              style:color={entry.user.colorHex}
+              >@{entry.user.name}</span
+            >
+            <span
+              class="truncate text-foreground"
+              style:color={entry.user.colorHex}
+              >{entry.user.displayName}</span
+            >
           </button>
         {/each}
       </div>

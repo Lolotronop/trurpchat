@@ -124,11 +124,11 @@
   {#if server.keys.length === 0}
     <Loader2 class="animate-spin" />
   {/if}
-  {#each keyByUser.entries() as [user, keys] (user.id)}
+  {#each keyByUser.entries() as [ user, keys ] (user.id)}
     <Separator />
     {#if editingUserId === user.id}
       <div class="flex flex-row items-center justify-between gap-2">
-        <p>@{user.name}</p>
+        <p class="text-foreground" style:color={user.colorHex}>@{user.name}</p>
         <div>
           {#if server.user.permissions === 1}
             <Button
@@ -199,7 +199,9 @@
           >
             <Clipboard />
           </Button>
-          <div class="flex w-[80%] flex-row items-center justify-between text-left">
+          <div
+            class="flex w-[80%] flex-row items-center justify-between text-left"
+          >
             <p class="text-muted-foreground text-base">{key.id}</p>
             <p class="text-muted-foreground text-base">
               {formatDate(new Date(key.lastSeen))}
@@ -233,8 +235,10 @@
       </Button>
     {:else}
       <div class="flex flex-row items-center justify-between gap-2">
-        <p>@{user.name}</p>
-        <p>{user.displayName}</p>
+        <p class="text-foreground" style:color={user.colorHex}>@{user.name}</p>
+        <p class="text-foreground" style:color={user.colorHex}>
+          {user.displayName}
+        </p>
         <Button
           variant="secondary"
           onclick={() => {

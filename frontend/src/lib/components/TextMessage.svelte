@@ -87,7 +87,10 @@
   <div class="flex flex-col min-w-0">
     {#if showHeader}
       <div class="flex items-baseline gap-2">
-        <p class="font-medium text-sm text-foreground">
+        <p
+          class="font-medium text-sm text-foreground"
+          style:color={user?.colorHex}
+        >
           {user ? user.username : "Deleted"}
         </p>
         <Tooltip.Root>
@@ -107,7 +110,11 @@
           {#if part.type === "text"}
             {part.value}
           {:else}
-            <span class="text-foreground font-medium">
+            {@const mentionUser = users.find(part.userId)}
+            <span
+              class="text-foreground font-medium"
+              style:color={mentionUser?.colorHex}
+            >
               {getMentionLabel(part.userId)}
             </span>
           {/if}

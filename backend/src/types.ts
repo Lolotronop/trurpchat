@@ -137,7 +137,10 @@ export type KeyEvent = {
   keys: Key[];
 };
 
-export type Role = Select<DbRole, "id" | "name" | "color" | "permissions" | "order">;
+export type Role = Select<
+  DbRole,
+  "id" | "name" | "color" | "permissions" | "order"
+>;
 export type UserRole = Select<DbUserRole, "userId" | "roleId">;
 
 export type RoleCreate = Select<DbRole, "name" | "color" | "permissions"> &

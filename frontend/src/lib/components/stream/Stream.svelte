@@ -117,7 +117,7 @@
         >
           <div class="flex items-center gap-2 p-2">
             <Tv class="size-6" />
-            Стрим {user.username}
+            <span style:color={user.colorHex}>Стрим {user.username}</span>
           </div>
 
           {#if watcherUsers.length > 0 && !shouldHideInfo}
@@ -160,7 +160,10 @@
                 data-controls
                 class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
               >
-                <p class="text-foreground text-sm px-2 flex items-center gap-1">
+                <p
+                  class="text-foreground text-sm px-2 flex items-center gap-1"
+                  style:color={user.colorHex}
+                >
                   <Monitor class="size-4" />
                   {user.username}
                 </p>
@@ -249,7 +252,11 @@
           {#each watcherUsers as watcher (watcher.id)}
             <div class="flex items-center gap-2">
               <Avatar name={watcher.username} class="size-6 shrink-0" />
-              <span class="truncate text-sm">{watcher.username}</span>
+              <span
+                class="truncate text-sm text-foreground"
+                style:color={watcher.colorHex}
+                >{watcher.username}</span
+              >
             </div>
           {/each}
         </div>

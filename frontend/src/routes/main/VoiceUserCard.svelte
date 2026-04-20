@@ -2,10 +2,10 @@
   import Avatar from "$lib/components/Avatar.svelte";
   import SpeakingBorder from "$lib/components/SpeakingBorder.svelte";
   import { Camera, HeadphoneOff, MicOff } from "@lucide/svelte";
-  import type { ConnectedUser } from "trurpchat-backend";
+  import type { ConnectedUserWithRoles } from "$lib/users.svelte";
 
   type Props = {
-    user: ConnectedUser;
+    user: ConnectedUserWithRoles;
     mutedByMe?: boolean;
     speaking: boolean;
     cameraStream?: MediaStream;
@@ -21,7 +21,7 @@
     edgeToEdge = false,
   }: Props = $props();
 
-  const { name, muted, deafened, camera } = $derived(user);
+  const { username, colorHex, muted, deafened, camera } = $derived(user);
 
   function attachCamera(el: HTMLVideoElement) {
     if (!cameraStream) {
@@ -45,7 +45,7 @@
       muted
     ></video>
   {:else}
-    <Avatar {name} class="size-8 shrink-0 rounded-full"></Avatar>
+    <Avatar name={username} class="size-8 shrink-0 rounded-full"></Avatar>
   {/if}
   <div class="absolute bottom-0 flex w-full justify-between p-2">
     <div
@@ -63,7 +63,7 @@
         <Camera class="size-4 m-0.5" />
       {/if}
       {#if !shouldHideInfo}
-        <p class="text-foreground text-sm">{name}</p>
+        <p class="text-foreground text-sm" style:color={colorHex}>{username}</p>
       {/if}
     </div>
   </div>
