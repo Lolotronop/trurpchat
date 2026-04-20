@@ -26,6 +26,33 @@
 
   const canSend = $derived(text.trim().length > 0);
   const isEmpty = $derived(text.length === 0);
+
+  function matchScore(value: string, query: string) {
+    if (query.length === 0) {
+      return 1;
+    }
+
+    const normalized = value.toLowerCase();
+    if (normalized === query) {
+      return 3;
+    }
+
+    if (
+      normalized
+        .split(/\s+/g)
+        .filter(Boolean)
+        .some((word) => word.startsWith(query))
+    ) {
+      return 2;
+    }
+
+    if (normalized.includes(query)) {
+      return 1;
+    }
+
+    return 0;
+  }
+
   const mentionCandidates = $derived.by(() => {
     if (
       !hasEditorFocus ||
@@ -38,30 +65,22 @@
     const query = mentionQuery.trim().toLowerCase();
     return [...server.users]
       .map((user) => {
-        const normalized = user.name.toLowerCase();
-        let score = 0;
+        const usernameScore = matchScore(user.name, query);
+        const displayNameScore = matchScore(user.displayName ?? "", query);
+        const score = Math.max(usernameScore * 2, displayNameScore * 2 - 1);
 
-        if (query.length === 0) {
-          score = 1;
-        } else if (normalized === query) {
-          score = 4;
-        } else if (
-          normalized
-            .split(/\s+/g)
-            .filter(Boolean)
-            .some((word) => word.startsWith(query))
-        ) {
-          score = 3;
-        } else if (normalized.includes(query)) {
-          score = 2;
-        }
-
-        return { user, score };
+        return { user, score, usernameScore, displayNameScore };
       })
       .filter((entry) => entry.score > 0)
       .sort((a, b) => {
         if (b.score !== a.score) {
           return b.score - a.score;
+        }
+        if (b.usernameScore !== a.usernameScore) {
+          return b.usernameScore - a.usernameScore;
+        }
+        if (b.displayNameScore !== a.displayNameScore) {
+          return b.displayNameScore - a.displayNameScore;
         }
         return a.user.name.localeCompare(b.user.name);
       });
