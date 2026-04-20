@@ -17,12 +17,20 @@
 
   const { users }: Props = $props();
 
-  const onlineSections = $derived.by(() => {
+  function getSectionRole(user: UserWithRoles) {
+    return user.roles.find((role) => role.section);
+  }
+
+  const onlineSectioned = $derived.by(() => {
     const byRoleId = new Map<UserSection["id"], UserSection>();
 
     for (const user of users.online) {
-      const role = user.roles[0];
-      const id = role?.id ?? "none";
+      const role = getSectionRole(user);
+      if (!role) {
+        continue;
+      }
+
+      const id = role.id;
       const existing = byRoleId.get(id);
 
       if (existing) {
@@ -33,11 +41,11 @@
 
       byRoleId.set(id, {
         id,
-        name: role?.name ?? "Online",
-        colorHex: role?.colorHex,
+        name: role.name,
+        colorHex: role.colorHex,
         count: 1,
         users: [user],
-        order: role?.order ?? -Infinity,
+        order: role.order,
       });
     }
 
@@ -48,7 +56,13 @@
           a.username.localeCompare(b.username),
         ),
       }))
-      .sort((a, b) => b.order - a.order || a.name.localeCompare(b.name));
+      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+  });
+
+  const onlineUnsectioned = $derived.by(() => {
+    return users.online
+      .filter((user) => !getSectionRole(user))
+      .sort((a, b) => a.username.localeCompare(b.username));
   });
 
   const offlineUsers = $derived.by(() => {
@@ -94,7 +108,7 @@
 {/snippet}
 
 <div class="flex w-42 flex-col justify-start gap-4 truncate p-1">
-  {#each onlineSections as section (section.id)}
+  {#each onlineSectioned as section (section.id)}
     <div class="flex flex-col gap-1.5">
       {@render sectionHeader(section.name, section.count, section.colorHex)}
       <div class="flex flex-col gap-0.5">
@@ -104,6 +118,17 @@
       </div>
     </div>
   {/each}
+
+  {#if onlineUnsectioned.length > 0}
+    <div class="flex flex-col gap-1.5">
+      {@render sectionHeader("Online", onlineUnsectioned.length, undefined)}
+      <div class="flex flex-col gap-0.5">
+        {#each onlineUnsectioned as user (user.id)}
+          {@render userRow(user)}
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <div class="border-border/60 flex flex-col gap-1.5 border-t pt-3">
     {@render sectionHeader("Offline", offlineUsers.length, undefined, true)}

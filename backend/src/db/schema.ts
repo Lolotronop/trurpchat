@@ -22,6 +22,7 @@ export const roles = table("roles", {
   name: t.text({ length: 255 }).notNull(),
   color: t.integer({ mode: "number" }).notNull(),
   permissions: t.integer({ mode: "number" }).notNull().default(0),
+  section: t.integer({ mode: "boolean" }).notNull().default(false),
   order: t.real().notNull().default(0),
   deletedAt: t.integer({ mode: "timestamp_ms" }),
 });

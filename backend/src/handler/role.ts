@@ -24,6 +24,7 @@ export async function getAllRoles(): Promise<Role[]> {
       name: roles.name,
       color: roles.color,
       permissions: roles.permissions,
+      section: roles.section,
       order: roles.order,
     })
     .from(roles)
@@ -84,6 +85,7 @@ export const roleHandlers: Handlers<RoleAction> = {
         .insert(roles)
         .values({
           ...msg.role,
+          section: msg.role.section ?? false,
           order,
         })
         .returning({
@@ -91,6 +93,7 @@ export const roleHandlers: Handlers<RoleAction> = {
           name: roles.name,
           color: roles.color,
           permissions: roles.permissions,
+          section: roles.section,
           order: roles.order,
         });
 
@@ -132,6 +135,7 @@ export const roleHandlers: Handlers<RoleAction> = {
           name: roles.name,
           color: roles.color,
           permissions: roles.permissions,
+          section: roles.section,
           order: roles.order,
         });
 

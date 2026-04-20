@@ -85,6 +85,7 @@
               name: "New role " + Math.random().toString(36).slice(2, 6),
               color: 0x888888,
               permissions: 0,
+              section: false,
             },
           });
         }}
@@ -149,6 +150,24 @@
             }}
           />
           <p class="text-muted-foreground text-sm">{role.colorHex}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-2">
+        <p class="min-w-8">Секция</p>
+        <div class="flex w-full items-center justify-end">
+          <Switch
+            checked={role.section}
+            onclick={() => {
+              server.gateway.send({
+                type: "action.role.update",
+                role: {
+                  id: role.id,
+                  section: !role.section,
+                },
+              });
+            }}
+          />
         </div>
       </div>
 

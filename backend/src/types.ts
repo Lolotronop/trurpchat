@@ -139,15 +139,18 @@ export type KeyEvent = {
 
 export type Role = Select<
   DbRole,
-  "id" | "name" | "color" | "permissions" | "order"
+  "id" | "name" | "color" | "permissions" | "section" | "order"
 >;
 export type UserRole = Select<DbUserRole, "userId" | "roleId">;
 
-export type RoleCreate = Select<DbRole, "name" | "color" | "permissions"> &
-  Partial<Select<DbRole, "order">>;
+export type RoleCreate = Select<
+  DbRole,
+  "name" | "color" | "permissions"
+> &
+  Partial<Select<DbRole, "section" | "order">>;
 
 export type RoleUpdate = Select<DbRole, "id"> &
-  Partial<Select<DbRole, "name" | "color" | "permissions" | "order">>;
+  Partial<Select<DbRole, "name" | "color" | "permissions" | "section" | "order">>;
 
 export type RoleAction =
   | {
