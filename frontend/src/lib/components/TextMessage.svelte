@@ -1,13 +1,12 @@
 <script lang="ts">
-  import type { TextMessage, User } from "trurpchat-backend";
+  import type { TextMessage } from "trurpchat-backend";
   import { mentions } from "trurpchat-shared";
   import Avatar from "$lib/components/Avatar.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";
-  import { username } from "$lib/utils.svelte";
-  import type { UserStore } from "$lib/users.svelte";
+  import type { UserStore, UserWithRoles } from "$lib/users.svelte";
 
   type Props = {
-    user?: User;
+    user?: UserWithRoles;
     message: TextMessage;
     showHeader?: boolean;
     currentUserId?: number;
@@ -69,7 +68,7 @@
 >
   <div class="w-9 flex justify-center">
     {#if showHeader}
-      <Avatar name={user ? username(user) : "?"} class="mt-1 shrink-0 size-9" />
+      <Avatar name={user ? user.username : "?"} class="mt-1 shrink-0 size-9" />
     {:else}
       <div
         class="time transition-opacity opacity-0 flex items-start select-none"
@@ -89,7 +88,7 @@
     {#if showHeader}
       <div class="flex items-baseline gap-2">
         <p class="font-medium text-sm text-foreground">
-          {user ? username(user) : "Deleted"}
+          {user ? user.username : "Deleted"}
         </p>
         <Tooltip.Root>
           <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">

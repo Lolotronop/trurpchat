@@ -9,7 +9,6 @@ import { getPlatformStore, type IPersistantStore } from "./webstore";
 import { mentions } from "trurpchat-shared";
 import { focused } from "./focus.svelte";
 import { sendNotification } from "@tauri-apps/plugin-notification";
-import { username } from "./utils.svelte";
 import { UserStore } from "./users.svelte";
 
 export type ServerDefinition = {
@@ -278,11 +277,11 @@ export class Server {
               } else {
                 const user = this.users.find(part.userId);
                 if (!user) continue;
-                body += `@${username(user)} `;
+                body += `@${user.username} `;
               }
             }
             sendNotification({
-              title: `#${room.name} @${username(author)}`,
+              title: `#${room.name} @${author.username}`,
               body,
             });
             return;

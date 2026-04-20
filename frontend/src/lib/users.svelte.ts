@@ -8,17 +8,17 @@ import type {
   UserRole,
 } from "trurpchat-backend";
 
-export type UserWithRoles = User & {
+type UserComputedFields = {
   roles: Role[];
+  username: string;
+  colorHex: string | undefined;
 };
 
-export type ConnectedUserWithRoles = ConnectedUser & {
-  roles: Role[];
-};
+export type UserWithRoles = User & UserComputedFields;
 
-export type OfflineUserWithRoles = OfflineUser & {
-  roles: Role[];
-};
+export type ConnectedUserWithRoles = ConnectedUser & UserComputedFields;
+
+export type OfflineUserWithRoles = OfflineUser & UserComputedFields;
 
 function createDefaultConnectedUserState(): ConnectedUserState {
   return {
@@ -48,6 +48,18 @@ function toOfflineUser(user: DbUser): OfflineUser {
     ...user,
     online: false,
   };
+}
+
+function resolveUsername(user: User) {
+  if (user.displayName && user.displayName.length > 0) {
+    return user.displayName;
+  }
+
+  return user.name;
+}
+
+function toColorHex(color: number) {
+  return `#${color.toString(16).padStart(6, "0")}`;
 }
 
 export class UserStore {
@@ -80,10 +92,19 @@ export class UserStore {
   });
 
   list = $derived.by(() => {
-    return this.rawUsers.map((user) => ({
-      ...user,
-      roles: this.#rolesByUserId.get(user.id) ?? [],
-    }));
+    return this.rawUsers.map((user) => {
+      const roles = [...(this.#rolesByUserId.get(user.id) ?? [])].sort(
+        (a, b) => b.order - a.order,
+      );
+      const primaryRole = roles[0];
+
+      return {
+        ...user,
+        roles,
+        username: resolveUsername(user),
+        colorHex: primaryRole ? toColorHex(primaryRole.color) : undefined,
+      };
+    });
   });
 
   online = $derived.by(() => {

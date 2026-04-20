@@ -1,8 +1,6 @@
 <script lang="ts">
-  import type { User } from "trurpchat-backend";
+  import type { UserWithRoles, UserStore } from "$lib/users.svelte";
   import Avatar from "$lib/components/Avatar.svelte";
-  import { username } from "$lib/utils.svelte";
-  import type { UserStore } from "$lib/users.svelte";
 
   type Props = {
     users: UserStore;
@@ -10,11 +8,11 @@
   const { users }: Props = $props();
 </script>
 
-{#snippet u(user: User, online: boolean)}
+{#snippet u(user: UserWithRoles, online: boolean)}
   <div class="flex flex-row items-center gap-2">
-    <Avatar class="size-6" name={username(user)}></Avatar>
+    <Avatar class="size-6" name={user.username}></Avatar>
     <p class="truncate {online ? "text-foreground" : "text-muted-foreground"}">
-      {username(user)}
+      {user.username}
     </p>
   </div>
 {/snippet}

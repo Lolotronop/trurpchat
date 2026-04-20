@@ -19,7 +19,6 @@
   import * as Tooltip from "$lib/components/ui/tooltip";
   import type { Server } from "$lib/servers.svelte";
   import type { OvenPlayerController } from "./ovenplayer.svelte";
-  import { username } from "$lib/utils.svelte";
 
   type VirtualAnchor = {
     getBoundingClientRect: () => DOMRect;
@@ -46,7 +45,7 @@
     return user.watchedBy
       .map((id) => server.users.find(id))
       .filter((watcher): watcher is UserWithRoles => watcher !== undefined)
-      .sort((a, b) => username(a).localeCompare(username(b)));
+      .sort((a, b) => a.username.localeCompare(b.username));
   });
   const MAX_VISIBLE_WATCHERS = 4;
   const visibleWatcherUsers = $derived(
@@ -118,7 +117,7 @@
         >
           <div class="flex items-center gap-2 p-2">
             <Tv class="size-6" />
-            Стрим {username(user)}
+            Стрим {user.username}
           </div>
 
           {#if watcherUsers.length > 0 && !shouldHideInfo}
@@ -163,7 +162,7 @@
               >
                 <p class="text-foreground text-sm px-2 flex items-center gap-1">
                   <Monitor class="size-4" />
-                  {username(user)}
+                  {user.username}
                 </p>
 
                 <Button
@@ -226,7 +225,7 @@
       <div class="flex -space-x-2">
         {#each visibleWatcherUsers as watcher (watcher.id)}
           <Avatar
-            name={username(watcher)}
+            name={watcher.username}
             class="size-6 border-2 border-background/90 bg-background"
           />
         {/each}
@@ -249,8 +248,8 @@
         <div class="space-y-1">
           {#each watcherUsers as watcher (watcher.id)}
             <div class="flex items-center gap-2">
-              <Avatar name={username(watcher)} class="size-6 shrink-0" />
-              <span class="truncate text-sm">{username(watcher)}</span>
+              <Avatar name={watcher.username} class="size-6 shrink-0" />
+              <span class="truncate text-sm">{watcher.username}</span>
             </div>
           {/each}
         </div>
