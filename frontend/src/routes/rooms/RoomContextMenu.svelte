@@ -1,15 +1,12 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
   import type { RoomWithData } from "$lib/rooms.svelte";
-  import {
-    Root,
-    Item,
-    Content,
-    Trigger,
-  } from "$lib/components/ui/context-menu";
+  import ContextMenu from "$lib/components/ContextMenu.svelte";
+  import { Item } from "$lib/components/ui/context-menu";
   import * as Dialog from "$lib/components/ui/dialog";
   import type { Server } from "$lib/servers.svelte";
   import RoomForm, { type EditingRoom } from "./RoomForm.svelte";
+  import RoomSettings from "./RoomSettings.svelte";
 
   type Props = {
     server: Server;
@@ -20,6 +17,7 @@
   const { server, children, room }: Props = $props();
 
   let editOpen = $state(false);
+  let settingsOpen = $state(false);
   function onRoomSubmit(newRoom: EditingRoom) {
     server.gateway.send({
       type: "action.room.update",
@@ -54,9 +52,10 @@
   </Dialog.Content>
 </Dialog.Root>
 
-<Root>
-  <Trigger>{@render children()}</Trigger>
-  <Content class="min-h-12 min-w-64 overflow-visible">
+<RoomSettings bind:open={settingsOpen} {server} {room} />
+
+<ContextMenu>
+  {#snippet menu()}
     {#if isText && hasUnread}
       <Item
         onclick={() => {
@@ -67,9 +66,13 @@
       </Item>
     {/if}
 
+    <Item onclick={() => (settingsOpen = true)}>Настройки</Item>
+
     {#if server.user.permissions === 1}
       <Item onclick={() => editOpen = true}> Изменить </Item>
       <Item variant="destructive" onclick={onRoomDelete}> Удалить </Item>
     {/if}
-  </Content>
-</Root>
+  {/snippet}
+
+  {@render children()}
+</ContextMenu>
