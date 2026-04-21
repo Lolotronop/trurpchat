@@ -42,7 +42,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       }
 
       const id = lastIdRow.nextMessageId;
-      const hasMention = mentions.user.has(text);
+      const hasMention = mentions.has(text);
 
       await tx
         .update(rooms)
@@ -77,7 +77,7 @@ export const messageHandlers: Handlers<MessageAction> = {
 
   "action.message.edit": async (ctx, ws, { roomId, id, text }) => {
     const userId = ws.data.id;
-    const hasMention = mentions.user.has(text);
+    const hasMention = mentions.has(text);
 
     const [message] = await db
       .update(messages)

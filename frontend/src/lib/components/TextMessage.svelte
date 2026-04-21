@@ -17,17 +17,35 @@
   showHeader ??= true;
 
   const mentionParts = $derived(
-    message.hasMention ? mentions.user.split(message.text) : null,
+    message.hasMention ? mentions.split(message.text) : null,
   );
-  const mentionsCurrentUser = $derived(
-    message.hasMention &&
-      currentUserId !== undefined &&
-      mentions.user.includes(message.text, currentUserId),
-  );
+  const mentionsCurrentUser = $derived.by(() => {
+    if (!message.hasMention || currentUserId === undefined) {
+      return false;
+    }
+
+    if (mentions.user.includes(message.text, currentUserId)) {
+      return true;
+    }
+
+    const currentUser = users.find(currentUserId);
+    if (!currentUser) {
+      return false;
+    }
+
+    return currentUser.roles.some((role) =>
+      mentions.role.includes(message.text, role.id),
+    );
+  });
 
   function getMentionLabel(userId: number) {
     const mentionUser = users.find(userId);
     return mentions.user.format.name(mentionUser ?? userId);
+  }
+
+  function getRoleMentionLabel(roleId: number) {
+    const role = users.findRole(roleId);
+    return mentions.role.format.name(role ?? roleId);
   }
 
   function formatTime(date: Date, showDate = true): string {
@@ -109,13 +127,21 @@
         {#each mentionParts as part, index (`${part.type}:${index}:${part.type === "text" ? part.value : part.raw}`)}
           {#if part.type === "text"}
             {part.value}
-          {:else}
+          {:else if part.type === "user"}
             {@const mentionUser = users.find(part.userId)}
             <span
               class="text-foreground font-medium"
               style:color={mentionUser?.colorHex}
             >
               {getMentionLabel(part.userId)}
+            </span>
+          {:else}
+            {@const mentionRole = users.findRole(part.roleId)}
+            <span
+              class="text-foreground font-medium"
+              style:color={mentionRole?.colorHex}
+            >
+              {getRoleMentionLabel(part.roleId)}
             </span>
           {/if}
         {/each}

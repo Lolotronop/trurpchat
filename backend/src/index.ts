@@ -8,6 +8,7 @@ import {
   messages,
   rooms,
   unread,
+  userRoles,
   users,
 } from "./db";
 import { getKeys, seed } from "./devseed";
@@ -203,6 +204,12 @@ Bun.serve<ConnectedUser, never>({
         .from(unread)
         .where(eq(unread.userId, ws.data.id));
 
+      const assignedRoles = await db
+        .select({ roleId: userRoles.roleId })
+        .from(userRoles)
+        .where(eq(userRoles.userId, ws.data.id));
+      const roleIds = assignedRoles.map((assignment) => assignment.roleId);
+
       const unreadPromises = unreadRows.map(async (u) => {
         const msgs = await db
           .select()
@@ -219,7 +226,13 @@ Bun.serve<ConnectedUser, never>({
         for (let i = 0; i < msgs.length; i++) {
           const m = msgs[i];
           if (!m) continue;
-          if (mentions.user.includes(m.text, ws.data.id)) {
+
+          const mentionsUser = mentions.user.includes(m.text, ws.data.id);
+          const mentionsRole = roleIds.some((roleId) =>
+            mentions.role.includes(m.text, roleId),
+          );
+
+          if (mentionsUser || mentionsRole) {
             mentiones++;
           }
         }

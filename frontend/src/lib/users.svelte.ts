@@ -134,6 +134,10 @@ export class UserStore {
     return this.list.find((user) => user.id === id);
   }
 
+  findRole(id: number) {
+    return this.roles.find((role) => role.id === id);
+  }
+
   setUsers(users: User[]) {
     this.rawUsers = users;
   }

@@ -249,11 +249,16 @@ export class Server {
       this.messages.append(message.message);
 
       if (message.message.hasMention) {
-        const mentionesMe = mentions.user.includes(
+        const mentionsMeDirectly = mentions.user.includes(
           message.message.text,
           this.user.id,
         );
-        if (mentionesMe) {
+        const myRoles = this.users.find(this.user.id)?.roles ?? [];
+        const mentionsMyRole = myRoles.some((role) =>
+          mentions.role.includes(message.message.text, role.id),
+        );
+
+        if (mentionsMeDirectly || mentionsMyRole) {
           this.unread.incMentiones(message.message.roomId);
 
           const room = this.messages.getRoom(message.message.roomId, false);
@@ -268,16 +273,19 @@ export class Server {
             const author = this.users.find(message.message.userId);
             if (!author || !room) return;
             let body = "";
-            const parts = mentions.user.split(message.message.text);
-            // TODO: consolidate this in the mentions module
+            const parts = mentions.split(message.message.text);
             for (let i = 0; i < parts.length; i++) {
               const part = parts[i];
               if (part.type === "text") {
                 body += part.value;
+              } else if (part.type === "user") {
+                body += mentions.user.format.name(
+                  this.users.find(part.userId) ?? part.userId,
+                );
               } else {
-                const user = this.users.find(part.userId);
-                if (!user) continue;
-                body += `@${user.username} `;
+                body += mentions.role.format.name(
+                  this.users.findRole(part.roleId) ?? part.roleId,
+                );
               }
             }
             sendNotification({
