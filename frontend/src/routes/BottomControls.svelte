@@ -57,7 +57,7 @@
   }
 </script>
 
-<div class="text-muted-foreground rounded border-t px-2 flex flex-col w-full">
+<div class="text-muted-foreground relative z-10 rounded border-t px-2 flex flex-col w-full">
   {#if rtc.connected && rtc.room}
     <div class="flex flex-row items-center justify-between gap-2 py-2">
       <Tooltip.Root delayDuration={100}>
