@@ -1,12 +1,12 @@
 <script lang="ts">
   import { Hash } from "@lucide/svelte";
-  import type { Room } from "trurpchat-backend";
+  import type { TextRoom } from "$lib/rooms.svelte";
   import { Button } from "$lib/components/ui/button";
   import type { Server } from "$lib/servers.svelte";
   import RoomContextMenu from "./RoomContextMenu.svelte";
 
   type Props = {
-    room: Extract<Room, { type: "text" }>;
+    room: TextRoom;
     server: Server;
     selected: boolean;
   };

@@ -104,6 +104,7 @@ export class Server {
   ) {
     this.definition = definition;
     this.#persistDefinition = persistDefinition;
+    void this.rooms.setServerId(this.definition.id);
     this.gateway = new Gateway();
     this.rtc = new WebRTC(
       gitGud().mic,
@@ -191,12 +192,14 @@ export class Server {
     } else if (message.type === "event.startup.config") {
       if (this.definition.id === null) {
         this.definition.id = message.serverId;
+        void this.rooms.setServerId(this.definition.id);
         void this.#persistDefinition();
       } else if (this.definition.id !== message.serverId) {
         console.warn(
           `Server id mismatch for ${this.definition.name}: expected ${this.definition.id}, got ${message.serverId}`,
         );
         this.definition.id = message.serverId;
+        void this.rooms.setServerId(this.definition.id);
         void this.#persistDefinition();
       }
       this.overServerUrl = message.ovenServerUrl;

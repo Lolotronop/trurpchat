@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
-  import type { Room } from "trurpchat-backend";
+  import type { RoomWithData } from "$lib/rooms.svelte";
   import {
     Root,
     Item,
@@ -13,7 +13,7 @@
 
   type Props = {
     server: Server;
-    room: Room;
+    room: RoomWithData;
     children: Snippet;
   };
 

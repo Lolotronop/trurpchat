@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Volume2 } from "@lucide/svelte";
-  import type { VoiceChat } from "trurpchat-backend";
+  import type { VoiceRoom } from "$lib/rooms.svelte";
   import { Button } from "$lib/components/ui/button";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
@@ -14,7 +14,7 @@
 
   type Props = {
     rtc: WebRTC;
-    room: VoiceChat;
+    room: VoiceRoom;
     server: Server;
     selected: boolean;
   };
