@@ -10,6 +10,7 @@ import { mentions } from "trurpchat-shared";
 import { focused } from "./focus.svelte";
 import { sendNotification } from "@tauri-apps/plugin-notification";
 import { UserStore } from "./users.svelte";
+import { RoomStore } from "./rooms.svelte";
 
 export type ServerDefinition = {
   id: string | null;
@@ -39,7 +40,7 @@ export class Server {
   overServerUrl: string | undefined = $state(undefined);
   iceConfig: IceConfig | undefined = $state(undefined);
   gateway: Gateway;
-  rooms: Room[] = $state([]);
+  rooms: RoomStore = new RoomStore();
   rtc: WebRTC;
   user: User = $state({
     id: -1,
@@ -63,14 +64,14 @@ export class Server {
 
   messages: TextMessageCache = new TextMessageCache(
     (roomId: number) => {
-      const room = this.findRoom(roomId);
+      const room = this.rooms.find(roomId);
       if (!room) return;
       if (room.type !== "text") return;
       return room;
     },
 
     (roomId, blockId) => {
-      const room = this.findRoom(roomId);
+      const room = this.rooms.find(roomId);
       if (!room) return;
       if (room.type !== "text") return;
       if (blockId > room.nextMessageId - 1) {
@@ -89,7 +90,13 @@ export class Server {
   );
 
   selectedRoomId: number | undefined = $state(undefined);
-  selectedRoom = $derived(this.rooms.find((r) => r.id === this.selectedRoomId));
+  selectedRoom = $derived.by(() => {
+    if (this.selectedRoomId === undefined) {
+      return undefined;
+    }
+
+    return this.rooms.find(this.selectedRoomId);
+  });
 
   constructor(
     definition: ServerDefinition,
@@ -123,21 +130,12 @@ export class Server {
 
   handleMessage(message: Message) {
     if (message.type === "event.room.list") {
-      message.rooms.sort((a, b) => a.order - b.order);
-      this.rooms = message.rooms;
+      this.rooms.setRooms(message.rooms);
     } else if (message.type === "event.room.updated") {
-      const roomIndex = this.rooms.findIndex((r) => r.id === message.room.id);
-      if (roomIndex === -1) {
-        this.rooms.push(message.room);
-        this.rooms.sort((a, b) => a.order - b.order);
-      } else {
-        const room = this.rooms[roomIndex];
-        this.rooms[roomIndex] = { ...room, ...message.room };
-      }
-      this.rooms.sort((a, b) => a.order - b.order);
+      this.rooms.upsertRoom(message.room);
     } else if (message.type === "event.room.deleted") {
-      const roomIndex = this.rooms.findIndex((r) => r.id === message.roomId);
-      if (roomIndex === -1) {
+      const room = this.rooms.find(message.roomId);
+      if (!room) {
         console.error(
           `event.room.deleted: room ${message.roomId} not found in rooms`,
         );
@@ -148,7 +146,7 @@ export class Server {
         this.leaveRoom();
       }
 
-      this.rooms.splice(roomIndex, 1);
+      this.rooms.deleteRoom(message.roomId);
     } else if (message.type === "event.connected") {
       this.user = message.user;
     } else if (message.type === "event.role.list") {
@@ -208,17 +206,12 @@ export class Server {
     } else if (message.type === "event.user.me") {
       this.user = message.user;
     } else if (message.type === "event.voice.joined") {
-      const room = this.findRoom(message.room);
-      if (!room || room.type !== "voice") {
+      const room = this.rooms.addUserToVoiceRoom(message.room, message.userId);
+      if (!room) {
         return;
       }
-      const has = room.users.includes(message.userId);
-      if (has) {
-        return;
-      }
-      room.users.push(message.userId);
     } else if (message.type === "event.voice.left") {
-      const room = this.findRoom(message.room);
+      const room = this.rooms.find(message.room);
       if (!room || room.type !== "voice") {
         return;
       }
@@ -230,7 +223,8 @@ export class Server {
         );
         return;
       }
-      room.users.splice(index, 1);
+
+      this.rooms.removeUserFromVoiceRoom(message.room, message.userId);
 
       const isMe = message.userId === this.user.id;
       const inRoom = this.rtc.room?.id === room.id;
@@ -244,8 +238,7 @@ export class Server {
     } else if (message.type === "event.message.deleted") {
       this.messages.delete(message.roomId, message.id);
     } else if (message.type === "event.message.created") {
-      const room = this.findRoom(message.message.roomId);
-      if (room) room.nextMessageId = message.message.id + 1;
+      this.rooms.setNextMessageId(message.message.roomId, message.message.id + 1);
       this.messages.append(message.message);
 
       if (message.message.hasMention) {
@@ -269,7 +262,7 @@ export class Server {
             !room?.isAtBottom
           ) {
             sound.play("message");
-            const room = this.findRoom(message.message.roomId);
+            const room = this.rooms.find(message.message.roomId);
             const author = this.users.find(message.message.userId);
             if (!author || !room) return;
             let body = "";
@@ -312,20 +305,6 @@ export class Server {
     return this.gateway.connected;
   }
 
-  findRoom(id: number) {
-    return this.rooms.find((r) => r.id === id);
-  }
-
-  findVoiceRoomByUserId(userId: number) {
-    for (const room of this.rooms) {
-      if (room.type === "voice" && room.users.includes(userId)) {
-        return room;
-      }
-    }
-
-    return undefined;
-  }
-
   shouldHearStreamSound(user: User) {
     if (!user.online) {
       return false;
@@ -335,7 +314,7 @@ export class Server {
       return true;
     }
 
-    const room = this.findVoiceRoomByUserId(user.id);
+    const room = this.rooms.findVoiceRoomByUserId(user.id);
     return room?.users.includes(this.user.id) ?? false;
   }
 

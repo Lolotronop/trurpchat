@@ -37,7 +37,7 @@
 </script>
 
 <div class="h-full p-2 flex flex-col gap-0.5">
-  {#each server.rooms as room (room.id)}
+  {#each server.rooms.list as room (room.id)}
     {#if room.type === "voice"}
       <button type="button" class="contents" onclick={() => setRoomId(room.id)}>
         <VoiceRoom
