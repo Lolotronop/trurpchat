@@ -36,8 +36,9 @@
   const unread = $derived(server.unread.get(room.id));
   const mentions = $derived(server.unread.getMentions(room.id));
   const unreadCount = $derived(room.nextMessageId - unread);
-  const hasUnread = $derived(unreadCount > 0);
-  const hasMentions = $derived(mentions > 0);
+  const showsUnreadIndicators = $derived(room.notificationMode !== "muted");
+  const hasUnread = $derived(showsUnreadIndicators && unreadCount > 0);
+  const hasMentions = $derived(showsUnreadIndicators && mentions > 0);
 </script>
 
 <RoomContextMenu {room} {server}>

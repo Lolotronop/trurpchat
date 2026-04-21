@@ -39,7 +39,9 @@
   const isText = $derived(room.type === "text");
   const unread = $derived(server.unread.get(room.id));
   const unreadCount = $derived(room.nextMessageId - unread);
-  const hasUnread = $derived(unreadCount > 0);
+  const hasUnread = $derived(
+    room.notificationMode !== "muted" && unreadCount > 0,
+  );
 </script>
 
 <Dialog.Root bind:open={editOpen}>

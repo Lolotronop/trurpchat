@@ -257,6 +257,10 @@ export class Server {
         if (mentionsMeDirectly || mentionsMyRole) {
           this.unread.incMentiones(message.message.roomId);
 
+          if (!this.shouldSendRoomNotification(message.message.roomId)) {
+            return;
+          }
+
           const room = this.messages.getRoom(message.message.roomId, false);
 
           if (
@@ -306,6 +310,14 @@ export class Server {
 
   get connected() {
     return this.gateway.connected;
+  }
+
+  getRoomNotificationMode(roomId: number) {
+    return this.rooms.find(roomId)?.notificationMode ?? "normal";
+  }
+
+  shouldSendRoomNotification(roomId: number) {
+    return this.getRoomNotificationMode(roomId) === "normal";
   }
 
   shouldHearStreamSound(user: User) {
