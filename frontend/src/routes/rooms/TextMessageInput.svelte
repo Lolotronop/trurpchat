@@ -62,14 +62,46 @@
     }
 
     const query = mentionQuery.trim().toLowerCase();
-    return [...server.users.list]
-      .map((user) => {
+    return [
+      ...server.users.list.map((user) => {
         const usernameScore = matchScore(user.name, query);
         const displayNameScore = matchScore(user.displayName ?? "", query);
-        const score = Math.max(usernameScore * 2, displayNameScore * 2 - 1);
+        const roleScore = 0;
+        const score = Math.max(
+          usernameScore * 3,
+          displayNameScore * 3 - 1,
+          roleScore * 3 - 2,
+        );
 
-        return { user, score, usernameScore, displayNameScore };
-      })
+        return {
+          type: "user" as const,
+          user,
+          score,
+          usernameScore,
+          displayNameScore,
+          roleScore,
+        };
+      }),
+      ...server.users.roles.map((role) => {
+        const usernameScore = 0;
+        const displayNameScore = 0;
+        const roleScore = matchScore(role.name, query);
+        const score = Math.max(
+          usernameScore * 3,
+          displayNameScore * 3 - 1,
+          roleScore * 3 - 2,
+        );
+
+        return {
+          type: "role" as const,
+          role,
+          score,
+          usernameScore,
+          displayNameScore,
+          roleScore,
+        };
+      }),
+    ]
       .filter((entry) => entry.score > 0)
       .sort((a, b) => {
         if (b.score !== a.score) {
@@ -81,7 +113,13 @@
         if (b.displayNameScore !== a.displayNameScore) {
           return b.displayNameScore - a.displayNameScore;
         }
-        return a.user.name.localeCompare(b.user.name);
+        if (b.roleScore !== a.roleScore) {
+          return b.roleScore - a.roleScore;
+        }
+
+        const aName = a.type === "user" ? a.user.name : a.role.name;
+        const bName = b.type === "user" ? b.user.name : b.role.name;
+        return aName.localeCompare(bName);
       });
   });
   const mentionOpen = $derived(mentionCandidates.length > 0);
@@ -102,13 +140,20 @@
     return mentions.user.format.name(user ?? userId);
   }
 
-  function createMentionNode(raw: string, userId: number) {
+  function getRoleMentionLabel(roleId: number) {
+    const role = server.users.findRole(roleId);
+    return mentions.role.format.name(role ?? roleId);
+  }
+
+  function createMentionNode(raw: string, type: "user" | "role", id: number) {
     const mention = document.createElement("span");
     mention.className = "text-foreground font-medium";
     mention.dataset.mentionRaw = raw;
-    mention.dataset.mentionId = String(userId);
+    mention.dataset.mentionType = type;
+    mention.dataset.mentionId = String(id);
     mention.contentEditable = "false";
-    mention.textContent = getMentionLabel(userId);
+    mention.textContent =
+      type === "user" ? getMentionLabel(id) : getRoleMentionLabel(id);
     return mention;
   }
 
@@ -394,15 +439,21 @@
 
     const selection = getSelectionOffsets();
     const fragment = document.createDocumentFragment();
-    let lastIndex = 0;
 
-    for (const mention of mentions.user.get(raw)) {
-      appendRawText(fragment, raw.slice(lastIndex, mention.index));
-      fragment.append(createMentionNode(mention.raw, mention.userId));
-      lastIndex = mention.index + mention.raw.length;
+    for (const mention of mentions.split(raw)) {
+      if (mention.type === "text") {
+        appendRawText(fragment, mention.value);
+        continue;
+      }
+
+      fragment.append(
+        createMentionNode(
+          mention.raw,
+          mention.type,
+          mention.type === "user" ? mention.userId : mention.roleId,
+        ),
+      );
     }
-
-    appendRawText(fragment, raw.slice(lastIndex));
 
     editor.replaceChildren(fragment);
 
@@ -472,16 +523,17 @@
     return { start, end };
   }
 
-  function insertMention(userId: number) {
+  function insertMention(entry: (typeof mentionCandidates)[number]) {
     if (mentionReplaceStart === null || mentionReplaceEnd === null) {
       return;
     }
 
-    replaceRawRange(
-      mentionReplaceStart,
-      mentionReplaceEnd,
-      `${mentions.user.format.raw(userId)} `,
-    );
+    const raw =
+      entry.type === "user"
+        ? mentions.user.format.raw(entry.user.id)
+        : mentions.role.format.raw(entry.role.id);
+
+    replaceRawRange(mentionReplaceStart, mentionReplaceEnd, `${raw} `);
     closeMentionPicker();
     focusEditor();
   }
@@ -629,7 +681,7 @@
               const selected = mentionCandidates[mentionActiveIndex];
               if (selected) {
                 event.preventDefault();
-                insertMention(selected.user.id);
+                insertMention(selected);
                 return;
               }
             }
@@ -691,7 +743,7 @@
       class="absolute bottom-full left-2 z-20 mb-2 w-72 max-w-[calc(100%-1rem)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md"
     >
       <div bind:this={mentionList} class="max-h-60 overflow-y-auto p-1">
-        {#each mentionCandidates as entry, index (entry.user.id)}
+        {#each mentionCandidates as entry, index (`${entry.type}:${entry.type === "user" ? entry.user.id : entry.role.id}`)}
           <button
             type="button"
             data-mention-active={index === mentionActiveIndex ? "true" : undefined}
@@ -704,19 +756,28 @@
             }}
             onmousedown={(event) => {
               event.preventDefault();
-              insertMention(entry.user.id);
+              insertMention(entry);
             }}
           >
-            <span
-              class="truncate text-foreground"
-              style:color={entry.user.colorHex}
-              >@{entry.user.name}</span
-            >
-            <span
-              class="truncate text-foreground"
-              style:color={entry.user.colorHex}
-              >{entry.user.displayName}</span
-            >
+            {#if entry.type === "user"}
+              <span
+                class="truncate text-foreground"
+                style:color={entry.user.colorHex}
+                >@{entry.user.name}</span
+              >
+              <span
+                class="truncate text-foreground"
+                style:color={entry.user.colorHex}
+                >{entry.user.displayName}</span
+              >
+            {:else}
+              <span
+                class="truncate text-foreground"
+                style:color={entry.role.colorHex}
+                >@{entry.role.name}</span
+              >
+              <span class="truncate text-muted-foreground">Role</span>
+            {/if}
           </button>
         {/each}
       </div>
