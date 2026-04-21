@@ -26,10 +26,18 @@ export class Sound {
 
   c: AudioContext;
   volume = $state(0.3);
+  cooldownMs = $state(500);
   gainNode: GainNode;
 
   // @ts-expect-error: it is initialized in the .init()
   private sounds: Record<SoundName, AudioBuffer> = {};
+  private lastPlayedAt: Partial<Record<SoundName, number>> = {};
+  private readonly cooldownExemptSounds = new Set<SoundName>([
+    "mute",
+    "unmute",
+    "deafen",
+    "undeafen",
+  ]);
 
   constructor() {
     this.c = audioctx();
@@ -79,6 +87,19 @@ export class Sound {
       // console.warn(`Sound.play() called with unknown sound: ${sound}`);
       return;
     }
+
+    const now = performance.now();
+    if (!this.cooldownExemptSounds.has(sound)) {
+      const lastPlayedAt = this.lastPlayedAt[sound];
+      if (
+        lastPlayedAt !== undefined &&
+        now - lastPlayedAt < this.cooldownMs
+      ) {
+        return;
+      }
+      this.lastPlayedAt[sound] = now;
+    }
+
     const source = this.c.createBufferSource();
     source.buffer = data;
     source.connect(this.gainNode);
