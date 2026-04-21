@@ -13,6 +13,26 @@
 
   const { room, server, selected }: Props = $props();
 
+  function getRoomColor() {
+    if (room.notificationMode !== "muted") {
+      return room.colorHex;
+    }
+
+    if (!room.colorHex) {
+      return undefined;
+    }
+
+    return `color-mix(in srgb, ${room.colorHex} 45%, var(--muted-foreground) 55%)`;
+  }
+
+  function getHoverRoomColor() {
+    if (room.notificationMode !== "muted") {
+      return room.colorHex;
+    }
+
+    return room.colorHex ?? "var(--foreground)";
+  }
+
   const unread = $derived(server.unread.get(room.id));
   const mentions = $derived(server.unread.getMentions(room.id));
   const unreadCount = $derived(room.nextMessageId - unread);
@@ -23,11 +43,23 @@
 <RoomContextMenu {room} {server}>
   <Button
     variant="ghost"
-    class="hover:text-foreground! flex w-full flex-row items-center justify-between text-base font-normal {hasUnread ? "text-foreground" : ""} {selected ? "bg-accent/20" : ""}"
+    class="group hover:text-foreground! flex w-full flex-row items-center justify-between text-base font-normal {hasUnread ? "text-foreground" : ""} {selected ? "bg-accent/20" : ""}"
   >
     <div class="flex flex-row items-center gap-2">
-      <Hash size={16} strokeWidth={3} />
-      <p>{room.name}</p>
+      <Hash
+        size={16}
+        strokeWidth={3}
+        class="room-name transition-colors"
+        class:text-muted-foreground={room.notificationMode === "muted" && !room.colorHex}
+        style:--room-color={getRoomColor()}
+        style:--hover-room-color={getHoverRoomColor()}
+      />
+      <p
+        class="room-name transition-colors"
+        class:text-muted-foreground={room.notificationMode === "muted" && !room.colorHex}
+        style:--room-color={getRoomColor()}
+        style:--hover-room-color={getHoverRoomColor()}
+      >{room.name}</p>
     </div>
     <div class="flex flex-row items-center gap-1">
     {#if hasUnread}
@@ -47,3 +79,13 @@
     </div>
   </Button>
 </RoomContextMenu>
+
+<style>
+  .room-name {
+    color: var(--room-color, inherit);
+  }
+
+  .group:hover .room-name {
+    color: var(--hover-room-color, inherit);
+  }
+</style>
