@@ -197,7 +197,14 @@ pub fn run() {
         .plugin(
             tauri_plugin_log::Builder::new()
                 .level(log::LevelFilter::Trace)
-                .level_for("wasapi::api", log::LevelFilter::Off)
+                .level_for("wasapi", log::LevelFilter::Off)
+                .level_for("cpal", log::LevelFilter::Off)
+                .level_for("hyper", log::LevelFilter::Warn)
+                .level_for("h2", log::LevelFilter::Warn)
+                .level_for("rustls", log::LevelFilter::Warn)
+                .level_for("wry", log::LevelFilter::Warn)
+                .level_for("tao", log::LevelFilter::Warn)
+                .level_for("tracing", log::LevelFilter::Warn)
                 .targets([
                     Target::new(TargetKind::Stdout),
                     Target::new(TargetKind::Webview),
