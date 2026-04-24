@@ -521,6 +521,7 @@
                       <Item
                         onclick={() => {
                           server.unread.set(cache.room.id, message.id);
+                          newId = message.id;
                         }}
                       >
                         Отметить непрочитанным

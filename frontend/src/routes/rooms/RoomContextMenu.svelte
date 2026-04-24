@@ -58,8 +58,9 @@
 
 <ContextMenu>
   {#snippet menu()}
-    {#if isText && hasUnread}
+    {#if isText}
       <Item
+        disabled={!hasUnread}
         onclick={() => {
           server.unread.set(room.id, room.nextMessageId);
         }}
