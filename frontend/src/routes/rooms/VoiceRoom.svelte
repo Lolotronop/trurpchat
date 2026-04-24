@@ -45,7 +45,7 @@
 <RoomContextMenu {room} {server}>
   <Button
     variant="ghost"
-    class="group hover:text-foreground! flex w-full flex-row items-center justify-start text-base font-normal {rtc
+    class="group hover:text-foreground flex gaps-2 w-full flex-row items-center justify-start text-base font-normal {rtc
       ?.room?.id === room.id
       ? ''
       : 'text-muted-foreground'}
@@ -53,25 +53,17 @@
     "
     onclick={() => server?.joinRoom(room)}
   >
-    <div class="flex flex-row items-center gap-2">
-      <Volume2
-        size={16}
-        strokeWidth={3}
-        class="room-name transition-colors"
-        class:text-muted-foreground={room.notificationMode === "muted" && !room.colorHex}
-        style:--room-color={getRoomColor()}
-        style:--hover-room-color={getHoverRoomColor()}
-      />
-      <p
-        class="room-name transition-colors"
-        class:text-muted-foreground={room.notificationMode === "muted" && !room.colorHex}
-        style:--room-color={getRoomColor()}
-        style:--hover-room-color={getHoverRoomColor()}
-      >{room.name}</p>
+    <div
+      class="flex flex-row items-center gap-2 room-name"
+      style={`--room-color: ${getRoomColor()}; --hover-room-color: ${getHoverRoomColor()}`}
+    >
+      <Volume2 size={16} strokeWidth={3} />
+      <p>{room.name}</p>
     </div>
   </Button>
 </RoomContextMenu>
 
+<!-- svelte-ignore css_unused_selector -->
 <style>
   .room-name {
     color: var(--room-color, inherit);

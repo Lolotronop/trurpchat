@@ -46,21 +46,18 @@
     variant="ghost"
     class="group hover:text-foreground! flex w-full flex-row items-center justify-between text-base font-normal {hasUnread ? "text-foreground" : ""} {selected ? "bg-accent/20" : ""}"
   >
-    <div class="flex flex-row items-center gap-2">
+    <div
+      class={[
+        "flex flex-row items-center gap-2 room-name",
+        room.notificationMode === "muted" && "brightness-75 hover:brightness-80!"
+      ]}
+      style={`--room-color: ${getRoomColor()}; --hover-room-color: ${getHoverRoomColor()}`}
+    >
       <Hash
         size={16}
         strokeWidth={3}
-        class="room-name transition-colors"
-        class:text-muted-foreground={room.notificationMode === "muted" && !room.colorHex}
-        style:--room-color={getRoomColor()}
-        style:--hover-room-color={getHoverRoomColor()}
       />
-      <p
-        class="room-name transition-colors"
-        class:text-muted-foreground={room.notificationMode === "muted" && !room.colorHex}
-        style:--room-color={getRoomColor()}
-        style:--hover-room-color={getHoverRoomColor()}
-      >{room.name}</p>
+      <p>{room.name}</p>
     </div>
     <div class="flex flex-row items-center gap-1">
     {#if hasUnread}
