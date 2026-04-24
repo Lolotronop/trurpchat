@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { ArrowLeft } from "@lucide/svelte";
+    import { log } from "$lib/log";
+import { ArrowLeft } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
   import type { TextMessage as TMessage } from "trurpchat-backend";
   import { changedFocus, focused } from "$lib/focus.svelte";
@@ -386,16 +387,16 @@
       <button
         type="button"
         onclick={() => {
-      console.log($state.snapshot(cache.renderBlocks));
-    }}
+          log.info($state.snapshot(cache.renderBlocks));
+        }}
       >
         Log
       </button>
       <button
         type="button"
         onclick={() => {
-        shrinkRenderScope();
-    }}
+          shrinkRenderScope();
+        }}
       >
         Shrink
       </button>

@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   register,
@@ -47,7 +48,7 @@ export class Shortcuts extends EventTarget {
     if (isTauri()) {
       unregisterAll();
     } else {
-      console.warn("Shortcuts are not implemented for the web yet");
+      log.warn("Shortcuts are not implemented for the web yet");
     }
   }
 
@@ -58,7 +59,7 @@ export class Shortcuts extends EventTarget {
     if (isTauri()) {
       register(shortcuts, handler);
     } else {
-      console.warn("Shortcuts are not implemented for the web yet");
+      log.warn("Shortcuts are not implemented for the web yet");
     }
   }
 
@@ -66,7 +67,7 @@ export class Shortcuts extends EventTarget {
     if (isTauri()) {
       unregister(shortcuts);
     } else {
-      console.warn("Shortcuts are not implemented for the web yet");
+      log.warn("Shortcuts are not implemented for the web yet");
     }
   }
 
@@ -90,7 +91,7 @@ export class Shortcuts extends EventTarget {
 
     if (Object.keys(keymap).includes(e.code)) {
       this.stopDetect();
-      console.log("Can't set that sorry bud");
+      log.info("Can't set that sorry bud");
       return;
     } else {
       if (e.ctrlKey) key = "Ctrl+";
@@ -102,7 +103,7 @@ export class Shortcuts extends EventTarget {
     try {
       this.set(this.detectingFor, key);
     } catch (error) {
-      console.error("Cannot set shortcut:", error);
+      log.error("Cannot set shortcut:", error);
     }
 
     this.stopDetect();
@@ -110,7 +111,7 @@ export class Shortcuts extends EventTarget {
 
   detect(action: KeyAction) {
     this.detectingFor = action;
-    console.log("detecting", this.detectingFor);
+    log.info("detecting", this.detectingFor);
     window.addEventListener("keyup", this.fromKeyboard);
   }
 

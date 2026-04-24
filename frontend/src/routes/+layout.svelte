@@ -8,6 +8,7 @@
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
   import { initCustomModules } from "$lib/audio/context";
+  import { initLogging } from "$lib/log";
 
   let { children } = $props();
 
@@ -18,7 +19,7 @@
     perm = Promise.resolve();
   }
 
-  const p = Promise.all([initCustomModules(), perm]);
+  const p = Promise.all([initCustomModules(), perm, initLogging()]);
 
   const loaded = p.then(() => {
     return gitGud();

@@ -93,7 +93,7 @@ impl AudioEncoderBuilder {
         stream.set_parameters(&self.encoder);
         stream.set_time_base(self.timebase);
         let stream_index = stream.index();
-        println!("Audio stream index {}", stream_index);
+        log::trace!("Audio stream index {}", stream_index);
         self.stream_index = Some(stream_index);
         Ok(stream_index)
     }
@@ -151,10 +151,10 @@ impl AudioEncoder {
     }
 
     pub fn start(mut self) {
-        println!("Audio encoder started: {:?}", Instant::now());
+        log::trace!("Audio encoder started: {:?}", Instant::now());
         loop {
             if self.control_plane.should_stop() {
-                println!("Audio thread stopped");
+                log::trace!("Audio thread stopped");
                 break;
             }
             self.ingest();
@@ -183,7 +183,7 @@ impl AudioEncoder {
             match self.encode_frame(slice, self.frames_encoded * AUDIO_FRAME_SIZE as i64) {
                 Ok(_) => {}
                 Err(err) => {
-                    eprintln!("Failed to encode frame: {:?}", err);
+                    log::error!("Failed to encode frame: {:?}", err);
                     break;
                 }
             }

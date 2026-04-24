@@ -5,6 +5,7 @@ use ffmpeg_rs::{
 };
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, State};
+use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_plugin_notification::NotificationExt;
 use webview2_com::Microsoft::Web::WebView2::Win32::{
     ICoreWebView2Profile4, ICoreWebView2_13, COREWEBVIEW2_PERMISSION_KIND_CAMERA,
@@ -38,7 +39,7 @@ fn start_stream(
         state.control_plane.wait_off();
     }
     state.control_plane.set(ControlPlaneState::Starting);
-    println!("Starting stream with url: {}", url);
+    log::info!("Starting stream with url: {}", url);
     let destination = OutputDestination::Rtmp(url);
     let preset = match preset_num {
         0 => Preset::Fast,
@@ -69,17 +70,17 @@ fn start_stream(
                     if control_plane.wait_started() {
                         *stream_started_at.lock().unwrap() = Some(Instant::now());
                         if let Err(e) = app.emit("stream-status", true) {
-                            println!("Error emitting stream-status: {:?}", e);
+                            log::error!("Error emitting stream-status: {:?}", e);
                         }
                     }
                 }
             });
             let res = ffmpeg_rs::start::start(settings, control_plane);
             if let Err(e) = res {
-                println!("Error during stream: {}", e);
+                log::error!("Error during stream: {}", e);
             }
             if let Err(e) = app.emit("stream-status", false) {
-                println!("Error emitting stream-status: {:?}", e);
+                log::error!("Error emitting stream-status: {:?}", e);
             }
             let started_at = *stream_started_at.lock().unwrap();
             if let Some(started_at) = started_at {
@@ -91,7 +92,7 @@ fn start_stream(
                         .body("Стрим завершился слишком быстро. Если окно, которое вы захватываете, было свернуто, такое может произойти. Разверните окно и попробуйте снова.")
                         .show()
                     {
-                        println!("Error showing notification: {:?}", e);
+                        log::error!("Error showing notification: {:?}", e);
                     }
                 }
             }
@@ -145,8 +146,8 @@ fn greet(name: &str) -> String {
 fn pause() {
     let result = send_media_play_pause();
     match result {
-        Ok(_) => println!("Media play/pause sent successfully"),
-        Err(e) => println!("Error sending media play/pause: {}", e),
+        Ok(_) => log::info!("Media play/pause sent successfully"),
+        Err(e) => log::error!("Error sending media play/pause: {}", e),
     }
 }
 
@@ -155,7 +156,7 @@ fn get_permissions(origin: &str, app: AppHandle) {
     let webview = match app.get_webview_window("main") {
         Some(webview) => webview,
         None => {
-            println!("Error getting webview");
+            log::error!("Error getting webview");
             return;
         }
     };
@@ -193,6 +194,20 @@ fn get_permissions(origin: &str, app: AppHandle) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .level(log::LevelFilter::Trace)
+                .level_for("wasapi::api", log::LevelFilter::Off)
+                .targets([
+                    Target::new(TargetKind::Stdout),
+                    Target::new(TargetKind::Webview),
+                    Target::new(TargetKind::LogDir {
+                        file_name: Some("trurpchat_log".into()),
+                    }),
+                ])
+                .rotation_strategy(RotationStrategy::KeepAll)
+                .build(),
+        )
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())

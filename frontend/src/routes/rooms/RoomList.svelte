@@ -34,8 +34,6 @@
     await tick();
     selectedRoomId = roomId;
   }
-
-  $inspect("list", server.rooms.list);
 </script>
 
 <div class="h-full p-2 flex flex-col gap-0.5">

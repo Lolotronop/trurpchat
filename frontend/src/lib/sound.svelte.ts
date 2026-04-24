@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
 import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
@@ -50,7 +51,7 @@ export class Sound {
   async init() {
     if (!isTauri()) {
       this.ready = true;
-      console.warn("Sound.init() called on non-Tauri platform");
+      log.warn("Sound.init() called on non-Tauri platform");
       return;
     }
 

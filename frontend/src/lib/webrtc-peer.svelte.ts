@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import type { IceConfig } from "trurpchat-backend";
 import { audioctx } from "./audio/context";
 import type { Headphones } from "./headphones.svelte";
@@ -142,7 +143,7 @@ export class Peer {
       try {
         msg = JSON.parse(ev.data) as DatachannelMessage;
       } catch (_) {
-        console.log(`Can't parse datachanner message`, ev.data);
+        log.info(`Can't parse datachanner message`, ev.data);
         return;
       }
 
@@ -154,13 +155,13 @@ export class Peer {
 
   sendData(data: DatachannelMessage) {
     if (!this.datachannel) {
-      console.warn(
+      log.warn(
         `Trying to send a message when no channel is present for ${this.targetId}`,
       );
       return;
     }
     if (this.datachannel?.readyState !== "open") {
-      console.warn(
+      log.warn(
         `Trying to send a message when datachannel is not open for ${this.targetId}`,
       );
       return;
@@ -169,7 +170,7 @@ export class Peer {
     try {
       this.datachannel.send(JSON.stringify(data));
     } catch (_) {
-      console.error(
+      log.error(
         `Failed to send datachannel message to ${this.targetId}`,
         data,
       );

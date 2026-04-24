@@ -6,6 +6,7 @@ use std::{
 };
 
 use ffmpeg_next as ffmpeg;
+use simplelog::{ColorChoice, Config, LevelFilter, TermLogger, TerminalMode};
 use ffmpeg_rs::{
     control_plane::ControlPlaneData,
     start::start,
@@ -13,6 +14,12 @@ use ffmpeg_rs::{
 };
 
 pub fn main() -> Result<(), Box<dyn std::error::Error>> {
+    TermLogger::init(
+        LevelFilter::Trace,
+        Config::default(),
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    )?;
     ffmpeg::init()?;
 
     let args: Vec<OsString> = env::args_os().skip(1).collect();
@@ -23,7 +30,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         .collect::<Vec<_>>()
         .join(" ");
 
-    println!("{}, {}", joined, joined.len());
+    log::trace!("{}, {}", joined, joined.len());
 
     // let srt_uri = "srt://trurpchr.ru:9999?streamid=trurpchr.ru/app/anita".to_string();
     // let srt_uri = "srt://trurpchr.ru:9999?streamid=127.0.0.1/app/1".to_string();
@@ -50,7 +57,7 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
         move || {
             let res = start(settings, control_plane);
             if res.is_err() {
-                println!("Error: {:?}", res);
+                log::trace!("Error: {:?}", res);
             }
         }
     });
@@ -74,12 +81,12 @@ pub fn main() -> Result<(), Box<dyn std::error::Error>> {
     let start = Instant::now();
 
     let thing = control_plane.wait_started();
-    println!("Control: started {thing:?}");
+    log::trace!("Control: started {thing:?}");
 
     loop {
-        println!("Time: {:?}", Instant::now() - start);
+        log::trace!("Time: {:?}", Instant::now() - start);
         if control_plane.should_stop() {
-            println!("Stopping");
+            log::trace!("Stopping");
             break;
         }
 

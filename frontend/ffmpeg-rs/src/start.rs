@@ -47,7 +47,7 @@ pub fn start(
         match AudioEncoderBuilder::new(settings, global_header, control_plane.clone(), output) {
             Ok(builder) => builder,
             Err(err) => {
-                eprintln!("Failed to create audio encoder: {:?}", err);
+                log::error!("Failed to create audio encoder: {:?}", err);
                 control_plane.stop();
                 return Err(Box::new(err));
             }
@@ -68,7 +68,7 @@ pub fn start(
         ) {
             Ok(builder) => builder,
             Err(err) => {
-                eprintln!("Failed to create audio encoder: {:?}", err);
+                log::error!("Failed to create audio encoder: {:?}", err);
                 control_plane.stop();
                 return Err(Box::new(err));
             }
@@ -117,12 +117,12 @@ pub fn start(
                 }
 
                 if packet.dts().is_none() {
-                    println!("Dts is none!");
+                    log::trace!("Dts is none!");
                 }
 
                 let res = packet.write_interleaved(&mut octx);
                 if res.is_err() {
-                    println!("Error writing packet: {:?}", res);
+                    log::trace!("Error writing packet: {:?}", res);
                     control_plane.stop();
                     break;
                 }
@@ -131,7 +131,7 @@ pub fn start(
             match octx.write_trailer() {
                 Ok(_) => {}
                 Err(err) => {
-                    eprintln!("Failed to write trailer: {:?}", err);
+                    log::error!("Failed to write trailer: {:?}", err);
                 }
             }
         }
@@ -172,10 +172,10 @@ pub fn start(
                     move || {
                         let err = thread.join();
                         if let Err(e) = err {
-                            println!("Error joining thread {name}: {:?}", e);
+                            log::trace!("Error joining thread {name}: {:?}", e);
                             control_plane.stop();
                         }
-                        println!("Thread {name} stopped");
+                        log::trace!("Thread {name} stopped");
                     }
                 }),
             )
@@ -183,12 +183,12 @@ pub fn start(
         .for_each(|(name, thread)| match thread.join() {
             Ok(_) => {}
             Err(err) => {
-                eprintln!("Error joining thread {name}: {:?}", err);
+                log::error!("Error joining thread {name}: {:?}", err);
                 control_plane.stop();
             }
         });
 
-    println!("Encoding complete!");
+    log::trace!("Encoding complete!");
 
     Ok(())
 }

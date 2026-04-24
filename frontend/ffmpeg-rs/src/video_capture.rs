@@ -98,8 +98,8 @@ impl Capture {
         let micros = self.start.elapsed().as_micros() as f32;
         let fpm = self.captured as f32 / micros;
         let fps = fpm * 1000000.0;
-        println!("Captured frames: {} ", self.captured);
-        println!("Effective FPS: {} ", fps);
+        log::trace!("Captured frames: {} ", self.captured);
+        log::trace!("Effective FPS: {} ", fps);
         self.flags.frame_ring.ack_wrote();
     }
 
@@ -216,7 +216,7 @@ impl GraphicsCaptureApiHandler for Capture {
             match self.init(frame) {
                 Ok(_) => {}
                 Err(e) => {
-                    println!("Failed to initialize capture: {:?}", e);
+                    log::trace!("Failed to initialize capture: {:?}", e);
                     self.cleanup();
                     capture_control.stop();
                     self.flags.frame_ring.ack_wrote();
@@ -321,7 +321,7 @@ impl GraphicsCaptureApiHandler for Capture {
         self.flags.frame_ring.ack_wrote();
 
         if res.is_err() {
-            println!("Error scaling video frame: {:?}", res);
+            log::trace!("Error scaling video frame: {:?}", res);
             return Ok(());
         }
 
@@ -331,13 +331,13 @@ impl GraphicsCaptureApiHandler for Capture {
 
         self.captured += 1;
         if start.elapsed() > Duration::from_micros(10_000) {
-            println!("FULL: {:?} | s: {:?}", start.elapsed(), scaler_dur);
+            log::trace!("FULL: {:?} | s: {:?}", start.elapsed(), scaler_dur);
         }
         Ok(())
     }
 
     fn on_closed(&mut self) -> Result<(), Self::Error> {
-        println!("Capture session ended");
+        log::trace!("Capture session ended");
         self.flags.control_plane.stop();
         self.cleanup();
         Ok(())
@@ -473,13 +473,13 @@ pub fn capture(flags: HandlerFlags) {
     {
         Ok(Some(t)) => t,
         Ok(None) => {
-            println!("No target selected");
+            log::trace!("No target selected");
             flags.control_plane.stop();
             drop(flags);
             return;
         }
         Err(e) => {
-            println!("Error picking item: {}", e);
+            log::trace!("Error picking item: {}", e);
             flags.control_plane.stop();
             drop(flags);
             return;
@@ -495,7 +495,7 @@ pub fn capture(flags: HandlerFlags) {
             include: false,
         }
     } else {
-        println!("Could not get PID, using self");
+        log::trace!("Could not get PID, using self");
         AudioCaptureTarget {
             pid: std::process::id(),
             include: false,
@@ -535,7 +535,7 @@ pub fn capture(flags: HandlerFlags) {
         CaptureItem::Monitor(monitor)
     } else {
         // this should never happen, but just in case
-        println!("Using picked item directly, even primary monitor failed");
+        log::trace!("Using picked item directly, even primary monitor failed");
         CaptureItem::Picked(target)
     };
 

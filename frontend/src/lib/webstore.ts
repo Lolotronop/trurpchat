@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
 import { LazyStore } from "@tauri-apps/plugin-store";
 
@@ -58,7 +59,7 @@ class WebStore implements IPersistantStore {
     try {
       return JSON.parse(value) as T;
     } catch (error) {
-      console.warn(`Failed to deserialize value: ${value}`, error);
+      log.warn(`Failed to deserialize value: ${value}`, error);
       return undefined;
     }
   }

@@ -40,7 +40,7 @@ pub fn capture_audio(
     let target = match pid_rec.recv() {
         Ok(target) => target,
         Err(err) => {
-            eprintln!("Failed to receive PID: {}", err);
+            log::error!("Failed to receive PID: {}", err);
             shared_deque.cond.notify_all();
             control_plane.stop();
             return;
@@ -51,7 +51,7 @@ pub fn capture_audio(
     let mut audio_client = match audio_client_res {
         Ok(thing) => thing,
         Err(e) => {
-            eprintln!("Failed to create loopback client: {:?}", e);
+            log::error!("Failed to create loopback client: {:?}", e);
             shared_deque.cond.notify_all();
             control_plane.stop();
             return;
@@ -82,17 +82,17 @@ pub fn capture_audio(
 
     let mut local_deque = VecDeque::<u8>::new();
     let mut samples_acc = 0;
-    println!("Audio capture started: {:?}", Instant::now());
+    log::trace!("Audio capture started: {:?}", Instant::now());
     while !control_plane.should_stop() {
         let res = event_handle.wait_for_event(30);
         if let Some(err) = res.err() {
-            println!("Err audio thing handle wait you know: {:?}", err);
+            log::trace!("Err audio thing handle wait you know: {:?}", err);
             match err {
                 wasapi::WasapiError::EventTimeout => {
-                    println!("Timeout");
+                    log::trace!("Timeout");
                 }
                 _ => {
-                    println!("Other route");
+                    log::trace!("Other route");
                     break;
                 }
             }
@@ -111,7 +111,7 @@ pub fn capture_audio(
             pts_source.set_last_sample_count(samples_acc as i64);
 
             if let Err(e) = capture_client.read_from_device_to_deque(&mut local_deque) {
-                eprintln!("Audio read error: {:?}", e);
+                log::error!("Audio read error: {:?}", e);
                 break;
             }
         }

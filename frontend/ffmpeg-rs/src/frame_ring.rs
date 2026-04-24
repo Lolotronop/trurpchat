@@ -105,7 +105,7 @@ impl FrameRing {
         if next_buf_idx != reader_buf_idx {
             idx.writer += 1;
         } else {
-            println!("Can't advance writer {} {}", idx.writer, idx.reader);
+            log::trace!("Can't advance writer {} {}", idx.writer, idx.reader);
         }
 
         drop(idx);

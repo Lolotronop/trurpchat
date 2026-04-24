@@ -158,7 +158,7 @@ impl VideoEncoderBuilder {
             _ => return Err(ffmpeg::Error::EncoderNotFound),
         };
 
-        println!("Using codec: {:?}", codec.name());
+        log::trace!("Using codec: {:?}", codec.name());
 
         Ok(VideoEncoderBuilder {
             encoder,
@@ -181,7 +181,7 @@ impl VideoEncoderBuilder {
         stream.set_parameters(&self.encoder);
         stream.set_time_base(self.timebase);
         let stream_index = stream.index();
-        println!("Video stream index {}", stream_index);
+        log::trace!("Video stream index {}", stream_index);
         self.stream_index = Some(stream_index);
         Ok(stream_index)
     }
@@ -254,35 +254,35 @@ impl VideoEncoder {
     }
 
     pub fn start(&mut self) {
-        println!("Video encode started: {:?}", Instant::now());
+        log::trace!("Video encode started: {:?}", Instant::now());
         loop {
             self.frame_ring.wait(self.control_plane.clone());
             if self.control_plane.should_stop() {
-                println!("Stopping video encoder thread");
+                log::trace!("Stopping video encoder thread");
                 break;
             }
 
             let frame = self.frame_ring.front();
 
             if let Err(err) = self.encoder.send_frame(&frame) {
-                eprintln!("Failed to send frame: {:?}", err);
+                log::error!("Failed to send frame: {:?}", err);
                 break;
             }
 
             if let Err(err) = self.receive_packets() {
-                eprintln!("Failed to receive packets: {:?}", err);
+                log::error!("Failed to receive packets: {:?}", err);
                 break;
             }
         }
 
         if let Err(err) = self.encoder.send_eof() {
-            eprintln!("Failed to send eof: {:?}", err);
+            log::error!("Failed to send eof: {:?}", err);
         }
         if let Err(err) = self.receive_packets() {
-            eprintln!("Failed to receive packets: {:?}", err);
+            log::error!("Failed to receive packets: {:?}", err);
         }
 
-        println!("Repeated frames: {}", self.frame_ring.repeated_frames);
+        log::trace!("Repeated frames: {}", self.frame_ring.repeated_frames);
     }
 
     pub fn receive_packets(&mut self) -> Result<(), ffmpeg::Error> {
@@ -292,7 +292,7 @@ impl VideoEncoder {
             packet.set_stream(self.stream_index);
             packet.rescale_ts(self.timebase, self.output_timebase);
             if let Err(err) = self.output.send(packet) {
-                eprintln!("Failed to send packet: {:?}", err);
+                log::error!("Failed to send packet: {:?}", err);
             }
             packet = ffmpeg::Packet::empty();
         }

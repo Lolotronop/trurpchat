@@ -27,7 +27,7 @@ impl ControlPlaneData {
     }
 
     pub fn set(&self, state: ControlPlaneState) {
-        println!("Control: called Set {state:?}");
+        log::trace!("Control: called Set {state:?}");
         let mut lock = self.state.lock();
         if *lock == state {
             return;
@@ -65,7 +65,7 @@ impl ControlPlaneData {
         self.condvar.wait_while(&mut lock, |lock| {
             *lock == ControlPlaneState::Starting || *lock == ControlPlaneState::Captured
         });
-        println!("Control: started {lock:?}");
+        log::trace!("Control: started {lock:?}");
         *lock == ControlPlaneState::Streaming
     }
 

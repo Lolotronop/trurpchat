@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { parse } from "devalue";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import type { ClientAction, Message } from "trurpchat-backend";
@@ -36,7 +37,7 @@ export class Gateway extends EventTarget {
           try {
             data = parse(event.data);
           } catch (error) {
-            console.error("Error parsing", event.data, "message:", error);
+            log.error("Error parsing", event.data, "message:", error);
             return;
           }
           callback(data);
@@ -50,7 +51,7 @@ export class Gateway extends EventTarget {
     });
 
     socket.addEventListener("error", (error) => {
-      console.error("Error connecting to Gateway:", error);
+      log.error("Error connecting to Gateway:", error);
       this.connected = false;
       this.oncloseCallback();
     });
@@ -74,11 +75,11 @@ export class Gateway extends EventTarget {
       try {
         data = parse(event.data);
       } catch (error) {
-        console.error("Error parsing", event.data, "message:", error);
+        log.error("Error parsing", event.data, "message:", error);
         return;
       }
       if (!data.type.startsWith("rtc.")) {
-        console.log("New thing!");
+        log.info("New thing!");
       }
       callback(data);
     });
@@ -96,7 +97,7 @@ export class Gateway extends EventTarget {
     try {
       this.socket?.send(JSON.stringify(data));
     } catch (error) {
-      console.error("Error sending message to Gateway:", error);
+      log.error("Error sending message to Gateway:", error);
     }
   }
 }

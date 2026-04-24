@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { log } from "$lib/log";
   import {
     Camera,
     HeadphoneOff,
@@ -45,11 +46,11 @@
   if (isTauri()) {
     listen<boolean>("stream-status", (event) => {
       if (!rtc) {
-        console.warn("Recieved stream-status event but rtc is not defined");
+        log.warn("Recieved stream-status event but rtc is not defined");
         return;
       }
       if (!rtc.connected) {
-        console.warn("Recieved stream-status event but rtc is not connected");
+        log.warn("Recieved stream-status event but rtc is not connected");
         return;
       }
       rtc.streaming = event.payload;

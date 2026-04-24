@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { AnalyzerEffect } from "./audio/analyzer.svelte";
 import { EffectChain } from "./audio/chain.svelte";
 import { CompressorEffect } from "./audio/compressor.svelte";
@@ -198,7 +199,7 @@ export class Mic {
         return;
       }
 
-      console.error("Error enabling mic:", error);
+      log.error("Error enabling mic:", error);
       return;
     }
   }
@@ -230,7 +231,7 @@ export class Mic {
     } catch (err) {
       // TODO: filter out the "not connected" error,
       // log the rest
-      console.warn("Could not disconnect analyzer", err);
+      log.warn("Could not disconnect analyzer", err);
     }
   }
 

@@ -29,7 +29,7 @@ fn compile_shader(shader_code: &str, entry_point: &str, target: &str) -> Result<
                 error.GetBufferPointer() as *const u8,
                 error.GetBufferSize(),
             );
-            eprintln!("Shader compilation error: {}", String::from_utf8_lossy(msg));
+            log::error!("Shader compilation error: {}", String::from_utf8_lossy(msg));
         }
     }
 

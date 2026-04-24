@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { SvelteMap } from "svelte/reactivity";
 import type { Message, VoiceChat } from "trurpchat-backend";
 import type { Camera } from "./camera.svelte";
@@ -46,7 +47,7 @@ export class WebRTC {
         this.disableCamera();
       }
     } catch (e) {
-      console.error("Error enabling/disabling camera", e);
+      log.error("Error enabling/disabling camera", e);
       return;
     }
 
@@ -186,7 +187,7 @@ export class WebRTC {
   async createPeer(targetId: number): Promise<Peer> {
     let peer = this.peers.get(targetId);
     if (peer) {
-      console.log(`Peer connection with ${targetId} already exists`);
+      log.info(`Peer connection with ${targetId} already exists`);
       return peer;
     }
     if (!this.server.iceConfig) {
@@ -239,7 +240,7 @@ export class WebRTC {
         peer.pc.connectionState === "failed"
       ) {
         if (peer.pc.connectionState === "failed") {
-          console.error("Peer connection failed", peer.targetId);
+          log.error("Peer connection failed", peer.targetId);
         }
         peer.cleanup();
         this.peers.delete(targetId);
@@ -251,7 +252,7 @@ export class WebRTC {
     };
 
     peer.pc.onnegotiationneeded = async (event) => {
-      console.log("onnegotiationneeded", event);
+      log.info("onnegotiationneeded", event);
       const offer = await peer.pc.createOffer();
       // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
       // offer = { ...offer, sdp };
@@ -270,11 +271,11 @@ export class WebRTC {
 
   async initiateCall(targetId: number) {
     if (!this.room?.users.includes(targetId)) {
-      console.error(`User ${targetId} not found`);
+      log.error(`User ${targetId} not found`);
       return;
     }
     if (this.peers.has(targetId)) {
-      console.error(`Already connected to ${targetId}`);
+      log.error(`Already connected to ${targetId}`);
       return;
     }
     const peer = await this.createPeer(targetId);
@@ -316,7 +317,7 @@ export class WebRTC {
   async handleAnswer(answer: RTCSessionDescriptionInit, senderId: number) {
     const peer = this.peers.get(senderId);
     if (!peer) {
-      console.error(`Peer for ${senderId} not found`);
+      log.error(`Peer for ${senderId} not found`);
       return;
     }
     await peer.pc.setRemoteDescription(answer);
@@ -325,7 +326,7 @@ export class WebRTC {
   async handleIceCandidate(candidate: RTCIceCandidateInit, senderId: number) {
     const peer = this.peers.get(senderId);
     if (!peer) {
-      console.error(`Peer for ${senderId} not found`);
+      log.error(`Peer for ${senderId} not found`);
       return;
     }
     await peer.pc.addIceCandidate(candidate);

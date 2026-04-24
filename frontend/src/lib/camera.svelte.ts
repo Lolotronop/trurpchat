@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export class Camera {
@@ -60,7 +61,7 @@ export class Camera {
         return;
       }
 
-      console.error("Error enabling camera:", error);
+      log.error("Error enabling camera:", error);
       return;
     }
   }

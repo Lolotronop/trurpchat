@@ -12,6 +12,7 @@
     "global-shortcut:allow-unregister-all",
     "store:default",
     "notification:default",
+    "log:default",
     "fs:default",
     "fs:scope-appconfig-recursive",
     "fs:allow-resource-read-recursive"

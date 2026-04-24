@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
 import { EffectChain } from "./audio/chain.svelte";
 import { CompressorEffect } from "./audio/compressor.svelte";
@@ -91,14 +92,14 @@ export class Headphones {
     try {
       await this.ctx.setSinkId(deviceId || "");
     } catch (error) {
-      console.warn("Failed to switch audio output device", error);
+      log.warn("Failed to switch audio output device", error);
       this.deviceId = undefined;
       this.store.set("deviceId", undefined);
 
       try {
         await this.ctx.setSinkId("");
       } catch (fallbackError) {
-        console.warn("Failed to restore default audio output", fallbackError);
+        log.warn("Failed to restore default audio output", fallbackError);
       }
     }
   }

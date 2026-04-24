@@ -1,3 +1,4 @@
+import { log } from "$lib/log";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import type { IceConfig, Message, Room, User, Key } from "trurpchat-backend";
 import { Gateway } from "./gateway.svelte";
@@ -75,7 +76,7 @@ export class Server {
       if (!room) return;
       if (room.type !== "text") return;
       if (blockId > room.nextMessageId - 1) {
-        console.error(
+        log.error(
           `onfetchrequest: blockId ${blockId} is greater than nextMessageId ${room.nextMessageId}`,
         );
         return;
@@ -137,7 +138,7 @@ export class Server {
     } else if (message.type === "event.room.deleted") {
       const room = this.rooms.find(message.roomId);
       if (!room) {
-        console.error(
+        log.error(
           `event.room.deleted: room ${message.roomId} not found in rooms`,
         );
         return;
@@ -195,7 +196,7 @@ export class Server {
         void this.rooms.setServerId(this.definition.id);
         void this.#persistDefinition();
       } else if (this.definition.id !== message.serverId) {
-        console.warn(
+        log.warn(
           `Server id mismatch for ${this.definition.name}: expected ${this.definition.id}, got ${message.serverId}`,
         );
         this.definition.id = message.serverId;
@@ -221,7 +222,7 @@ export class Server {
 
       const index = room.users.indexOf(message.userId);
       if (index === -1) {
-        console.error(
+        log.error(
           `event.voice.left: user ${message.userId} not found in room ${message.room}`,
         );
         return;

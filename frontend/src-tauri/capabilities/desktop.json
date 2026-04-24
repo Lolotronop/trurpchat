@@ -12,6 +12,7 @@
     "global-shortcut:default",
     "store:default",
     "window-state:default",
-    "notification:default"
+    "notification:default",
+    "log:default"
   ]
 }
