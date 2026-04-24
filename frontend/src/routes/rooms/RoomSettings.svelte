@@ -3,10 +3,7 @@
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Label } from "$lib/components/ui/label";
   import * as Select from "$lib/components/ui/select/index.js";
-  import type {
-    RoomNotificationMode,
-    RoomWithData,
-  } from "$lib/rooms.svelte";
+  import type { RoomNotificationMode, RoomWithData } from "$lib/rooms.svelte";
   import type { Server } from "$lib/servers.svelte";
 
   type Props = {
@@ -25,12 +22,13 @@
     {
       value: "normal",
       label: "Обычные",
-      description: "Текущее поведение уведомлений",
+      description: "Получать уведомления о упомянаниях",
     },
     {
       value: "suppressed",
       label: "Подавленные",
-      description: "Без звука и системных уведомлений, но с индикаторами непрочитанного",
+      description:
+        "Без звука и системных уведомлений, но с индикаторами непрочитанного",
     },
     {
       value: "muted",
@@ -73,42 +71,45 @@
     <Dialog.Header>
       <Dialog.Title class="text-xl">Настройки комнаты</Dialog.Title>
       <Dialog.Description>
-        Локальные настройки для комнаты <span class="font-medium">{room.name}</span>
+        Локальные настройки для комнаты
+        <span class="font-medium">{room.name}</span>
       </Dialog.Description>
     </Dialog.Header>
 
     <div class="flex flex-col gap-6 py-2">
-      <div class="flex flex-col gap-2">
-        <Label>Уведомления</Label>
-        <Select.Root
-          type="single"
-          value={room.notificationMode}
-          onValueChange={(value) => {
+      {#if room.type === "text"}
+        <div class="flex flex-col gap-2">
+          <Label>Уведомления</Label>
+          <Select.Root
+            type="single"
+            value={room.notificationMode}
+            onValueChange={(value) => {
             setNotificationMode(value);
           }}
-        >
-          <Select.Trigger class="w-full">
-            {notificationItems.find((item) => item.value === room.notificationMode)
+          >
+            <Select.Trigger class="w-full">
+              {notificationItems.find((item) => item.value === room.notificationMode)
               ?.label ?? "Обычные"}
-          </Select.Trigger>
-          <Select.Content>
-            {#each notificationItems as item}
-              <Select.Item value={item.value} label={item.label}>
-                <div class="flex flex-col gap-0.5">
-                  <span>{item.label}</span>
-                  <span class="text-muted-foreground text-xs">
-                    {item.description}
-                  </span>
-                </div>
-              </Select.Item>
-            {/each}
-          </Select.Content>
-        </Select.Root>
-        <p class="text-muted-foreground text-sm">
-          {notificationItems.find((item) => item.value === room.notificationMode)
+            </Select.Trigger>
+            <Select.Content>
+              {#each notificationItems as item}
+                <Select.Item value={item.value} label={item.label}>
+                  <div class="flex flex-col gap-0.5">
+                    <span>{item.label}</span>
+                    <span class="text-muted-foreground text-xs">
+                      {item.description}
+                    </span>
+                  </div>
+                </Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
+          <p class="text-muted-foreground text-sm">
+            {notificationItems.find((item) => item.value === room.notificationMode)
             ?.description}
-        </p>
-      </div>
+          </p>
+        </div>
+      {/if}
 
       <div class="flex flex-col gap-3">
         <Label for={`room-color-${room.id}`}>Цвет комнаты</Label>
@@ -121,7 +122,7 @@
             oninput={(event) => {
               setColorHex(event.currentTarget.value);
             }}
-          />
+          >
           <div class="flex min-w-0 flex-1 flex-col">
             <p class="text-sm">{room.colorHex ?? "Не задан"}</p>
             <p class="text-muted-foreground text-xs">
