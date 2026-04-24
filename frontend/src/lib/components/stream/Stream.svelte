@@ -60,7 +60,7 @@
 
   $effect(() => {
     return () => {
-      player.unmount();
+      player?.unmount();
     };
   });
 
@@ -68,7 +68,7 @@
     player.mount(el);
 
     return () => {
-      player.unmount();
+      player?.unmount();
     };
   }
 

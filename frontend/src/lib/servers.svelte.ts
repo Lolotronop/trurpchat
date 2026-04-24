@@ -241,7 +241,10 @@ export class Server {
     } else if (message.type === "event.message.deleted") {
       this.messages.delete(message.roomId, message.id);
     } else if (message.type === "event.message.created") {
-      this.rooms.setNextMessageId(message.message.roomId, message.message.id + 1);
+      this.rooms.setNextMessageId(
+        message.message.roomId,
+        message.message.id + 1,
+      );
       this.messages.append(message.message);
 
       if (message.message.hasMention) {
