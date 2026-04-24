@@ -67,7 +67,10 @@ export class RoomStore {
     const loadVersion = ++this.#loadVersion;
     await this.store.reload();
     const entries = await this.store.entries<RoomUserData>();
-    if (loadVersion !== this.#loadVersion || this.#serverId !== normalizedServerId) {
+    if (
+      loadVersion !== this.#loadVersion ||
+      this.#serverId !== normalizedServerId
+    ) {
       return;
     }
 
@@ -85,7 +88,8 @@ export class RoomStore {
       return [
         {
           roomId,
-          notificationMode: value.notificationMode ?? defaultRoomUserData.notificationMode,
+          notificationMode:
+            value.notificationMode ?? defaultRoomUserData.notificationMode,
           colorHex: value.colorHex,
         },
       ];
@@ -97,7 +101,9 @@ export class RoomStore {
   }
 
   upsertRoom(room: Room) {
-    const roomIndex = this.rawRooms.findIndex((existing) => existing.id === room.id);
+    const roomIndex = this.rawRooms.findIndex(
+      (existing) => existing.id === room.id,
+    );
     if (roomIndex === -1) {
       this.rawRooms.push(room);
       return;
@@ -166,13 +172,12 @@ export class RoomStore {
   }
 
   setNextMessageId(roomId: number, nextMessageId: number) {
-    const room = this.find(roomId);
+    const room = this.rawRooms.find((room) => room.id === roomId);
     if (!room || room.type !== "text") {
       return undefined;
     }
 
     room.nextMessageId = nextMessageId;
-    return room;
   }
 
   setData(roomId: number, patch: Partial<RoomUserData>) {

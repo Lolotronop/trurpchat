@@ -1,13 +1,13 @@
 <script lang="ts">
+  import { PlusIcon } from "@lucide/svelte";
+  import { tick } from "svelte";
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog";
   import type { Server } from "$lib/servers.svelte";
-  import { PlusIcon } from "@lucide/svelte";
-  import VoiceRoom from "./VoiceRoom.svelte";
-  import RoomForm from "./RoomForm.svelte";
   import type { EditingRoom } from "./RoomForm.svelte";
+  import RoomForm from "./RoomForm.svelte";
   import TextRoom from "./TextRoom.svelte";
-  import { tick } from "svelte";
+  import VoiceRoom from "./VoiceRoom.svelte";
 
   type Props = {
     server: Server;
@@ -34,6 +34,8 @@
     await tick();
     selectedRoomId = roomId;
   }
+
+  $inspect("list", server.rooms.list);
 </script>
 
 <div class="h-full p-2 flex flex-col gap-0.5">
@@ -42,7 +44,7 @@
       <button type="button" class="contents" onclick={() => setRoomId(room.id)}>
         <VoiceRoom
           {room}
-          server={server!}
+          {server}
           {rtc}
           selected={selectedRoomId === room.id}
         />
@@ -54,11 +56,7 @@
         class="contents {(selectedRoomId !== room.id) && 'text-muted-foreground'}"
         onclick={() => setRoomId(room.id)}
       >
-        <TextRoom
-          {room}
-          server={server!}
-          selected={selectedRoomId === room.id}
-        />
+        <TextRoom {room} {server} selected={selectedRoomId === room.id} />
       </button>
     {/if}
   {/each}
