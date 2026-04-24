@@ -6,6 +6,7 @@ def make-tab [title: string, cwd: string, dev_cmd: string] {
 
   ^wezterm cli send-text --pane-id $left_pane --no-paste "nvim .\r"
   ^wezterm cli send-text --pane-id $right_pane --no-paste $"($dev_cmd)\r"
+  ^wezterm cli activate-pane --pane-id $left_pane
 }
 
 def main [] {
