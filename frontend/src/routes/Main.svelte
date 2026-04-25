@@ -44,7 +44,7 @@
 </script>
 
 <div class="flex h-full w-full min-h-0 min-w-0 overflow-hidden">
-  <div class="flex h-full shrink-0 flex-col min-w-80 border-r">
+  <div class="flex h-full shrink-0 flex-col min-w-80 max-w-80 border-r">
     <div class="flex p-2 px-2 text-xl justify-between">
       <p class="pl-2">{server.definition.name || "Select a server"}</p>
       <ServerSettings {server} />
