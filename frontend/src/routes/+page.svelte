@@ -1,9 +1,9 @@
 <script lang="ts">
   import Button from "$lib/components/ui/button/button.svelte";
   import { gitGud } from "$lib/god.svelte";
-  import Main from "./Main.svelte";
   import ServerForm from "./left/servers/ServerForm.svelte";
   import ServerSelector from "./left/servers/ServerSelector.svelte";
+  import Main from "./Main.svelte";
 
   const g = gitGud();
 </script>

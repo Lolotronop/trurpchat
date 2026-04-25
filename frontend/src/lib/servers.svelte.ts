@@ -63,32 +63,23 @@ export class Server {
     });
   });
 
-  messages: TextMessageCache = new TextMessageCache(
-    (roomId: number) => {
-      const room = this.rooms.find(roomId);
-      if (!room) return;
-      if (room.type !== "text") return;
-      return room;
-    },
-
-    (roomId, blockId) => {
-      const room = this.rooms.find(roomId);
-      if (!room) return;
-      if (room.type !== "text") return;
-      if (blockId > room.nextMessageId - 1) {
-        log.error(
-          `onfetchrequest: blockId ${blockId} is greater than nextMessageId ${room.nextMessageId}`,
-        );
-        return;
-      }
-      this.gateway.send({
-        type: "action.message.list",
-        roomId: roomId,
-        fromId: blockId,
-        toId: blockId + BLOCK_SIZE,
-      });
-    },
-  );
+  messages = new TextMessageCache(this.rooms, (roomId, blockId) => {
+    const room = this.rooms.find(roomId);
+    if (!room) return;
+    if (room.type !== "text") return;
+    if (blockId > room.nextMessageId - 1) {
+      log.error(
+        `onfetchrequest: blockId ${blockId} is greater than nextMessageId ${room.nextMessageId}`,
+      );
+      return;
+    }
+    this.gateway.send({
+      type: "action.message.list",
+      roomId: roomId,
+      fromId: blockId,
+      toId: blockId + BLOCK_SIZE,
+    });
+  });
 
   selectedRoomId: number | undefined = $state(undefined);
   selectedRoom = $derived.by(() => {

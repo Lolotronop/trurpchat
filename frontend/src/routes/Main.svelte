@@ -4,9 +4,9 @@
 
   import BottomControls from "./left/bottom/BottomControls.svelte";
   import RoomList from "./left/rooms/RoomList.svelte";
+  import ServerSettings from "./left/servers/ServerSettings.svelte";
   import TextRoomContent from "./middle/text/TextRoomContent.svelte";
   import VoiceGrid from "./middle/voice/VoiceGrid.svelte";
-  import ServerSettings from "./left/servers/ServerSettings.svelte";
   import Users from "./right/Users.svelte";
 
   type Props = {
@@ -58,8 +58,9 @@
     {#if server.selectedRoom?.type === "voice"}
       <VoiceGrid {server} />
     {:else if server.selectedRoom?.type === "text"}
-      {#if cache !== undefined}
-        <TextRoomContent {cache} {server} {showCurrentVoiceRoom} />
+      {@const room = server.rooms.find(server.selectedRoom.id)}
+      {#if cache !== undefined && room?.type === "text"}
+        <TextRoomContent {cache} {room} {server} {showCurrentVoiceRoom} />
       {/if}
     {:else}
       It is what it is man

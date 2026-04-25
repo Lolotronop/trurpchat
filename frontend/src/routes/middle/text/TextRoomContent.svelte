@@ -18,16 +18,18 @@
   import type { Server } from "$lib/servers.svelte";
   import { minmax } from "$lib/utils.svelte";
   import TextMessageInput from "./TextMessageInput.svelte";
+  import type { TextRoom } from "$lib/rooms.svelte";
 
   type Props = {
     cache: TextRoomCache;
     server: Server;
+    room: TextRoom;
     showCurrentVoiceRoom: () => void;
   };
 
-  const { cache, server, showCurrentVoiceRoom }: Props = $props();
+  const { cache, room, server, showCurrentVoiceRoom }: Props = $props();
 
-  const unreadId = $derived(server.unread.get(cache.room.id));
+  const unreadId = $derived(server.unread.get(room.id));
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
 
@@ -41,6 +43,7 @@
     }
 
     if (unreadId <= cache.lastMessageId()) {
+      console.log("Hit onMount");
       newId = unreadId;
     }
 
@@ -107,7 +110,7 @@
     if (unreadId === cache.lastMessageId() + 1) {
       return;
     }
-    server.unread.set(cache.room.id, cache.lastMessageId() + 1, 0);
+    server.unread.set(room.id, cache.lastMessageId() + 1, 0);
   }
 
   function autoscroll() {
@@ -521,7 +524,7 @@
                     {#snippet menu()}
                       <Item
                         onclick={() => {
-                          server.unread.set(cache.room.id, message.id);
+                          server.unread.set(room.id, message.id);
                           newId = message.id;
                         }}
                       >
@@ -565,8 +568,8 @@
 
   <TextMessageInput
     {server}
-    roomId={cache.room.id}
-    roomName={cache.room.name}
+    roomId={room.id}
+    roomName={room.name}
     onSent={() => {
       newId = undefined;
     }}

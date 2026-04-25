@@ -6,8 +6,9 @@
   import type { Server } from "$lib/servers.svelte";
   import type { EditingRoom } from "./RoomForm.svelte";
   import RoomForm from "./RoomForm.svelte";
-  import TextRoom from "./TextRoom.svelte";
-  import VoiceRoom from "./VoiceRoom.svelte";
+  import RoomHeader from "./RoomHeader.svelte";
+  import RoomContextMenu from "./RoomContextMenu.svelte";
+  import VoiceRoomUsers from "./VoiceRoomUsers.svelte";
 
   type Props = {
     server: Server;
@@ -39,23 +40,35 @@
 <div class="h-full p-2 flex flex-col gap-0.5">
   {#each server.rooms.list as room (room.id)}
     {#if room.type === "voice"}
-      <button type="button" class="contents" onclick={() => setRoomId(room.id)}>
-        <VoiceRoom
-          {room}
-          {server}
-          {rtc}
-          selected={selectedRoomId === room.id}
-        />
-      </button>
+      <RoomContextMenu {room} {server}>
+        <button
+          type="button"
+          class="contents"
+          onclick={() => {
+        setRoomId(room.id)
+        server.joinRoom(room)
+      }}
+        >
+          <RoomHeader {room} selected={selectedRoomId === room.id} />
+        </button>
+      </RoomContextMenu>
+      <VoiceRoomUsers {room} {server} {rtc} />
     {/if}
     {#if room.type === "text"}
-      <button
-        type="button"
-        class="contents {(selectedRoomId !== room.id) && 'text-muted-foreground'}"
-        onclick={() => setRoomId(room.id)}
-      >
-        <TextRoom {room} {server} selected={selectedRoomId === room.id} />
-      </button>
+      <RoomContextMenu {room} {server}>
+        <button
+          type="button"
+          class="contents {(selectedRoomId !== room.id) && 'text-muted-foreground'}"
+          onclick={() => setRoomId(room.id)}
+        >
+          <RoomHeader
+            {room}
+            selected={selectedRoomId === room.id}
+            unread={server.unread.get(room.id)}
+            mentions={server.unread.getMentions(room.id)}
+          />
+        </button>
+      </RoomContextMenu>
     {/if}
   {/each}
   {#if server.user.permissions === 1}

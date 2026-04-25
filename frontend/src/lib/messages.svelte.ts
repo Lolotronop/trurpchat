@@ -1,6 +1,7 @@
 import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
-import type { Room, TextMessage, Unread } from "trurpchat-backend";
+import type { TextMessage, Unread } from "trurpchat-backend";
+import type { RoomStore } from "./rooms.svelte";
 import { wait } from "./utils.svelte";
 
 export const BLOCK_SIZE = 10;
@@ -77,7 +78,9 @@ export class TextRoomCache {
   isAtBottom = $state(false);
 
   lastMessageId() {
-    return this.room.nextMessageId - 1;
+    const room = this.rooms.find(this.roomId);
+    if (!room) return 0;
+    return room.nextMessageId - 1;
   }
 
   lastBlockId() {
@@ -88,7 +91,8 @@ export class TextRoomCache {
   pruneTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(
-    readonly room: Extract<Room, { type: "text" }>,
+    readonly rooms: RoomStore,
+    readonly roomId: number,
     readonly fetchCallback: TextMessageFetchCallback,
   ) {}
 
@@ -121,7 +125,7 @@ export class TextRoomCache {
   get(blockId: number, fetch = true) {
     const block = this.blocks.get(blockId);
     if (!block && fetch) {
-      this.fetchCallback(this.room.id, blockId);
+      this.fetchCallback(this.roomId, blockId);
     }
     this.schedulePruneMemory();
     return block;
@@ -160,7 +164,7 @@ export class TextRoomCache {
       return;
     }
 
-    this.fetchCallback(this.room.id, blockId);
+    this.fetchCallback(this.roomId, blockId);
     return;
   }
 
@@ -198,7 +202,7 @@ export class TextRoomCache {
     this.inFlightBlocks.add(blockId);
     tick().then(async () => {
       DBG_WAIT && (await wait(DBG_WAIT));
-      this.fetchCallback(this.room.id, blockId);
+      this.fetchCallback(this.roomId, blockId);
     });
   }
 }
@@ -208,9 +212,7 @@ export class TextMessageCache {
   cache: SvelteMap<number, TextRoomCache> = new SvelteMap();
 
   constructor(
-    readonly roomCallback: (
-      roomId: number,
-    ) => Extract<Room, { type: "text" }> | undefined,
+    readonly rooms: RoomStore,
     readonly fetchCallback: TextMessageFetchCallback,
   ) {}
 
@@ -218,10 +220,10 @@ export class TextMessageCache {
     const room = this.cache.get(roomId);
     if (!room && create) {
       tick().then(() => {
-        const room = this.roomCallback(roomId);
+        const room = this.rooms.find(roomId);
         if (!room) return;
-        const cache = new TextRoomCache(room, this.fetchCallback);
 
+        const cache = new TextRoomCache(this.rooms, roomId, this.fetchCallback);
         if (room.nextMessageId === 0) {
           cache.set(0, []);
         }

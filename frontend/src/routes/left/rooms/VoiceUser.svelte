@@ -14,7 +14,7 @@
 </script>
 
 <div
-  class="hover:bg-accent/50 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
+  class="hover:bg-accent/20 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
 >
   <div class="flex flex-row items-center gap-2 min-w-0">
     <SpeakingBorder {speaking} rounded class="size-6 shrink-0 rounded-full">
