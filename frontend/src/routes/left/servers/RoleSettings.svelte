@@ -171,6 +171,23 @@
         </div>
       </div>
 
+      <div>
+        <Input
+          type="number"
+          value={role.order}
+          class="h-10 w-16 p-1"
+          oninput={(e) => {
+            server.gateway.send({
+              type: "action.role.update",
+              role: {
+                id: role.id,
+                order: Number(e.currentTarget.value),
+              },
+            });
+          }}
+        />
+      </div>
+
       <div class="mt-2 flex flex-col gap-2">
         <p class="text-sm font-medium">Пользователи</p>
         {#each server.users.list as user (user.id)}
