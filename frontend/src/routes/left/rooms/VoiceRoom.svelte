@@ -89,8 +89,6 @@
           {/snippet}
           <VoiceUser
             {user}
-            {rtc}
-            {room}
             mutedByMe={false}
             speaking={g.mic.speaking && !g.muted}
           />
@@ -107,14 +105,12 @@
 
             <VoiceUser
               {user}
-              {rtc}
-              {room}
               mutedByMe={peer?.mute ?? false}
               speaking={peer?.speaking ?? false}
             />
           </ContextMenu>
         {:else}
-          <VoiceUser {user} {rtc} {room} mutedByMe={false} speaking={false} />
+          <VoiceUser {user} mutedByMe={false} speaking={false} />
         {/if}
       {/if}
     {/if}

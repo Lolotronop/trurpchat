@@ -346,7 +346,7 @@
           <div>
             <h1 class="text-foreground text-lg">Горячие клавиши</h1>
             <div class="flex flex-col gap-2">
-              {#each g.keys.bindings.entries() as [ action, key ] (action)}
+              {#each g.keys.bindings.entries() as [action, key] (action)}
                 <div class="flex flex-row items-center justify-between">
                   <p class="text-muted-foreground text-base">
                     {actions[action]}

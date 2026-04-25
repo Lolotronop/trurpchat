@@ -1,20 +1,16 @@
 <script lang="ts">
   import { Camera, HeadphoneOff, MicOff, TvMinimalPlay } from "@lucide/svelte";
-  import type { VoiceChat } from "trurpchat-backend";
   import Avatar from "$lib/components/Avatar.svelte";
   import SpeakingBorder from "$lib/components/SpeakingBorder.svelte";
   import type { ConnectedUserWithRoles } from "$lib/users.svelte";
-  import type { WebRTC } from "$lib/webrtc.svelte";
 
   type Props = {
     user: ConnectedUserWithRoles;
-    rtc: WebRTC;
-    room: VoiceChat;
     mutedByMe: boolean;
     speaking: boolean;
   };
 
-  const { user, rtc, room, speaking, mutedByMe }: Props = $props();
+  const { user, speaking, mutedByMe }: Props = $props();
 </script>
 
 <div

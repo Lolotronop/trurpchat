@@ -1,5 +1,5 @@
-import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
+import { log } from "$lib/log";
 import { EffectChain } from "./audio/chain.svelte";
 import { CompressorEffect } from "./audio/compressor.svelte";
 import { audioctx } from "./audio/context";

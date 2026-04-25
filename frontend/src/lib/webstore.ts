@@ -1,6 +1,6 @@
-import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
 import { LazyStore } from "@tauri-apps/plugin-store";
+import { log } from "$lib/log";
 
 export interface IPersistantStore {
   set(key: string, value: unknown): Promise<void>;

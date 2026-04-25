@@ -1,12 +1,13 @@
 <script lang="ts">
-  import type { Server } from "$lib/servers.svelte";
   import { tick } from "svelte";
-  import BottomControls from "./BottomControls.svelte";
-  import VoiceGrid from "./main/VoiceGrid.svelte";
-  import RoomList from "./rooms/RoomList.svelte";
-  import ServerSettings from "./servers/ServerSettings.svelte";
-  import Users from "./Users.svelte";
-  import TextRoomContent from "./rooms/TextRoomContent.svelte";
+  import type { Server } from "$lib/servers.svelte";
+
+  import BottomControls from "./left/bottom/BottomControls.svelte";
+  import RoomList from "./left/rooms/RoomList.svelte";
+  import TextRoomContent from "./middle/text/TextRoomContent.svelte";
+  import VoiceGrid from "./middle/voice/VoiceGrid.svelte";
+  import ServerSettings from "./left/servers/ServerSettings.svelte";
+  import Users from "./right/Users.svelte";
 
   type Props = {
     server: Server;
@@ -55,8 +56,6 @@
     class="flex grow-0 h-full w-full flex-col items-center justify-center min-h-0 min-w-0 overflow-hidden"
   >
     {#if server.selectedRoom?.type === "voice"}
-      <!-- <Stream {server} id={server.rtc?.watching} /> -->
-      <!-- <div class="flex w-full flex-row justify-between px-16"></div> -->
       <VoiceGrid {server} />
     {:else if server.selectedRoom?.type === "text"}
       {#if cache !== undefined}

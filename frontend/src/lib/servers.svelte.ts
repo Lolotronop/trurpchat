@@ -1,17 +1,17 @@
-import { log } from "$lib/log";
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import type { IceConfig, Message, Room, User, Key } from "trurpchat-backend";
+import { sendNotification } from "@tauri-apps/plugin-notification";
+import type { IceConfig, Key, Message, Room, User } from "trurpchat-backend";
+import { mentions } from "trurpchat-shared";
+import { log } from "$lib/log";
+import { focused } from "./focus.svelte";
 import { Gateway } from "./gateway.svelte";
 import { gitGud } from "./god.svelte";
 import { BLOCK_SIZE, TextMessageCache, UnreadThing } from "./messages.svelte";
+import { RoomStore } from "./rooms.svelte";
 import { sound } from "./sound.svelte";
+import { UserStore } from "./users.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
-import { mentions } from "trurpchat-shared";
-import { focused } from "./focus.svelte";
-import { sendNotification } from "@tauri-apps/plugin-notification";
-import { UserStore } from "./users.svelte";
-import { RoomStore } from "./rooms.svelte";
 
 export type ServerDefinition = {
   id: string | null;

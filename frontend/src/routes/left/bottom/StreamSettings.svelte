@@ -21,7 +21,7 @@
     bind:value={() => settings.height.toString(),
       (v) => {
         if (!v) return;
-        settings.height = parseInt(v);
+        settings.height = parseInt(v, 10);
       }}
   >
     <ToggleGroup.Item value="720" class="text-sm">720p</ToggleGroup.Item>
@@ -37,7 +37,7 @@
     bind:value={() => settings.fps.toString(),
       (v) => {
         if (!v) return;
-        settings.fps = parseInt(v);
+        settings.fps = parseInt(v, 10);
       }}
   >
     <ToggleGroup.Item value="24" class="text-sm">24</ToggleGroup.Item>
@@ -54,7 +54,7 @@
     bind:value={() => settings.presetNum.toString(),
       (v) => {
         if (!v) return;
-        settings.presetNum = parseInt(v);
+        settings.presetNum = parseInt(v, 10);
       }}
   >
     <ToggleGroup.Item value="2" class="text-sm">Скорость</ToggleGroup.Item>
@@ -71,7 +71,7 @@
     bind:value={() => (settings.videoBitrate / 1000).toString(),
       (v) => {
         if (!v) return;
-        settings.videoBitrate = parseInt(v) * 1000;
+        settings.videoBitrate = parseInt(v, 10) * 1000;
       }}
   >
     <ToggleGroup.Item value="2000" class="text-sm">2000</ToggleGroup.Item>

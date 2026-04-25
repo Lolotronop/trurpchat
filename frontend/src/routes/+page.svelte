@@ -1,9 +1,10 @@
 <script lang="ts">
   import Button from "$lib/components/ui/button/button.svelte";
   import { gitGud } from "$lib/god.svelte";
-  import ServerForm from "./servers/ServerForm.svelte";
-  import ServerSelector from "./servers/ServerSelector.svelte";
-  import ServerUI from "./ServerUI.svelte";
+  import Main from "./Main.svelte";
+  import ServerForm from "./left/servers/ServerForm.svelte";
+  import ServerSelector from "./left/servers/ServerSelector.svelte";
+
   const g = gitGud();
 </script>
 
@@ -11,8 +12,8 @@
   <div class="flex h-full flex-col border-r p-2">
     <ServerSelector servers={g.servers}></ServerSelector>
   </div>
-  {#if g.servers.selected && g.servers.selected.connected}
-    <ServerUI server={g.servers.selected}></ServerUI>
+  {#if g.servers.selected?.connected}
+    <Main server={g.servers.selected}></Main>
   {:else if g.servers.selected}
     <div class="flex w-full h-full flex-col items-center justify-center">
       Загрузка...

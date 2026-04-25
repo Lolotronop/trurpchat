@@ -1,6 +1,7 @@
-import { log } from "$lib/log";
+import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
 import type { Message, VoiceChat } from "trurpchat-backend";
+import { log } from "$lib/log";
 import type { Camera } from "./camera.svelte";
 import { OvenPlayerController } from "./components/stream/ovenplayer.svelte";
 import type { Headphones } from "./headphones.svelte";
@@ -11,7 +12,6 @@ import { debounce } from "./utils.svelte";
 import type { PeerState } from "./webrtc-peer.svelte";
 import { Peer } from "./webrtc-peer.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
-import { tick } from "svelte";
 
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();

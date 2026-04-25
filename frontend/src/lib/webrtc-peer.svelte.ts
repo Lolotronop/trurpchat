@@ -1,5 +1,5 @@
-import { log } from "$lib/log";
 import type { IceConfig } from "trurpchat-backend";
+import { log } from "$lib/log";
 import { audioctx } from "./audio/context";
 import type { Headphones } from "./headphones.svelte";
 
@@ -170,10 +170,7 @@ export class Peer {
     try {
       this.datachannel.send(JSON.stringify(data));
     } catch (_) {
-      log.error(
-        `Failed to send datachannel message to ${this.targetId}`,
-        data,
-      );
+      log.error(`Failed to send datachannel message to ${this.targetId}`, data);
     }
   }
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { BitsConfig } from "bits-ui";
   import {
     ChevronDown,
     ChevronUp,
@@ -9,15 +8,16 @@
     Volume2,
     VolumeOff,
   } from "@lucide/svelte";
-  import type { ConnectedUserWithRoles } from "$lib/users.svelte";
-  import GainSlider from "$lib/components/GainSlider.svelte";
+  import { BitsConfig } from "bits-ui";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
+  import GainSlider from "$lib/components/GainSlider.svelte";
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
-  import { Item as ContextItem } from "$lib/components/ui/context-menu";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Item as ContextItem } from "$lib/components/ui/context-menu";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
+  import type { ConnectedUserWithRoles } from "$lib/users.svelte";
   import VoiceUserCard from "./VoiceUserCard.svelte";
 
   type Props = {

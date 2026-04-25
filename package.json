@@ -1,12 +1,12 @@
 {
-    "name": "syncevents",
-    "private": true,
-    "scripts": {
-        "build": "cd frontend && bun run build"
-    },
-    "workspaces": [
-        "backend",
-        "frontend",
-        "shared"
-    ]
+  "name": "trurpchat",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && bun run build"
+  },
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ]
 }

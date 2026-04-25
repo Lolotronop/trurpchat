@@ -203,7 +203,7 @@ pub fn run() {
                 .level_for("h2", log::LevelFilter::Warn)
                 .level_for("rustls", log::LevelFilter::Warn)
                 .level_for("wry", log::LevelFilter::Warn)
-                .level_for("tao", log::LevelFilter::Warn)
+                .level_for("tao", log::LevelFilter::Off)
                 .level_for("tracing", log::LevelFilter::Warn)
                 .targets([
                     Target::new(TargetKind::Stdout),

@@ -1,4 +1,3 @@
-import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
 import {
   register,
@@ -7,6 +6,7 @@ import {
   unregisterAll,
 } from "@tauri-apps/plugin-global-shortcut";
 import { SvelteMap } from "svelte/reactivity";
+import { log } from "$lib/log";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export const actions = {

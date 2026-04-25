@@ -1,7 +1,7 @@
-import { log } from "$lib/log";
 import { isTauri } from "@tauri-apps/api/core";
 import { resolveResource } from "@tauri-apps/api/path";
 import { BaseDirectory, readFile } from "@tauri-apps/plugin-fs";
+import { log } from "$lib/log";
 import { audioctx } from "./audio/context";
 
 const sounds = [
@@ -92,10 +92,7 @@ export class Sound {
     const now = performance.now();
     if (!this.cooldownExemptSounds.has(sound)) {
       const lastPlayedAt = this.lastPlayedAt[sound];
-      if (
-        lastPlayedAt !== undefined &&
-        now - lastPlayedAt < this.cooldownMs
-      ) {
+      if (lastPlayedAt !== undefined && now - lastPlayedAt < this.cooldownMs) {
         return;
       }
       this.lastPlayedAt[sound] = now;

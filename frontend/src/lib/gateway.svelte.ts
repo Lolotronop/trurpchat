@@ -1,7 +1,7 @@
-import { log } from "$lib/log";
 import { parse } from "devalue";
 import ReconnectingWebSocket from "reconnecting-websocket";
 import type { ClientAction, Message } from "trurpchat-backend";
+import { log } from "$lib/log";
 
 export class Gateway extends EventTarget {
   socket: ReconnectingWebSocket | null = null;

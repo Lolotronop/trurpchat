@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { log } from "$lib/log";
   import {
     Camera,
     HeadphoneOff,
@@ -18,6 +17,7 @@
   import { Switch } from "$lib/components/ui/switch";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import { gitGud } from "$lib/god.svelte";
+  import { log } from "$lib/log";
   import type { Server } from "$lib/servers.svelte";
   import { StreamSettings as StreamSettingsClass } from "$lib/stream-settings.svelte";
   import Settings from "./Settings.svelte";
@@ -58,7 +58,9 @@
   }
 </script>
 
-<div class="text-muted-foreground relative z-10 rounded border-t px-2 flex flex-col w-full">
+<div
+  class="text-muted-foreground relative z-10 rounded border-t px-2 flex flex-col w-full"
+>
   {#if rtc.connected && rtc.room}
     <div class="flex flex-row items-center justify-between gap-2 py-2">
       <Tooltip.Root delayDuration={100}>
