@@ -3,6 +3,10 @@
     ChevronDown,
     ChevronUp,
     Fullscreen,
+    HeadphoneOff,
+    Headphones,
+    Mic,
+    MicOff,
     PictureInPicture,
     Users,
     Volume2,
@@ -708,6 +712,36 @@
         class="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2"
       >
         <div></div>
+
+        <div data-controls class="pointer-events-auto">
+          <Button
+            variant={g.muted ? "destructive" : "outline"}
+            class="size-9"
+            onclick={() => {
+              g.muted = !g.muted;
+            }}
+          >
+            {#if !g.muted}
+              <Mic class="size-5" />
+            {:else}
+              <MicOff class="size-5" />
+            {/if}
+          </Button>
+
+          <Button
+            variant={g.deafened ? "destructive" : "outline"}
+            class="size-9"
+            onclick={() => {
+              g.deafened = !g.deafened;
+            }}
+          >
+            {#if !g.deafened}
+              <Headphones class="size-5" />
+            {:else}
+              <HeadphoneOff class="size-5" />
+            {/if}
+          </Button>
+        </div>
 
         <div
           data-controls
