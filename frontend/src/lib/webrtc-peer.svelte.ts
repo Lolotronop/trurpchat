@@ -130,6 +130,10 @@ export class Peer {
   }
 
   handleAudioTrack(stream: MediaStream) {
+    if (this.source) {
+      this.source.disconnect();
+      this.source = null;
+    }
     this.source = audioctx().createMediaStreamSource(stream);
     this.source.connect(this.gainNode);
     attachDomAudio(this.targetId, stream);
