@@ -29,7 +29,9 @@
         </Dialog.Title>
         <Dialog.Description class="flex flex-col gap-8 px-6 pb-6">
           <div class="flex flex-col gap-2"><KeySettings {server} /></div>
-          <div class="flex flex-col gap-2"><RoleSettings {server} /></div>
+          {#if server.user.permissions === 1}
+            <div class="flex flex-col gap-2"><RoleSettings {server} /></div>
+          {/if}
         </Dialog.Description>
       </Dialog.Header>
     </ScrollArea>
