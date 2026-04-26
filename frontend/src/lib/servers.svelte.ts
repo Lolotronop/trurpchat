@@ -402,6 +402,10 @@ export class Server {
         room: id,
       });
     }
+
+    if (this.selectedRoomId === id) {
+      this.selectedRoomId = undefined;
+    }
   }
 }
 
