@@ -79,5 +79,14 @@ export function initLogging(): Promise<void> {
     },
   };
 
+  window.addEventListener("error", (ev: ErrorEvent) => {
+    log.error(ev.message, ev.error);
+  });
+
+  // Catch unhandled promise rejections
+  window.addEventListener("unhandledrejection", (ev: PromiseRejectionEvent) => {
+    log.error(ev.reason);
+  });
+
   return loggingInitPromise;
 }
