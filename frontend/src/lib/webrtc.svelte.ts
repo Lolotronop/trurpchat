@@ -13,6 +13,8 @@ import type { PeerState } from "./webrtc-peer.svelte";
 import { Peer } from "./webrtc-peer.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
+type LogContext = Record<string, unknown>;
+
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();
   streamPlayers = new SvelteMap<number, OvenPlayerController>();
@@ -28,10 +30,21 @@ export class WebRTC {
     return this.#streaming;
   }
   set streaming(value: boolean) {
+    const previousValue = this.#streaming;
+    this.logInfo("streaming-set-request", {
+      previousValue,
+      nextValue: value,
+    });
+
     this.#streaming = value;
     this.server.gateway.send({
       type: "action.user.state",
       streaming: value,
+    });
+
+    this.logInfo("streaming-state-sent", {
+      previousValue,
+      nextValue: value,
     });
   }
 
@@ -46,8 +59,14 @@ export class WebRTC {
       } else {
         this.disableCamera();
       }
-    } catch (e) {
-      log.error("Error enabling/disabling camera", e);
+    } catch (error) {
+      log.error(
+        "[WebRTC:camera-toggle-failed] Failed to toggle camera state",
+        this.createLogContext({
+          nextValue: value,
+          error,
+        }),
+      );
       return;
     }
 
@@ -68,106 +87,255 @@ export class WebRTC {
     public cam: Camera,
     public server: Server,
   ) {
+    this.logInfo("constructed", {
+      serverId: this.server.definition.id,
+      storeType: this.store.constructor.name,
+    });
+
     this.mic.onSpeakingChange((speaking) => {
+      const effectiveSpeaking = speaking && !this.mic.muted;
       for (const peer of this.peers.values()) {
         peer.datachannel?.send(
           JSON.stringify({
             type: "speaking",
-            speaking: speaking && !this.mic.muted,
+            speaking: effectiveSpeaking,
           }),
         );
       }
     });
   }
 
+  private createLogContext(context: LogContext = {}) {
+    return {
+      selfUserId: this.server.user.id,
+      roomId: this.room?.id ?? null,
+      peerCount: this.peers.size,
+      streamPlayerCount: this.streamPlayers.size,
+      cameraEnabled: this.#cameraEnabled,
+      streaming: this.#streaming,
+      ...context,
+    };
+  }
+
+  private logTrace(event: string, context: LogContext = {}) {
+    log.trace(`[WebRTC:${event}]`, this.createLogContext(context));
+  }
+
+  private logDebug(event: string, context: LogContext = {}) {
+    log.debug(`[WebRTC:${event}]`, this.createLogContext(context));
+  }
+
+  private logInfo(event: string, context: LogContext = {}) {
+    log.info(`[WebRTC:${event}]`, this.createLogContext(context));
+  }
+
+  private describeSessionDescription(description: RTCSessionDescriptionInit) {
+    return {
+      type: description.type ?? "unknown",
+      sdpLength: description.sdp?.length ?? 0,
+    };
+  }
+
+  private describeIceCandidate(candidate: RTCIceCandidateInit) {
+    return {
+      candidate: candidate.candidate ?? null,
+      sdpMid: candidate.sdpMid ?? null,
+      sdpMLineIndex: candidate.sdpMLineIndex ?? null,
+      usernameFragment: candidate.usernameFragment ?? null,
+    };
+  }
+
   connect(room: VoiceChat) {
+    this.logInfo("connect-room-selected", {
+      nextRoomId: room.id,
+      nextRoomUserIds: [...room.users],
+      previousRoomId: this.room?.id ?? null,
+    });
     this.room = room;
   }
 
   async handleSignalingMessage(msg: Message) {
+    this.logDebug("signal-received", {
+      messageType: msg.type,
+      senderId: "sender" in msg ? msg.sender : null,
+      targetId: "target" in msg ? msg.target : null,
+      roomId: "room" in msg ? msg.room : (this.room?.id ?? null),
+    });
+
     if (msg.type === "event.voice.joined") {
+      this.logDebug("signal-dispatch-voice-joined", {
+        joinedUserId: msg.userId,
+        joinedRoomId: msg.room,
+      });
       this.handleUserJoined(msg.userId, msg.room);
     } else if (msg.type === "event.voice.left") {
+      this.logDebug("signal-dispatch-voice-left", {
+        leftUserId: msg.userId,
+        leftRoomId: msg.room,
+      });
       this.handleUserLeft(msg.userId, msg.room);
     } else if (msg.type === "rtc.offer") {
+      this.logInfo("signal-dispatch-offer", {
+        senderId: msg.sender,
+        offer: this.describeSessionDescription(msg.offer),
+      });
       await this.acceptCall(msg.offer, msg.sender);
     } else if (msg.type === "rtc.answer") {
+      this.logInfo("signal-dispatch-answer", {
+        senderId: msg.sender,
+        answer: this.describeSessionDescription(msg.answer),
+      });
       await this.handleAnswer(msg.answer, msg.sender);
     } else if (msg.type === "rtc.ice") {
+      this.logTrace("signal-dispatch-ice", {
+        senderId: msg.sender,
+        candidate: this.describeIceCandidate(msg.candidate),
+      });
       await this.handleIceCandidate(msg.candidate, msg.sender);
+    } else {
+      this.logDebug("signal-ignored-unsupported-message", {
+        messageType: msg.type,
+      });
     }
   }
 
   async handleUserJoined(userId: number, roomId: number) {
-    if (this.room?.id !== roomId) {
-      return;
-    }
+    this.logInfo("voice-join-event-received", {
+      joinedUserId: userId,
+      eventRoomId: roomId,
+    });
 
-    if (userId !== this.server.user.id) {
-      sound.play("user join");
+    if (this.room?.id !== roomId) {
+      this.logDebug("voice-join-ignored-room-mismatch", {
+        joinedUserId: userId,
+        eventRoomId: roomId,
+        activeRoomId: this.room?.id ?? null,
+      });
       return;
     }
 
     sound.play("user join");
 
+    if (userId !== this.server.user.id) {
+      this.logInfo("voice-join-remote-user-observed", { joinedUserId: userId });
+      return;
+    }
+
+    this.logInfo("voice-join-self-confirmed", {
+      roomUserIds: [...this.room.users],
+    });
+
     this.connectedFor = 0;
     if (this.connectedTimeout) {
+      this.logDebug("connected-timer-reset", {
+        hadExistingTimer: true,
+      });
       clearInterval(this.connectedTimeout);
     }
     this.connectedTimeout = setInterval(() => {
       this.connectedFor += 1000;
     }, 1000);
 
+    this.logInfo("mic-enable-requested-for-room-join", {});
     await this.mic.enable();
-    // Initiate calls to existing users
-    for (const userId of this.room.users) {
-      if (userId === this.server.user.id) continue;
-      await this.initiateCall(userId);
+    this.logInfo("mic-enabled-for-room-join", {
+      hasMicStream: Boolean(this.mic.stream),
+      hasMicOutputStream: Boolean(this.mic.output.stream),
+    });
+
+    for (const existingUserId of this.room.users) {
+      if (existingUserId === this.server.user.id) {
+        this.logTrace("call-initiation-skip-self", {
+          targetId: existingUserId,
+        });
+        continue;
+      }
+
+      this.logInfo("call-initiation-for-existing-room-member", {
+        targetId: existingUserId,
+      });
+      await this.initiateCall(existingUserId);
     }
   }
 
   async handleUserLeft(userId: number, roomId: number) {
+    this.logInfo("voice-leave-event-received", {
+      leftUserId: userId,
+      eventRoomId: roomId,
+    });
+
     if (this.room?.id !== roomId) {
+      this.logDebug("voice-leave-ignored-room-mismatch", {
+        leftUserId: userId,
+        eventRoomId: roomId,
+        activeRoomId: this.room?.id ?? null,
+      });
       return;
     }
 
     if (userId === this.server.user.id) {
+      this.logInfo("voice-leave-self-confirmed-cleanup-start", {
+        leftUserId: userId,
+      });
       this.cleanup();
       return;
-    } else if (roomId === this.room?.id) {
-      const player = this.streamPlayers.get(userId);
-      if (player) {
-        player.destroy();
-        this.streamPlayers.delete(userId);
-      }
-
-      const peer = this.peers.get(userId);
-      if (!peer) {
-        return;
-      }
-      peer.cleanup();
-      this.peers.delete(userId);
-      sound.play("user leave");
     }
+
+    const player = this.streamPlayers.get(userId);
+    if (player) {
+      this.logInfo("stream-player-destroy-for-remote-leave", {
+        targetId: userId,
+      });
+      player.destroy();
+      this.streamPlayers.delete(userId);
+    } else {
+      this.logDebug("stream-player-missing-for-remote-leave", {
+        targetId: userId,
+      });
+    }
+
+    const peer = this.peers.get(userId);
+    if (!peer) {
+      this.logWarn("peer-missing-for-remote-leave", { targetId: userId });
+      return;
+    }
+
+    this.logInfo("peer-cleanup-for-remote-leave", { targetId: userId });
+    peer.cleanup();
+    this.peers.delete(userId);
+    sound.play("user leave");
+    this.logDebug("voice-leave-sound-played", { leftUserId: userId });
+  }
+
+  private logWarn(event: string, context: LogContext = {}) {
+    log.warn(`[WebRTC:${event}]`, this.createLogContext(context));
   }
 
   getPeerStorageKey(targetId: number) {
     const serverId = this.server.definition.id;
     if (serverId === null) {
+      this.logWarn("peer-storage-key-missing-server-id", { targetId });
       return undefined;
     }
 
-    return `${serverId}-${targetId}`;
+    const key = `${serverId}-${targetId}`;
+    this.logTrace("peer-storage-key-created", { targetId, key, serverId });
+    return key;
   }
 
   getStreamPlayer(userId: number) {
     let player = this.streamPlayers.get(userId);
 
     if (!player) {
+      this.logInfo("stream-player-create-scheduled", { targetId: userId });
       tick().then(() => {
+        this.logInfo("stream-player-create-executing", { targetId: userId });
         player = new OvenPlayerController(this.server, userId, this.headphones);
         this.streamPlayers.set(userId, player);
+        this.logInfo("stream-player-created", { targetId: userId });
       });
+    } else {
+      this.logTrace("stream-player-reused", { targetId: userId });
     }
 
     return player;
@@ -176,26 +344,44 @@ export class WebRTC {
   getPeerStatePersister(key: string) {
     let persist = this.persistPeerState.get(key);
     if (persist) {
+      this.logTrace("peer-state-persister-reused", { key });
       return persist;
     }
 
-    persist = debounce((state: PeerState) => this.store.set(key, state));
+    this.logInfo("peer-state-persister-created", { key });
+    persist = debounce((state: PeerState) => {
+      this.logTrace("peer-state-persist-write", { key, state });
+      this.store.set(key, state);
+    });
     this.persistPeerState.set(key, persist);
     return persist;
   }
 
   async createPeer(targetId: number): Promise<Peer> {
+    this.logInfo("peer-create-requested", { targetId });
+
     let peer = this.peers.get(targetId);
     if (peer) {
-      log.info(`Peer connection with ${targetId} already exists`);
+      this.logInfo("peer-create-reused-existing-peer", { targetId });
       return peer;
     }
     if (!this.server.iceConfig) {
-      throw new Error("ICE config not loaded for server");
+      const error = new Error("ICE config not loaded for server");
+      log.error(
+        "[WebRTC:peer-create-missing-ice-config] Cannot create peer without ICE configuration",
+        this.createLogContext({ targetId, error }),
+      );
+      throw error;
     }
 
     const key = this.getPeerStorageKey(targetId);
     const initialState = key ? await this.store.get<PeerState>(key) : undefined;
+    this.logInfo("peer-create-state-loaded", {
+      targetId,
+      storageKey: key ?? null,
+      hasInitialState: Boolean(initialState),
+      initialState,
+    });
 
     peer = new Peer(
       targetId,
@@ -204,7 +390,16 @@ export class WebRTC {
       this.server.iceConfig,
       initialState,
       (state) => {
+        this.logTrace("peer-state-change-observed", {
+          targetId,
+          state,
+          storageKey: key ?? null,
+        });
         if (!key) {
+          this.logWarn("peer-state-persist-skipped-missing-key", {
+            targetId,
+            state,
+          });
           return;
         }
 
@@ -212,51 +407,123 @@ export class WebRTC {
       },
     );
     this.peers.set(targetId, peer);
+    this.logInfo("peer-created", {
+      targetId,
+      audioTrackCount: this.mic.output.stream.getAudioTracks().length,
+    });
 
     if (this.cameraStream) {
       const [cameraTrack] = this.cameraStream.getVideoTracks();
-      peer.pc.addTrack(cameraTrack, this.cameraStream);
+      if (cameraTrack) {
+        peer.pc.addTrack(cameraTrack, this.cameraStream);
+        this.logInfo("peer-camera-track-added-during-create", {
+          targetId,
+          cameraTrackId: cameraTrack.id,
+          cameraTrackState: cameraTrack.readyState,
+        });
+      } else {
+        this.logWarn("peer-camera-stream-missing-video-track", { targetId });
+      }
+    } else {
+      this.logTrace("peer-create-no-camera-stream-to-attach", { targetId });
     }
 
     if (!this.mic.stream) {
-      throw new Error("Local stream not available");
+      const error = new Error("Local stream not available");
+      log.error(
+        "[WebRTC:peer-create-missing-local-stream] Local microphone stream missing after peer creation",
+        this.createLogContext({ targetId, error }),
+      );
+      throw error;
     }
 
     peer.pc.onicecandidate = (event) => {
       if (!event.candidate) {
+        this.logTrace("peer-ice-candidate-gathering-complete", { targetId });
         return;
       }
+
+      this.logTrace("peer-ice-candidate-generated", {
+        targetId,
+        candidate: this.describeIceCandidate(event.candidate.toJSON()),
+      });
       this.server.gateway.send({
         type: "rtc.ice",
         candidate: event.candidate,
         target: targetId,
         sender: this.server.user.id,
       });
+      this.logTrace("peer-ice-candidate-sent", {
+        targetId,
+        candidate: this.describeIceCandidate(event.candidate.toJSON()),
+      });
     };
 
     peer.pc.onconnectionstatechange = () => {
+      this.logInfo("peer-connection-state-changed", {
+        targetId,
+        connectionState: peer.pc.connectionState,
+        iceConnectionState: peer.pc.iceConnectionState,
+        signalingState: peer.pc.signalingState,
+      });
+
       if (
         peer.pc.connectionState === "disconnected" ||
         peer.pc.connectionState === "failed"
       ) {
         if (peer.pc.connectionState === "failed") {
-          log.error("Peer connection failed", peer.targetId);
+          log.error(
+            "[WebRTC:peer-connection-failed] Peer connection entered failed state",
+            this.createLogContext({
+              targetId,
+              connectionState: peer.pc.connectionState,
+              iceConnectionState: peer.pc.iceConnectionState,
+              signalingState: peer.pc.signalingState,
+            }),
+          );
         }
+
+        this.logInfo("peer-cleanup-after-terminal-connection-state", {
+          targetId,
+          connectionState: peer.pc.connectionState,
+        });
         peer.cleanup();
         this.peers.delete(targetId);
       }
     };
 
-    peer.pc.onicecandidateerror = (_) => {
-      // console.warn("ICE candidate error:", event);
+    peer.pc.onicecandidateerror = (event) => {
+      log.warn(
+        "[WebRTC:peer-ice-candidate-error] ICE candidate gathering reported an error",
+        this.createLogContext({
+          targetId,
+          address: event.address,
+          errorCode: event.errorCode,
+          errorText: event.errorText,
+          port: event.port,
+          url: event.url,
+        }),
+      );
     };
 
     peer.pc.onnegotiationneeded = async (event) => {
-      log.info("onnegotiationneeded", event);
+      this.logInfo("peer-negotiation-needed", {
+        targetId,
+        eventType: event.type,
+        signalingState: peer.pc.signalingState,
+      });
       const offer = await peer.pc.createOffer();
-      // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
-      // offer = { ...offer, sdp };
+      this.logInfo("peer-offer-created-from-negotiation", {
+        targetId,
+        offer: this.describeSessionDescription(offer),
+      });
       await peer.pc.setLocalDescription(offer);
+      this.logInfo("peer-local-description-set-from-negotiation", {
+        targetId,
+        localDescription: this.describeSessionDescription(
+          peer.pc.localDescription ?? offer,
+        ),
+      });
 
       this.server.gateway.send({
         type: "rtc.offer",
@@ -264,28 +531,56 @@ export class WebRTC {
         target: targetId,
         sender: this.server.user.id,
       });
+      this.logInfo("peer-offer-sent-from-negotiation", {
+        targetId,
+        offer: this.describeSessionDescription(offer),
+      });
     };
 
     return peer;
   }
 
   async initiateCall(targetId: number) {
+    this.logInfo("call-initiate-requested", { targetId });
+
     if (!this.room?.users.includes(targetId)) {
-      log.error(`User ${targetId} not found`);
+      log.error(
+        "[WebRTC:call-initiate-target-missing-from-room] Cannot initiate call because target user is not in the active room",
+        this.createLogContext({
+          targetId,
+          roomUserIds: this.room?.users ?? [],
+        }),
+      );
       return;
     }
     if (this.peers.has(targetId)) {
-      log.error(`Already connected to ${targetId}`);
+      log.warn(
+        "[WebRTC:call-initiate-peer-already-exists] Skipping call initiation because a peer already exists",
+        this.createLogContext({ targetId }),
+      );
       return;
     }
     const peer = await this.createPeer(targetId);
     const chan = peer.pc.createDataChannel("speaking");
+    this.logInfo("call-datachannel-created", {
+      targetId,
+      label: chan.label,
+      readyState: chan.readyState,
+    });
     peer.setDatachannel(chan);
 
     const offer = await peer.pc.createOffer();
-    // const sdp = setAudioMaxInSDP(offer.sdp, BITRATE, CHANNELS);
-    // offer = { ...offer, sdp };
+    this.logInfo("call-offer-created", {
+      targetId,
+      offer: this.describeSessionDescription(offer),
+    });
     await peer.pc.setLocalDescription(offer);
+    this.logInfo("call-local-description-set", {
+      targetId,
+      localDescription: this.describeSessionDescription(
+        peer.pc.localDescription ?? offer,
+      ),
+    });
 
     this.server.gateway.send({
       type: "rtc.offer",
@@ -293,71 +588,168 @@ export class WebRTC {
       target: targetId,
       sender: this.server.user.id,
     });
+    this.logInfo("call-offer-sent", {
+      targetId,
+      offer: this.describeSessionDescription(offer),
+    });
   }
 
   async acceptCall(offer: RTCSessionDescriptionInit, senderId: number) {
+    this.logInfo("call-accept-requested", {
+      senderId,
+      offer: this.describeSessionDescription(offer),
+    });
     const peer = await this.createPeer(senderId);
 
     await peer.pc.setRemoteDescription(offer);
+    this.logInfo("call-remote-offer-applied", {
+      senderId,
+      remoteDescription: this.describeSessionDescription(
+        peer.pc.remoteDescription ?? offer,
+      ),
+    });
 
     const answer = await peer.pc.createAnswer();
-    // const sdp = setAudioMaxInSDP(answer.sdp, BITRATE, CHANNELS);
-    // answer = { ...answer, sdp };
+    this.logInfo("call-answer-created", {
+      senderId,
+      answer: this.describeSessionDescription(answer),
+    });
     await peer.pc.setLocalDescription(answer);
+    this.logInfo("call-local-answer-applied", {
+      senderId,
+      localDescription: this.describeSessionDescription(
+        peer.pc.localDescription ?? answer,
+      ),
+    });
 
-    // Send answer
     this.server.gateway.send({
       type: "rtc.answer",
       answer: answer,
       target: senderId,
       sender: this.server.user.id,
     });
+    this.logInfo("call-answer-sent", {
+      senderId,
+      answer: this.describeSessionDescription(answer),
+    });
   }
 
   async handleAnswer(answer: RTCSessionDescriptionInit, senderId: number) {
+    this.logInfo("answer-handle-requested", {
+      senderId,
+      answer: this.describeSessionDescription(answer),
+    });
     const peer = this.peers.get(senderId);
     if (!peer) {
-      log.error(`Peer for ${senderId} not found`);
+      log.error(
+        "[WebRTC:answer-handle-peer-missing] Cannot apply answer because the peer does not exist",
+        this.createLogContext({
+          senderId,
+          answer: this.describeSessionDescription(answer),
+        }),
+      );
       return;
     }
     await peer.pc.setRemoteDescription(answer);
+    this.logInfo("answer-remote-description-applied", {
+      senderId,
+      remoteDescription: this.describeSessionDescription(
+        peer.pc.remoteDescription ?? answer,
+      ),
+    });
   }
 
   async handleIceCandidate(candidate: RTCIceCandidateInit, senderId: number) {
+    this.logTrace("ice-handle-requested", {
+      senderId,
+      candidate: this.describeIceCandidate(candidate),
+    });
     const peer = this.peers.get(senderId);
     if (!peer) {
-      log.error(`Peer for ${senderId} not found`);
+      log.error(
+        "[WebRTC:ice-handle-peer-missing] Cannot add ICE candidate because the peer does not exist",
+        this.createLogContext({
+          senderId,
+          candidate: this.describeIceCandidate(candidate),
+        }),
+      );
       return;
     }
     await peer.pc.addIceCandidate(candidate);
+    this.logTrace("ice-candidate-added", {
+      senderId,
+      candidate: this.describeIceCandidate(candidate),
+    });
   }
 
   async enableCamera() {
+    this.logInfo("camera-enable-requested", {
+      hadExistingStream: Boolean(this.cam.stream),
+    });
     await this.cam.enable();
     const stream = this.cam.stream;
     if (!stream) {
+      this.logWarn("camera-enable-no-stream-returned", {});
       return;
     }
+
+    const [videoTrack] = stream.getVideoTracks();
+    this.logInfo("camera-enable-stream-ready", {
+      streamId: stream.id,
+      videoTrackId: videoTrack?.id ?? null,
+      videoTrackState: videoTrack?.readyState ?? null,
+      peerIds: Array.from(this.peers.keys()),
+    });
+
+    if (!videoTrack) {
+      this.logWarn("camera-enable-stream-without-video-track", {
+        streamId: stream.id,
+      });
+      return;
+    }
+
     for (const peer of this.peers.values()) {
-      peer.pc.addTrack(stream.getVideoTracks()[0], stream);
+      peer.pc.addTrack(videoTrack, stream);
+      this.logInfo("camera-track-added-to-peer", {
+        targetId: peer.targetId,
+        videoTrackId: videoTrack.id,
+      });
     }
   }
 
   disableCamera() {
     const stream = this.cam.stream;
     if (!stream) {
+      this.logDebug("camera-disable-no-stream-present", {});
       return;
     }
+
+    this.logInfo("camera-disable-requested", {
+      streamId: stream.id,
+      videoTrackIds: stream.getVideoTracks().map((track) => track.id),
+    });
     this.cam.disable();
+    this.logInfo("camera-disabled", {
+      previousStreamId: stream.id,
+    });
   }
 
   cleanup() {
-    for (const player of this.streamPlayers.values()) {
+    this.logInfo("cleanup-started", {
+      streamPlayerIds: Array.from(this.streamPlayers.keys()),
+      peerIds: Array.from(this.peers.keys()),
+      connectedForMs: this.connectedFor,
+      hasConnectedTimer: Boolean(this.connectedTimeout),
+    });
+
+    for (const [userId, player] of this.streamPlayers.entries()) {
+      this.logTrace("cleanup-destroy-stream-player", { targetId: userId });
       player.destroy();
     }
     this.streamPlayers.clear();
 
-    for (const peer of this.peers.values()) {
+    for (const [userId, peer] of this.peers.entries()) {
+      this.logTrace("cleanup-destroy-peer", { targetId: userId });
       peer.cleanup();
     }
     this.peers.clear();
@@ -365,13 +757,19 @@ export class WebRTC {
     this.connectedFor = 0;
     if (this.connectedTimeout) {
       clearInterval(this.connectedTimeout);
+      this.logDebug("cleanup-connected-timer-cleared", {});
     }
     this.connectedTimeout = null;
     this.room = undefined;
 
+    this.logInfo("cleanup-disabling-local-media", {});
     this.mic.disable();
     this.cam.disable();
     this.camera = false;
     this.streaming = false;
+    this.logInfo("cleanup-finished", {
+      connectedForMs: this.connectedFor,
+      activeRoomId: null,
+    });
   }
 }
