@@ -158,7 +158,7 @@
             {#if !shouldHideInfo && !shouldHideUi}
               <div
                 data-controls
-                class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto"
+                class="flex items-center gap-2 rounded-md bg-background/80 pointer-events-auto z-50"
               >
                 <p
                   class="text-foreground text-sm px-2 flex items-center gap-1"

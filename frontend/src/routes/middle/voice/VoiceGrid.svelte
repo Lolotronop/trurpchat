@@ -641,7 +641,12 @@
             {@render tileShell(focusedTile, focusItemWidth, immersiveFocus)}
 
             <div
-              class="pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 transition-opacity duration-100 {shouldHide && 'opacity-0'} {hideOthers ? 'bottom-3' : '-bottom-10'}"
+              class={[
+                "pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 transition-opacity duration-100  ",
+                shouldHide && 'opacity-0',
+                hideOthers && !immersiveFocus ? 'bottom-3' : '-bottom-10',
+                hideOthers && immersiveFocus ? 'bottom-16' : '-bottom-10'
+              ]}
             >
               <div
                 data-controls
@@ -711,9 +716,9 @@
       <div
         class="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-2"
       >
-        <div></div>
+        <div class="w-full"></div>
 
-        <div data-controls class="pointer-events-auto">
+        <div data-controls class="flex flex-row gap-2 pointer-events-auto">
           <Button
             variant={g.muted ? "destructive" : "outline"}
             class="size-9"
@@ -743,36 +748,42 @@
           </Button>
         </div>
 
-        <div
-          data-controls
-          class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto"
-        >
-          {#if layoutMode === "focus" && focusedCanAdjustVolume}
-            <div class="w-36 flex items-center gap-2">
-              <Button
-                variant="ghost"
-                class="p-0"
-                onclick={() => {
+        <div class="w-full flex flex-row justify-end">
+          <div
+            data-controls
+            class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto w-fit"
+          >
+            {#if layoutMode === "focus" && focusedCanAdjustVolume}
+              <div class="w-36 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  class="p-0"
+                  onclick={() => {
                   setFocusedMuted(!isFocusedMuted());
                 }}
+                >
+                  {#if isFocusedMuted()}
+                    <VolumeOff class="size-4" />
+                  {:else}
+                    <Volume2 class="size-4" />
+                  {/if}
+                </Button>
+                <GainSlider
+                  class="w-full mt-1"
+                  bind:value={() => getFocusedGain(), (value) => setFocusedGain(value)}
+                  ticks={[1]}
+                />
+              </div>
+            {/if}
+            <div class="rounded-md bg-background/80 pointer-events-auto">
+              <Button
+                class="p-0"
+                variant="ghost"
+                onclick={toggleGridFullscreen}
               >
-                {#if isFocusedMuted()}
-                  <VolumeOff class="size-4" />
-                {:else}
-                  <Volume2 class="size-4" />
-                {/if}
+                <Fullscreen class="size-4" />
               </Button>
-              <GainSlider
-                class="w-full mt-1"
-                bind:value={() => getFocusedGain(), (value) => setFocusedGain(value)}
-                ticks={[1]}
-              />
             </div>
-          {/if}
-          <div class="rounded-md bg-background/80 pointer-events-auto">
-            <Button class="p-0" variant="ghost" onclick={toggleGridFullscreen}>
-              <Fullscreen class="size-4" />
-            </Button>
           </div>
         </div>
       </div>

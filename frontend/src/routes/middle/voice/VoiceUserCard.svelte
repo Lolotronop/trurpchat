@@ -47,7 +47,7 @@
   {:else}
     <Avatar name={username} class="size-8 shrink-0 rounded-full"></Avatar>
   {/if}
-  <div class="absolute bottom-0 flex w-full justify-between p-2">
+  <div class="absolute bottom-0 flex w-full justify-between p-2 z-50">
     <div
       class="flex items-center gap-2 bg-background rounded-md p-0 min-w-0 min-h-0 has-first:p-2"
     >
