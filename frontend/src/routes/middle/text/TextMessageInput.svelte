@@ -13,8 +13,11 @@
     roomId: number;
     roomName: string;
     replyTo?: TextMessage;
+    editingMessage?: TextMessage;
     onCancelReply?: () => void;
+    onCancelEdit?: () => void;
     onSent?: () => void;
+    onStartEditLast?: () => void;
     focusRequest?: number;
   };
 
@@ -23,8 +26,11 @@
     roomId,
     roomName,
     replyTo,
+    editingMessage,
     onCancelReply,
+    onCancelEdit,
     onSent,
+    onStartEditLast,
     focusRequest = 0,
   }: Props = $props();
 
@@ -37,6 +43,7 @@
   let mentionReplaceEnd = $state<number | null>(null);
   let mentionActiveIndex = $state(0);
   let handledFocusRequest = 0;
+  let loadedEditingMessageId: number | undefined;
 
   const canSend = $derived(text.trim().length > 0);
   const isEmpty = $derived(text.length === 0);
@@ -195,14 +202,13 @@
     restoreSelection(text.length, text.length);
   }
 
-  async function handleFocusRequest(request: number) {
+  function handleFocusRequest(request: number) {
     if (request === 0 || request === handledFocusRequest) {
       return;
     }
 
     handledFocusRequest = request;
-    await tick();
-    requestAnimationFrame(() => {
+    tick().then(() => {
       focusAtEnd();
     });
   }
@@ -511,12 +517,12 @@
     }
   }
 
-  function renderRawText(raw: string) {
+  function renderRawText(raw: string, preserveSelection = true) {
     if (!editor) {
       return;
     }
 
-    const selection = getSelectionOffsets();
+    const selection = preserveSelection ? getSelectionOffsets() : null;
     const fragment = document.createDocumentFragment();
 
     for (const mention of mentions.split(raw)) {
@@ -635,9 +641,16 @@
     focusEditor();
   }
 
+  function setEditorText(value: string) {
+    text = value;
+    renderRawText(text, false);
+    restoreSelection(text.length, text.length);
+    updateMentionState();
+  }
+
   function clearEditor() {
     text = "";
-    renderRawText(text);
+    renderRawText(text, false);
     closeMentionPicker();
   }
 
@@ -647,12 +660,23 @@
       return;
     }
 
-    server.gateway.send({
-      type: "action.message.create",
-      roomId,
-      text: trimmed,
-      replyTo: replyTo?.id,
-    });
+    if (editingMessage) {
+      if (trimmed !== editingMessage.text) {
+        server.gateway.send({
+          type: "action.message.edit",
+          roomId,
+          id: editingMessage.id,
+          text: trimmed,
+        });
+      }
+    } else {
+      server.gateway.send({
+        type: "action.message.create",
+        roomId,
+        text: trimmed,
+        replyTo: replyTo?.id,
+      });
+    }
 
     clearEditor();
     onSent?.();
@@ -727,6 +751,22 @@
   $effect(() => {
     handleFocusRequest(focusRequest);
   });
+
+  $effect(() => {
+    if (editingMessage?.id === loadedEditingMessageId) {
+      return;
+    }
+
+    loadedEditingMessageId = editingMessage?.id;
+    if (!editingMessage) {
+      return;
+    }
+
+    setEditorText(editingMessage.text);
+    tick().then(() => {
+      focusAtEnd();
+    });
+  });
 </script>
 
 <svelte:window onkeydown={handleWindowKeydown} />
@@ -736,31 +776,51 @@
     class="pointer-events-none absolute inset-x-0 bottom-full z-10 flex flex-col"
   >
     <TypingIndicator {server} {roomId} />
-    {#if replyTo}
+    {#snippet messagePopup(label: string, name: string, color: string | undefined, body: string, onCancel: (() => void) | undefined, ariaLabel: string)}
       <div
         class="pointer-events-auto mx-2 mb-1 flex items-center justify-between gap-3 rounded-md border bg-background/95 px-3 py-1.5 text-xs shadow-sm"
       >
         <div class="min-w-0 truncate text-muted-foreground">
-          Ответ
-          <span
-            class="font-medium text-foreground"
-            style:color={replyUser?.colorHex}
-          >
-            {replyUser ? replyUser.username : "Deleted"}
+          {label}
+          <span class="font-medium text-foreground" style:color={color}>
+            {name}
           </span>.
-          <span>{replyTo.text}</span>
+          <span>{body}</span>
         </div>
         <Button
           type="button"
           size="icon"
           variant="ghost"
           class="size-6 shrink-0"
-          onclick={onCancelReply}
-          aria-label="Отменить ответ"
+          onclick={onCancel}
+          aria-label={ariaLabel}
         >
           <X class="size-3.5" />
         </Button>
       </div>
+    {/snippet}
+
+    {#if editingMessage}
+      {@render messagePopup(
+        "Редактирование ",
+        "сообщения",
+        undefined,
+        editingMessage.text,
+        () => {
+          clearEditor();
+          onCancelEdit?.();
+        },
+        "Отменить редактирование",
+      )}
+    {:else if replyTo}
+      {@render messagePopup(
+        "Ответ ",
+        replyUser ? replyUser.username : "Deleted",
+        replyUser?.colorHex,
+        replyTo.text,
+        onCancelReply,
+        "Отменить ответ",
+      )}
     {/if}
   </div>
 
@@ -824,6 +884,11 @@
           }
 
           const holdsModifier = event.ctrlKey || event.metaKey || event.shiftKey;
+          if (!holdsModifier && event.key === "ArrowUp" && text.length === 0) {
+            event.preventDefault();
+            onStartEditLast?.();
+            return;
+          }
           if (!holdsModifier && event.key === "Enter") {
             event.preventDefault();
             sendMessage();

@@ -35,6 +35,7 @@
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
   let replyTo = $state<TMessage>();
+  let editingMessage = $state<TMessage>();
   let inputFocusRequest = $state(0);
   let highlightedMessageId = $state<number>();
   let highlightTimer: ReturnType<typeof setTimeout> | undefined;
@@ -245,6 +246,33 @@
       ids.push(i);
     }
     return ids;
+  }
+
+  function startEditing(message: TMessage) {
+    editingMessage = message;
+    replyTo = undefined;
+    // inputFocusRequest += 1;
+  }
+
+  function startEditingLastSelfMessage() {
+    let last: TMessage | undefined;
+
+    for (const blockId of cache.renderBlocks) {
+      const block = cache.get(blockId, false);
+      if (!block?.alive) {
+        continue;
+      }
+
+      for (const message of block.messages) {
+        if (message.userId === server.user.id && message.deletedAt === null) {
+          last = message;
+        }
+      }
+    }
+
+    if (last) {
+      startEditing(last);
+    }
   }
 
   function debugDetermineColor(blockId: number) {
@@ -574,9 +602,19 @@
                   {/if}
                   <ContextMenu>
                     {#snippet menu()}
+                      {#if message.userId === server.user.id}
+                        <Item
+                          onclick={() => {
+                            startEditing(message);
+                          }}
+                        >
+                          Редактировать
+                        </Item>
+                      {/if}
                       <Item
                         onclick={() => {
                           replyTo = message;
+                          editingMessage = undefined;
                           inputFocusRequest += 1;
                         }}
                       >
@@ -647,13 +685,19 @@
     roomId={room.id}
     roomName={room.name}
     {replyTo}
+    {editingMessage}
     focusRequest={inputFocusRequest}
     onCancelReply={() => {
       replyTo = undefined;
     }}
+    onCancelEdit={() => {
+      editingMessage = undefined;
+    }}
+    onStartEditLast={startEditingLastSelfMessage}
     onSent={() => {
       newId = undefined;
       replyTo = undefined;
+      editingMessage = undefined;
     }}
   />
 </div>
@@ -674,7 +718,6 @@
   .text-room-content-scrollbar::-webkit-scrollbar-corner {
     background: transparent;
   }
-
 
   .text-room-content-scrollbar::-webkit-scrollbar-thumb {
     background-color: var(--muted);
