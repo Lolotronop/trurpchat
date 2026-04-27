@@ -912,6 +912,11 @@
             onCancelEdit?.();
             return;
           }
+          if (!holdsModifier && event.key === "Escape" && replyTo) {
+            event.preventDefault();
+            onCancelReply?.();
+            return;
+          }
         }}
         onpaste={(event) => {
           event.preventDefault();
