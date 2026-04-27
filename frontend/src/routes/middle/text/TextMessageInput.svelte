@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ArrowRight, X } from "@lucide/svelte";
+  import { tick } from "svelte";
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group";
   import type { Server } from "$lib/servers.svelte";
@@ -14,10 +15,18 @@
     replyTo?: TextMessage;
     onCancelReply?: () => void;
     onSent?: () => void;
+    focusRequest?: number;
   };
 
-  let { server, roomId, roomName, replyTo, onCancelReply, onSent }: Props =
-    $props();
+  let {
+    server,
+    roomId,
+    roomName,
+    replyTo,
+    onCancelReply,
+    onSent,
+    focusRequest = 0,
+  }: Props = $props();
 
   let editor = $state<HTMLDivElement>();
   let mentionList = $state<HTMLDivElement>();
@@ -27,6 +36,7 @@
   let mentionReplaceStart = $state<number | null>(null);
   let mentionReplaceEnd = $state<number | null>(null);
   let mentionActiveIndex = $state(0);
+  let handledFocusRequest = 0;
 
   const canSend = $derived(text.trim().length > 0);
   const isEmpty = $derived(text.length === 0);
@@ -136,6 +146,65 @@
 
   function focusEditor() {
     editor?.focus();
+  }
+
+  function targetAcceptsTextInput(target: EventTarget | null) {
+    if (!(target instanceof HTMLElement)) {
+      return false;
+    }
+
+    return Boolean(
+      target.closest(
+        'input, textarea, select, [contenteditable="true"], [contenteditable="plaintext-only"]',
+      ),
+    );
+  }
+
+  function isTextInputKey(event: KeyboardEvent) {
+    return (
+      Array.from(event.key).length === 1 &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      !event.isComposing
+    );
+  }
+
+  function handleWindowKeydown(event: KeyboardEvent) {
+    if (
+      !editor ||
+      event.defaultPrevented ||
+      hasEditorFocus ||
+      !isTextInputKey(event) ||
+      targetAcceptsTextInput(event.target)
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    focusAtEnd();
+    insertTextAtSelection(event.key);
+  }
+
+  export function focusAtEnd() {
+    if (!editor) {
+      return;
+    }
+
+    focusEditor();
+    restoreSelection(text.length, text.length);
+  }
+
+  async function handleFocusRequest(request: number) {
+    if (request === 0 || request === handledFocusRequest) {
+      return;
+    }
+
+    handledFocusRequest = request;
+    await tick();
+    requestAnimationFrame(() => {
+      focusAtEnd();
+    });
   }
 
   function closeMentionPicker() {
@@ -654,7 +723,13 @@
       updateMentionState();
     }
   });
+
+  $effect(() => {
+    handleFocusRequest(focusRequest);
+  });
 </script>
+
+<svelte:window onkeydown={handleWindowKeydown} />
 
 <div class="relative flex flex-row w-full pb-2 px-2">
   <div

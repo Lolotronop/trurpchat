@@ -35,6 +35,7 @@
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
   let replyTo = $state<TMessage>();
+  let inputFocusRequest = $state(0);
   let highlightedMessageId = $state<number>();
   let highlightTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -576,6 +577,7 @@
                       <Item
                         onclick={() => {
                           replyTo = message;
+                          inputFocusRequest += 1;
                         }}
                       >
                         Ответить
@@ -645,6 +647,7 @@
     roomId={room.id}
     roomName={room.name}
     {replyTo}
+    focusRequest={inputFocusRequest}
     onCancelReply={() => {
       replyTo = undefined;
     }}
