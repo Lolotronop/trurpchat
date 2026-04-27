@@ -5,6 +5,7 @@
   import { Item } from "$lib/components/ui/context-menu";
   import * as Dialog from "$lib/components/ui/dialog";
   import type { Server } from "$lib/servers.svelte";
+  import { CheckCheck, Pencil, Settings, Trash } from "@lucide/svelte";
   import RoomForm, { type EditingRoom } from "./RoomForm.svelte";
   import RoomSettings from "./RoomSettings.svelte";
 
@@ -66,14 +67,24 @@
         }}
       >
         Отметить как прочитанное
+        <CheckCheck />
       </Item>
     {/if}
 
-    <Item onclick={() => (settingsOpen = true)}>Настройки</Item>
+    <Item onclick={() => (settingsOpen = true)}>
+      Настройки
+      <Settings />
+    </Item>
 
     {#if server.user.permissions === 1}
-      <Item onclick={() => editOpen = true}> Изменить </Item>
-      <Item variant="destructive" onclick={onRoomDelete}> Удалить </Item>
+      <Item onclick={() => editOpen = true}>
+        Изменить
+        <Pencil />
+      </Item>
+      <Item variant="destructive" onclick={onRoomDelete}>
+        Удалить
+        <Trash />
+      </Item>
     {/if}
   {/snippet}
 

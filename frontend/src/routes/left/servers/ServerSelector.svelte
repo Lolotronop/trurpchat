@@ -6,6 +6,7 @@
   import * as Dialog from "$lib/components/ui/dialog";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import type { ServerManager } from "$lib/servers.svelte";
+  import { Pencil, Trash } from "@lucide/svelte";
   import ServerForm from "./ServerForm.svelte";
 
   type Props = {
@@ -30,6 +31,7 @@
           }}
         >
           Изменить
+          <Pencil />
         </Item>
         <Item
           variant="destructive"
@@ -38,6 +40,7 @@
           }}
         >
           Удалить
+          <Trash />
         </Item>
       {/snippet}
 

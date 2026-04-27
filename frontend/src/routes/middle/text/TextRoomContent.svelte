@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ArrowLeft } from "@lucide/svelte";
+  import { ArrowLeft, MailOpen, Pencil, Reply, Trash } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
   import type { TextMessage as TMessage } from "trurpchat-backend";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -625,6 +625,7 @@
                           }}
                         >
                           Редактировать
+                          <Pencil />
                         </Item>
                       {/if}
                       <Item
@@ -635,6 +636,7 @@
                         }}
                       >
                         Ответить
+                        <Reply />
                       </Item>
                       <Item
                         onclick={() => {
@@ -643,6 +645,7 @@
                         }}
                       >
                         Отметить непрочитанным
+                        <MailOpen />
                       </Item>
                       {#if canDeleteMessage(message)}
                         <Item
@@ -652,6 +655,7 @@
                           }}
                         >
                           Удалить
+                          <Trash />
                         </Item>
                       {/if}
                     {/snippet}

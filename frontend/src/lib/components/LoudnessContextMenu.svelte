@@ -3,6 +3,7 @@
   import { Item } from "$lib/components/ui/context-menu";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { toDb } from "$lib/utils.svelte";
+  import { Volume2, VolumeX } from "@lucide/svelte";
 
   type Props = {
     gain: number;
@@ -19,7 +20,10 @@
     muted = !muted;
   }}
 >
-  <p>Замутить</p>
+  <div class="flex flex-row items-center gap-2">
+    <p>Замутить</p>
+    <VolumeX />
+  </div>
   <Checkbox checked={muted} />
 </Item>
 
@@ -27,7 +31,10 @@
   <div
     class="flex flex-row items-center justify-between gap-2 text-sm font-normal w-full"
   >
-    <p>Громкость</p>
+    <div class="flex flex-row items-center gap-2">
+      <p>Громкость</p>
+      <Volume2 />
+    </div>
     <span>
       <input
         class="w-[6ch] text-right p-1"
