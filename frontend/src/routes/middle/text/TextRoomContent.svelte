@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { ArrowLeft, MailOpen, Pencil, Reply, Trash } from "@lucide/svelte";
+  import {
+    ArrowLeft,
+    CheckCheck,
+    MailOpen,
+    Pencil,
+    Reply,
+    Trash,
+  } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
   import type { TextMessage as TMessage } from "trurpchat-backend";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
@@ -222,6 +229,12 @@
       if (!element) return;
 
       let top = element.offsetTop - se.offsetTop;
+
+      // account for "unread" bar
+      if (unreadId <= cache.lastMessageId()) {
+        top -= 42;
+      }
+
       if (top < 1) {
         top = 1;
       }
@@ -555,21 +568,26 @@
 
   {#if unreadId <= cache.lastMessageId()}
     {@const diff = cache.lastMessageId() - unreadId + 1}
-    <div
-      class="bg-accent text-accent-foreground w-full h-fit rounded-b px-2 py-0.5 flex flex-row justify-between gap-20"
-    >
-      <button
-        class="w-full cursor-pointer flex justify-start"
-        onclick={() => {
+    <div class="flex w-full px-4 absolute z-10">
+      <div
+        class="bg-accent text-accent-foreground w-full h-fit rounded-b px-2 py-0.5 flex flex-row justify-between gap-20"
+      >
+        <button
+          class="w-full cursor-pointer flex justify-start"
+          onclick={() => {
           jumpTo(unreadId);
         }}
-      >
-        {diff}
-        непрочитанных сообщений
-      </button>
-      <button class="cursor-pointer flex-nowrap text-nowrap" onclick={markRead}>
-        Отметить как прочитанное
-      </button>
+        >
+          {diff}
+          непрочитанных сообщений
+        </button>
+        <button
+          class="cursor-pointer flex-nowrap text-nowrap flex items-center gap-2"
+          onclick={markRead}
+        >
+          Отметить как прочитанное <CheckCheck class="size-5" />
+        </button>
+      </div>
     </div>
   {/if}
 
