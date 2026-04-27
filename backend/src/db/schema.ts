@@ -132,6 +132,7 @@ export const messages = table(
       }),
 
     editedAt: t.integer({ mode: "timestamp_ms" }),
+    edited: t.integer({ mode: "boolean" }).notNull().default(false),
     deletedAt: t.integer({ mode: "timestamp_ms" }),
 
     /** Essentially a cache for the frontend to not recompute this every time */

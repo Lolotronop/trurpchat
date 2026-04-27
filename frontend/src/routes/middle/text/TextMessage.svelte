@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Pencil } from "@lucide/svelte";
   import type { TextMessage } from "trurpchat-backend";
   import { mentions } from "trurpchat-shared";
   import Avatar from "$lib/components/Avatar.svelte";
@@ -140,15 +141,30 @@
       {/if}
       <Avatar name={user ? user.username : "?"} class="mt-1 shrink-0 size-9" />
     {:else}
-      <div class="time opacity-0 flex items-start select-none">
-        <Tooltip.Root>
-          <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
-            {formatTime(message.createdAt, false)}
-          </Tooltip.Trigger>
-          <Tooltip.Content sideOffset={4}>
-            {formatFullDate(message.createdAt)}
-          </Tooltip.Content>
-        </Tooltip.Root>
+      <div class="relative flex items-start justify-center select-none">
+        {#if message.edited}
+          <div class="edited-indicator">
+            <Tooltip.Root>
+              <Tooltip.Trigger
+                class="text-muted-foreground cursor-default"
+                aria-label="Изменено"
+              >
+                <Pencil class="size-3" />
+              </Tooltip.Trigger>
+              <Tooltip.Content sideOffset={4}>Изменено</Tooltip.Content>
+            </Tooltip.Root>
+          </div>
+        {/if}
+        <div class="time opacity-0 absolute flex items-start">
+          <Tooltip.Root>
+            <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
+              {formatTime(message.createdAt, false)}
+            </Tooltip.Trigger>
+            <Tooltip.Content sideOffset={4}>
+              {formatFullDate(message.createdAt)}
+            </Tooltip.Content>
+          </Tooltip.Root>
+        </div>
       </div>
     {/if}
   </div>
@@ -201,6 +217,17 @@
             {formatFullDate(message.createdAt)}
           </Tooltip.Content>
         </Tooltip.Root>
+        {#if message.edited}
+          <Tooltip.Root>
+            <Tooltip.Trigger
+              class="text-muted-foreground cursor-default"
+              aria-label="Изменено"
+            >
+              <Pencil class="size-3" />
+            </Tooltip.Trigger>
+            <Tooltip.Content sideOffset={4}>Изменено</Tooltip.Content>
+          </Tooltip.Root>
+        {/if}
       </div>
     {/if}
     <p class="text-sm text-foreground wrap-break-word whitespace-pre-wrap">
@@ -236,5 +263,9 @@
 <style>
   .msg:hover * > .time {
     opacity: 1;
+  }
+
+  .msg:hover .edited-indicator {
+    opacity: 0;
   }
 </style>

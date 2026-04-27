@@ -81,7 +81,7 @@ export const messageHandlers: Handlers<MessageAction> = {
 
     const [message] = await db
       .update(messages)
-      .set({ text, editedAt: new Date(), hasMention })
+      .set({ text, editedAt: new Date(), edited: true, hasMention })
       .where(
         and(
           eq(messages.id, id),
