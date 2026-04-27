@@ -659,6 +659,7 @@
                         <Reply />
                       </Item>
                       <Item
+                        nofocus
                         onclick={() => {
                           server.unread.set(room.id, message.id);
                           newId = message.id;
@@ -669,6 +670,7 @@
                       </Item>
                       {#if canDeleteMessage(message)}
                         <Item
+                          nofocus
                           variant="destructive"
                           onclick={() => {
                             deleteMessage(message);
