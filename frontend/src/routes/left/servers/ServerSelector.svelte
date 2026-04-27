@@ -1,6 +1,8 @@
 <script lang="ts">
   import Avatar from "$lib/components/Avatar.svelte";
+  import ContextMenu from "$lib/components/ContextMenu.svelte";
   import { Button } from "$lib/components/ui/button";
+  import { Item } from "$lib/components/ui/context-menu";
   import * as Dialog from "$lib/components/ui/dialog";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import type { ServerManager } from "$lib/servers.svelte";
@@ -20,41 +22,47 @@
 <div class="flex shrink flex-col items-center gap-1">
   {#each servers.values as server (server.definition.name + server.definition.url)}
     {@const isSelected = servers.selected === server}
-    <Tooltip.Root delayDuration={100}>
-      <Tooltip.Trigger class="max-w-28">
-        <button
-          onclick={() => {
-            servers.selected = server;
-          }}
-        >
-          <Avatar
-            class="
-            {isSelected
-              ? 'ring-2 ring-accent'
-              : ''}
-            size-10"
-            name={server.definition.name}
-          ></Avatar>
-        </button>
-      </Tooltip.Trigger>
-      <Tooltip.Content side="right">
-        {server.definition.name}
-        <Button
+    <ContextMenu>
+      {#snippet menu()}
+        <Item
           onclick={() => {
             editingServer = server;
           }}
         >
           Изменить
-        </Button>
-        <Button
+        </Item>
+        <Item
+          variant="destructive"
           onclick={() => {
             servers.remove(server);
           }}
         >
           Удалить
-        </Button>
-      </Tooltip.Content>
-    </Tooltip.Root>
+        </Item>
+      {/snippet}
+
+      <Tooltip.Root delayDuration={100}>
+        <Tooltip.Trigger class="max-w-28">
+          <button
+            onclick={() => {
+              servers.selected = server;
+            }}
+          >
+            <Avatar
+              class="
+              {isSelected
+                ? 'ring-2 ring-accent'
+                : ''}
+              size-10"
+              name={server.definition.name}
+            ></Avatar>
+          </button>
+        </Tooltip.Trigger>
+        <Tooltip.Content side="right">
+          {server.definition.name}
+        </Tooltip.Content>
+      </Tooltip.Root>
+    </ContextMenu>
   {/each}
 
   <Dialog.Root bind:open={showServerForm}>
