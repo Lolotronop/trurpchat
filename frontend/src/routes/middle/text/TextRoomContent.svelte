@@ -33,6 +33,8 @@
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
   let replyTo = $state<TMessage>();
+  let highlightedMessageId = $state<number>();
+  let highlightTimer: ReturnType<typeof setTimeout> | undefined;
 
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
@@ -52,6 +54,7 @@
       observer?.disconnect();
       observer = null;
       clearTimeout(shrinkTimer);
+      clearTimeout(highlightTimer);
       cache.visibleBlocks = [];
     };
   });
@@ -166,6 +169,12 @@
   }
 
   async function jumpTo(messageId: number) {
+    highlightedMessageId = messageId;
+    clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => {
+      highlightedMessageId = undefined;
+    }, 2000);
+
     if (!se) return;
     const blockId = getBlockId(messageId);
     if (cache.renderBlocks.includes(blockId)) {
@@ -550,6 +559,8 @@
                         replyToMessage={message.replyTo
                           ? cache.getMessage(message.replyTo)
                           : undefined}
+                        highlighted={highlightedMessageId === message.id}
+                        onReplyClick={jumpTo}
                       />
                     </div>
                   </ContextMenu>

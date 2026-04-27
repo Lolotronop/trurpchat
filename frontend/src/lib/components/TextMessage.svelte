@@ -12,6 +12,8 @@
     currentUserId?: number;
     users: UserStore;
     replyToMessage?: TextMessage;
+    highlighted?: boolean;
+    onReplyClick?: (messageId: number) => void;
   };
 
   let {
@@ -21,6 +23,8 @@
     currentUserId,
     users,
     replyToMessage,
+    highlighted,
+    onReplyClick,
   }: Props = $props();
   showHeader ??= true;
 
@@ -108,6 +112,12 @@
     mentionsCurrentUser && "bg-accent/20",
   ]}
 >
+  <div
+    class={[
+      "pointer-events-none absolute inset-0 bg-accent/20 transition-opacity duration-500 z-[-1]",
+      highlighted ? "opacity-100 duration-0" : "opacity-0",
+    ]}
+  ></div>
   {#if message.replyTo && showHeader}
     <svg
       class="pointer-events-none absolute left-2 top-1 h-10 w-16 overflow-visible text-border/70"
@@ -146,8 +156,14 @@
   </div>
   <div class="flex flex-col min-w-0">
     {#if message.replyTo}
-      <div
-        class="mb-1 flex max-w-full items-center gap-2 rounded-sm py-0.5 pr-2 text-xs text-muted-foreground"
+      <button
+        type="button"
+        class="mb-1 flex max-w-full cursor-pointer items-center gap-2 rounded-sm py-0.5 pr-2 text-left text-xs text-muted-foreground hover:text-foreground"
+        onclick={() => {
+          if (message.replyTo) {
+            onReplyClick?.(message.replyTo);
+          }
+        }}
       >
         {#if replyToMessage}
           <Avatar
@@ -168,7 +184,7 @@
               : "..."}
         </span>
         <span class="min-w-0 truncate">{replyPreviewText(replyToMessage)}</span>
-      </div>
+      </button>
     {/if}
     {#if showHeader}
       <div class="flex items-baseline gap-2">
