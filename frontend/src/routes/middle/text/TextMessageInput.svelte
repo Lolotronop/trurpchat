@@ -4,6 +4,7 @@
   import * as InputGroup from "$lib/components/ui/input-group";
   import type { Server } from "$lib/servers.svelte";
   import { mentions } from "trurpchat-shared";
+  import TypingIndicator from "./TypingIndicator.svelte";
 
   type Props = {
     server: Server;
@@ -25,6 +26,8 @@
 
   const canSend = $derived(text.trim().length > 0);
   const isEmpty = $derived(text.length === 0);
+  const TYPING_SEND_INTERVAL = 2000;
+  let lastTypingSent = 0;
 
   function matchScore(value: string, query: string) {
     if (query.length === 0) {
@@ -466,6 +469,24 @@
     text = serializeEditor();
     renderRawText(text);
     updateMentionState();
+    notifyTyping();
+  }
+
+  function notifyTyping() {
+    if (text.trim().length === 0) {
+      return;
+    }
+
+    const now = Date.now();
+    if (now - lastTypingSent < TYPING_SEND_INTERVAL) {
+      return;
+    }
+
+    lastTypingSent = now;
+    server.gateway.send({
+      type: "action.typing",
+      roomId,
+    });
   }
 
   function getCaretRawOffset() {
@@ -628,6 +649,10 @@
 </script>
 
 <div class="relative flex flex-row w-full pb-2 px-2">
+  <div class="pointer-events-none absolute inset-x-0 bottom-full z-10">
+    <TypingIndicator {server} {roomId} />
+  </div>
+
   <InputGroup.Root
     class="h-auto min-h-12 items-stretch cursor-text"
     onclick={focusEditor}

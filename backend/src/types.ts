@@ -1,11 +1,11 @@
 import type {
+  Role as DbRole,
   User as DbUser,
+  UserRole as DbUserRole,
   Key,
   Message as MessageData,
-  Role as DbRole,
   Room as RoomData,
   UnreadRow,
-  UserRole as DbUserRole,
 } from "./db/schema";
 
 export type {
@@ -143,14 +143,13 @@ export type Role = Select<
 >;
 export type UserRole = Select<DbUserRole, "userId" | "roleId">;
 
-export type RoleCreate = Select<
-  DbRole,
-  "name" | "color" | "permissions"
-> &
+export type RoleCreate = Select<DbRole, "name" | "color" | "permissions"> &
   Partial<Select<DbRole, "section" | "order">>;
 
 export type RoleUpdate = Select<DbRole, "id"> &
-  Partial<Select<DbRole, "name" | "color" | "permissions" | "section" | "order">>;
+  Partial<
+    Select<DbRole, "name" | "color" | "permissions" | "section" | "order">
+  >;
 
 export type RoleAction =
   | {
@@ -290,6 +289,18 @@ export type RoomEvent =
       roomId: number;
     };
 
+export type TypingAction = {
+  type: "action.typing";
+  roomId: number;
+};
+
+export type TypingEvent = {
+  type: "event.typing";
+  roomId: number;
+  userId: number;
+  timestamp: Date;
+};
+
 export type MessageAction =
   | {
       type: "action.message.create";
@@ -367,6 +378,7 @@ export type ClientAction =
   | UserAction
   | RoomAction
   | MessageAction
+  | TypingAction
   | RtcMessage;
 export type ServerEvent =
   | VoiceEvent
@@ -376,6 +388,7 @@ export type ServerEvent =
   | RtcMessage
   | RoomEvent
   | MessageEvent
+  | TypingEvent
   | OtherEvent;
 
 export type Message = ClientAction | ServerEvent;

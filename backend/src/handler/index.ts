@@ -7,6 +7,7 @@ import { roleHandlers } from "./role";
 import { roomHandlers } from "./room";
 import { rtcHandlers } from "./rtc";
 import type { HandlerContext } from "./types";
+import { typingHandlers } from "./typing";
 import { userHandlers } from "./user";
 import { voiceHandlers } from "./voice";
 
@@ -20,6 +21,7 @@ const handlers = {
   ...userHandlers,
   ...roomHandlers,
   ...messageHandlers,
+  ...typingHandlers,
 } as const;
 
 const ACTION_PREFIXES = ["action", "rtc"];

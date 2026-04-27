@@ -9,6 +9,7 @@ import { gitGud } from "./god.svelte";
 import { BLOCK_SIZE, TextMessageCache, UnreadThing } from "./messages.svelte";
 import { RoomStore } from "./rooms.svelte";
 import { sound } from "./sound.svelte";
+import { TypingStore } from "./typing.svelte";
 import { UserStore } from "./users.svelte";
 import { WebRTC } from "./webrtc.svelte";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
@@ -54,6 +55,7 @@ export class Server {
   });
 
   users: UserStore = new UserStore();
+  typing: TypingStore = new TypingStore();
   keys: Key[] = $state([]);
   unread: UnreadThing = new UnreadThing(this.user.id, (roomId, messageId) => {
     this.gateway.send({
@@ -293,6 +295,8 @@ export class Server {
       }
     } else if (message.type === "event.message.unread.list") {
       this.unread.unread = message.unread;
+    } else if (message.type === "event.typing") {
+      this.typing.set(message.roomId, message.userId, message.timestamp);
     }
   }
 
