@@ -4,7 +4,6 @@
   import type { TextMessage as TMessage } from "trurpchat-backend";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
-  import TextMessage from "$lib/components/TextMessage.svelte";
   import { Button } from "$lib/components/ui/button";
   import { Item } from "$lib/components/ui/context-menu";
   import Separator from "$lib/components/ui/separator/separator.svelte";
@@ -17,8 +16,9 @@
   } from "$lib/messages.svelte";
   import type { Server } from "$lib/servers.svelte";
   import { minmax } from "$lib/utils.svelte";
-  import TextMessageInput from "./TextMessageInput.svelte";
   import type { TextRoom } from "$lib/rooms.svelte";
+  import TextMessageInput from "./TextMessageInput.svelte";
+  import TextMessage from "./TextMessage.svelte";
 
   type Props = {
     cache: TextRoomCache;
