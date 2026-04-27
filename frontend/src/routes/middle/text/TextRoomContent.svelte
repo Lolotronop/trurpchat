@@ -530,7 +530,7 @@
   {/if}
 
   <div
-    class="h-full w-full flex overflow-y-scroll flex-col"
+    class="text-room-content-scrollbar h-full w-full flex overflow-y-scroll flex-col"
     bind:this={se}
     onscroll={(e) => {
       updateAutoscroll();
@@ -657,3 +657,28 @@
     }}
   />
 </div>
+
+<style>
+  .text-room-content-scrollbar {
+    scrollbar-width: auto;
+    scrollbar-color: var(--muted) transparent;
+  }
+
+  .text-room-content-scrollbar::-webkit-scrollbar {
+    width: 14px;
+    height: 14px;
+    background: transparent;
+  }
+
+  .text-room-content-scrollbar::-webkit-scrollbar-track,
+  .text-room-content-scrollbar::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+
+  .text-room-content-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--muted);
+    border: 0;
+    border-radius: 9999px;
+  }
+</style>
