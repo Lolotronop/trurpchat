@@ -121,7 +121,7 @@
   ></div>
   {#if message.replyTo && showHeader}
     <svg
-      class="pointer-events-none absolute left-2 top-1 h-10 w-16 overflow-visible text-border/70"
+      class="pointer-events-none absolute left-2 top-1 h-10 w-16 overflow-visible text-muted/70"
       aria-hidden="true"
     >
       <path
