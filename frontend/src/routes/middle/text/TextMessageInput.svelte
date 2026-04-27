@@ -46,7 +46,9 @@
   let loadedEditingMessageId: number | undefined;
 
   const canSend = $derived(
-    editingMessage ? text.length === 0 || text.trim().length > 0 : text.trim().length > 0,
+    editingMessage
+      ? text.length === 0 || text.trim().length > 0
+      : text.trim().length > 0,
   );
   const isEmpty = $derived(text.length === 0);
   const replyUser = $derived(
@@ -789,7 +791,7 @@
     <TypingIndicator {server} {roomId} />
     {#snippet messagePopup(label: string, name: string, color: string | undefined, body: string, onCancel: (() => void) | undefined, ariaLabel: string)}
       <div
-        class="pointer-events-auto mx-2 mb-1 flex items-center justify-between gap-3 rounded-md border bg-background/95 px-3 py-1.5 text-xs shadow-sm"
+        class="pointer-events-auto mx-4 mb-1 flex items-center justify-between gap-3 rounded-md border bg-background/95 px-3 py-1.5 text-xs shadow-sm"
       >
         <div class="min-w-0 truncate text-muted-foreground">
           {label}
@@ -903,6 +905,12 @@
           if (!holdsModifier && event.key === "Enter") {
             event.preventDefault();
             sendMessage();
+          }
+          if (!holdsModifier && event.key === "Escape" && editingMessage) {
+            event.preventDefault();
+            clearEditor();
+            onCancelEdit?.();
+            return;
           }
         }}
         onpaste={(event) => {
