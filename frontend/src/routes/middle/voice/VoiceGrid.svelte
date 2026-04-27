@@ -18,7 +18,7 @@
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { Button } from "$lib/components/ui/button";
-  import { Item as ContextItem } from "$lib/components/ui/context-menu";
+  import ContextItem from "$lib/components/ContextMenuItem.svelte";
   import { gitGud } from "$lib/god.svelte";
   import type { Server } from "$lib/servers.svelte";
   import type { ConnectedUserWithRoles } from "$lib/users.svelte";

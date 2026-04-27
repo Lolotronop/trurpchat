@@ -2,7 +2,7 @@
   import type { Snippet } from "svelte";
   import type { RoomWithData } from "$lib/rooms.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
-  import { Item } from "$lib/components/ui/context-menu";
+  import Item from "$lib/components/ContextMenuItem.svelte";
   import * as Dialog from "$lib/components/ui/dialog";
   import type { Server } from "$lib/servers.svelte";
   import { CheckCheck, Pencil, Settings, Trash } from "@lucide/svelte";

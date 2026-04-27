@@ -12,7 +12,7 @@
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { Button } from "$lib/components/ui/button";
-  import { Item } from "$lib/components/ui/context-menu";
+  import Item from "$lib/components/ContextMenuItem.svelte";
   import Separator from "$lib/components/ui/separator/separator.svelte";
   import { changedFocus, focused } from "$lib/focus.svelte";
   import { log } from "$lib/log";
@@ -638,6 +638,7 @@
                     {#snippet menu()}
                       {#if message.userId === server.user.id}
                         <Item
+                          nofocus
                           onclick={() => {
                             startEditing(message);
                           }}
@@ -647,6 +648,7 @@
                         </Item>
                       {/if}
                       <Item
+                        nofocus
                         onclick={() => {
                           replyTo = message;
                           editingMessage = undefined;

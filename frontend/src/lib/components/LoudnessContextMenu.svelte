@@ -1,6 +1,6 @@
 <script lang="ts">
   import GainSlider from "$lib/components/GainSlider.svelte";
-  import { Item } from "$lib/components/ui/context-menu";
+  import Item from "$lib/components/ContextMenuItem.svelte";
   import { Checkbox } from "$lib/components/ui/checkbox";
   import { toDb } from "$lib/utils.svelte";
   import { Volume2, VolumeX } from "@lucide/svelte";
@@ -22,18 +22,19 @@
 >
   <div class="flex flex-row items-center gap-2">
     <p>Замутить</p>
-    <VolumeX />
   </div>
   <Checkbox checked={muted} />
 </Item>
 
-<Item onclick={(e) => e.preventDefault()} class="flex flex-col pb-4">
+<div
+  data-slot="context-menu-item"
+  class="relative flex cursor-default select-none flex-col gap-2 rounded-sm px-2 py-1.5 pb-4 text-sm outline-hidden hover:bg-accent/20"
+>
   <div
     class="flex flex-row items-center justify-between gap-2 text-sm font-normal w-full"
   >
     <div class="flex flex-row items-center gap-2">
       <p>Громкость</p>
-      <Volume2 />
     </div>
     <span>
       <input
@@ -46,4 +47,4 @@
     </span>
   </div>
   <GainSlider class="w-full" bind:value={gain} max={toDb(3)} ticks={[0]} />
-</Item>
+</div>

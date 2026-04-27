@@ -217,25 +217,6 @@
     });
   }
 
-  // FIXME: this should be fixed by the context menu component somehow
-  function recoverFocusFromContextMenuBlur(event: FocusEvent) {
-    if (!(event.relatedTarget instanceof HTMLElement)) {
-      return;
-    }
-
-    if (!editingMessage && !replyTo) {
-      return;
-    }
-
-    if (
-      event.relatedTarget.closest(
-        '[data-slot="context-menu-item"], [data-slot="context-menu-content"]',
-      )
-    ) {
-      setTimeout(focusAtEnd, 0);
-    }
-  }
-
   function closeMentionPicker() {
     mentionQuery = "";
     mentionReplaceStart = null;
@@ -881,10 +862,9 @@
           hasEditorFocus = true;
           updateMentionState();
         }}
-        onblur={(event) => {
+        onblur={() => {
           hasEditorFocus = false;
           closeMentionPicker();
-          recoverFocusFromContextMenuBlur(event);
         }}
         oninput={syncTextFromEditor}
         onclick={updateMentionState}

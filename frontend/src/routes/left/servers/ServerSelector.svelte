@@ -2,7 +2,7 @@
   import Avatar from "$lib/components/Avatar.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import { Button } from "$lib/components/ui/button";
-  import { Item } from "$lib/components/ui/context-menu";
+  import Item from "$lib/components/ContextMenuItem.svelte";
   import * as Dialog from "$lib/components/ui/dialog";
   import * as Tooltip from "$lib/components/ui/tooltip";
   import type { ServerManager } from "$lib/servers.svelte";

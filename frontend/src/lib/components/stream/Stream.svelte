@@ -13,7 +13,7 @@
   } from "$lib/users.svelte";
   import Avatar from "$lib/components/Avatar.svelte";
   import LoudnessContextMenu from "$lib/components/LoudnessContextMenu.svelte";
-  import { Item as ContextItem } from "$lib/components/ui/context-menu";
+  import ContextItem from "$lib/components/ContextMenuItem.svelte";
   import { Button } from "$lib/components/ui/button";
   import * as ContextMenu from "$lib/components/ui/context-menu";
   import * as Tooltip from "$lib/components/ui/tooltip";
