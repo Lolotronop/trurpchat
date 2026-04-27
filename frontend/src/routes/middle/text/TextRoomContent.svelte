@@ -29,12 +29,29 @@
 
   const { cache, room, server, showCurrentVoiceRoom }: Props = $props();
 
+  const FUTURE_JUMP_DISTANCE = 200;
+
   const unreadId = $derived(server.unread.get(room.id));
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
   let replyTo = $state<TMessage>();
   let highlightedMessageId = $state<number>();
   let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const firstVisibleMessageId = $derived.by(() => {
+    for (const blockId of cache.renderBlocks) {
+      const messageId = cache.get(blockId, false)?.messages[0]?.id;
+      if (messageId !== undefined) {
+        return messageId;
+      }
+    }
+
+    return undefined;
+  });
+  const showJumpToPresent = $derived(
+    firstVisibleMessageId !== undefined &&
+      cache.lastMessageId() - firstVisibleMessageId > FUTURE_JUMP_DISTANCE,
+  );
 
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
@@ -97,7 +114,11 @@
         newId = unreadId;
         return;
       }
-      jumpTo(unreadId);
+      const first = cache.renderBlocks[0];
+      const last = cache.renderBlocks[cache.renderBlocks.length - 1];
+      if (first <= unreadId && unreadId <= last) {
+        jumpTo(unreadId, false);
+      }
     }
   });
 
@@ -134,6 +155,20 @@
     });
   }
 
+  function jumpToPresent() {
+    if (unreadId === cache.lastMessageId() + 1) {
+      const lastBlock = cache.lastBlockId();
+      if (!cache.renderBlocks.includes(lastBlock)) {
+        cache.renderBlocks = [lastBlock];
+      }
+
+      shouldAutoscroll = true;
+      scrollToBottom();
+    } else {
+      jumpTo(unreadId, false);
+    }
+  }
+
   function partition(messages: TMessage[]): TMessage[][] {
     const result: TMessage[][] = [];
     let current: TMessage[] = [];
@@ -168,12 +203,14 @@
     }
   }
 
-  async function jumpTo(messageId: number) {
-    highlightedMessageId = messageId;
-    clearTimeout(highlightTimer);
-    highlightTimer = setTimeout(() => {
-      highlightedMessageId = undefined;
-    }, 2000);
+  async function jumpTo(messageId: number, highlight = true) {
+    if (highlight) {
+      highlightedMessageId = messageId;
+      clearTimeout(highlightTimer);
+      highlightTimer = setTimeout(() => {
+        highlightedMessageId = undefined;
+      }, 2000);
+    }
 
     if (!se) return;
     const blockId = getBlockId(messageId);
@@ -587,6 +624,17 @@
       <div class="min-h-6"></div>
     </div>
   </div>
+
+  {#if showJumpToPresent}
+    <Button
+      type="button"
+      class="absolute bottom-20 left-1/2 z-10 -translate-x-1/2 shadow-md"
+      size="sm"
+      onclick={jumpToPresent}
+    >
+      Назад в будущее
+    </Button>
+  {/if}
 
   <TextMessageInput
     {server}
