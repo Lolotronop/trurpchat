@@ -264,7 +264,7 @@
   function startEditing(message: TMessage) {
     editingMessage = message;
     replyTo = undefined;
-    // inputFocusRequest += 1;
+    inputFocusRequest += 1;
   }
 
   function deleteMessage(message: TMessage) {
