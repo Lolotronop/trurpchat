@@ -192,10 +192,6 @@ export class WebRTC {
         candidate: this.describeIceCandidate(msg.candidate),
       });
       await this.handleIceCandidate(msg.candidate, msg.sender);
-    } else {
-      this.logDebug("signal-ignored-unsupported-message", {
-        messageType: msg.type,
-      });
     }
   }
 
