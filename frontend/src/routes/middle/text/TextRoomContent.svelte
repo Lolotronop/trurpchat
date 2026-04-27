@@ -604,7 +604,7 @@
     }}
     {@attach createObserver}
   >
-    <div class="h-full flex shrink-0 flex-col relative">
+    <div class="h-full flex shrink-0 px-2 flex-col relative">
       {#if cache.renderBlocks.length > 0 && cache.renderBlocks[0] !== 0}
         <div style="height:1px;"></div>
       {/if}

@@ -109,7 +109,7 @@
 
 <div
   class={[
-    "relative flex gap-3 px-2 py-1 hover:bg-accent/20 msg",
+    "relative flex gap-3 px-2 py-1 hover:bg-accent/20 msg rounded-sm",
     mentionsCurrentUser && "bg-accent/20",
   ]}
 >
@@ -157,7 +157,9 @@
         {/if}
         <div class="time opacity-0 absolute flex items-start">
           <Tooltip.Root>
-            <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
+            <Tooltip.Trigger
+              class="text-xs text-muted-foreground cursor-default"
+            >
               {formatTime(message.createdAt, false)}
             </Tooltip.Trigger>
             <Tooltip.Content sideOffset={4}>
