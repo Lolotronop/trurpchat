@@ -32,6 +32,7 @@
   const unreadId = $derived(server.unread.get(room.id));
   const unreadBlockId = $derived(getBlockId(unreadId));
   let newId: number | undefined = $state(undefined);
+  let replyTo = $state<TMessage>();
 
   onMount(() => {
     if (cache.renderBlocks.length === 0) {
@@ -508,7 +509,7 @@
                 {#if message.deletedAt === null}
                   {@const isFirst = part.indexOf(message) === 0}
                   {@const isNew = newId === message.id}
-                  {@const showHeader = isFirst || isNew}
+                  {@const showHeader = isFirst || isNew || message.replyTo !== null}
                   {@const user = server.users.find(message.userId)}
                   {#if showHeader}
                     <div
@@ -522,6 +523,13 @@
                   {/if}
                   <ContextMenu>
                     {#snippet menu()}
+                      <Item
+                        onclick={() => {
+                          replyTo = message;
+                        }}
+                      >
+                        Ответить
+                      </Item>
                       <Item
                         onclick={() => {
                           server.unread.set(room.id, message.id);
@@ -539,6 +547,9 @@
                         {showHeader}
                         currentUserId={server.user.id}
                         users={server.users}
+                        replyToMessage={message.replyTo
+                          ? cache.getMessage(message.replyTo)
+                          : undefined}
                       />
                     </div>
                   </ContextMenu>
@@ -570,8 +581,13 @@
     {server}
     roomId={room.id}
     roomName={room.name}
+    {replyTo}
+    onCancelReply={() => {
+      replyTo = undefined;
+    }}
     onSent={() => {
       newId = undefined;
+      replyTo = undefined;
     }}
   />
 </div>

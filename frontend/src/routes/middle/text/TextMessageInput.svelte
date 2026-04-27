@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { ArrowRight } from "@lucide/svelte";
+  import { ArrowRight, X } from "@lucide/svelte";
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group";
   import type { Server } from "$lib/servers.svelte";
+  import type { TextMessage } from "trurpchat-backend";
   import { mentions } from "trurpchat-shared";
   import TypingIndicator from "./TypingIndicator.svelte";
 
@@ -10,10 +11,13 @@
     server: Server;
     roomId: number;
     roomName: string;
+    replyTo?: TextMessage;
+    onCancelReply?: () => void;
     onSent?: () => void;
   };
 
-  let { server, roomId, roomName, onSent }: Props = $props();
+  let { server, roomId, roomName, replyTo, onCancelReply, onSent }: Props =
+    $props();
 
   let editor = $state<HTMLDivElement>();
   let mentionList = $state<HTMLDivElement>();
@@ -26,6 +30,9 @@
 
   const canSend = $derived(text.trim().length > 0);
   const isEmpty = $derived(text.length === 0);
+  const replyUser = $derived(
+    replyTo ? server.users.find(replyTo.userId) : undefined,
+  );
   const TYPING_SEND_INTERVAL = 2000;
   let lastTypingSent = 0;
 
@@ -575,6 +582,7 @@
       type: "action.message.create",
       roomId,
       text: trimmed,
+      replyTo: replyTo?.id,
     });
 
     clearEditor();
@@ -649,8 +657,36 @@
 </script>
 
 <div class="relative flex flex-row w-full pb-2 px-2">
-  <div class="pointer-events-none absolute inset-x-0 bottom-full z-10">
+  <div
+    class="pointer-events-none absolute inset-x-0 bottom-full z-10 flex flex-col"
+  >
     <TypingIndicator {server} {roomId} />
+    {#if replyTo}
+      <div
+        class="pointer-events-auto mx-2 mb-1 flex items-center justify-between gap-3 rounded-md border bg-background/95 px-3 py-1.5 text-xs shadow-sm"
+      >
+        <div class="min-w-0 truncate text-muted-foreground">
+          Ответ
+          <span
+            class="font-medium text-foreground"
+            style:color={replyUser?.colorHex}
+          >
+            {replyUser ? replyUser.username : "Deleted"}
+          </span>.
+          <span>{replyTo.text}</span>
+        </div>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          class="size-6 shrink-0"
+          onclick={onCancelReply}
+          aria-label="Отменить ответ"
+        >
+          <X class="size-3.5" />
+        </Button>
+      </div>
+    {/if}
   </div>
 
   <InputGroup.Root

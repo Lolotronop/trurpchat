@@ -125,10 +125,21 @@ export class TextRoomCache {
   get(blockId: number, fetch = true) {
     const block = this.blocks.get(blockId);
     if (!block && fetch) {
-      this.fetchCallback(this.roomId, blockId);
+      this.fetch(blockId);
     }
     this.schedulePruneMemory();
     return block;
+  }
+
+  getMessage(messageId: number, fetch = true) {
+    const blockId = getBlockId(messageId);
+    const block = this.blocks.get(blockId);
+    const message = block?.messages.find((m) => m.id === messageId);
+    if (!message && fetch) {
+      this.fetch(blockId);
+    }
+    this.schedulePruneMemory();
+    return message;
   }
 
   /** Sets the block to be alive by default */
@@ -255,5 +266,9 @@ export class TextMessageCache {
 
   delete(roomId: number, messageId: number) {
     this.getRoom(roomId, false)?.delete(messageId);
+  }
+
+  getMessage(roomId: number, messageId: number, fetch = true) {
+    return this.getRoom(roomId, false)?.getMessage(messageId, fetch);
   }
 }

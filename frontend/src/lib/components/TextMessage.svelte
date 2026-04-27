@@ -11,14 +11,26 @@
     showHeader?: boolean;
     currentUserId?: number;
     users: UserStore;
+    replyToMessage?: TextMessage;
   };
 
-  let { user, message, showHeader, currentUserId, users }: Props = $props();
+  let {
+    user,
+    message,
+    showHeader,
+    currentUserId,
+    users,
+    replyToMessage,
+  }: Props = $props();
   showHeader ??= true;
 
   const mentionParts = $derived(
     message.hasMention ? mentions.split(message.text) : null,
   );
+  const replyToUser = $derived(
+    replyToMessage ? users.find(replyToMessage.userId) : undefined,
+  );
+
   const mentionsCurrentUser = $derived.by(() => {
     if (!message.hasMention || currentUserId === undefined) {
       return false;
@@ -70,6 +82,18 @@
     return `${time} ${dateStr}`;
   }
 
+  function replyPreviewText(reply: TextMessage | undefined): string {
+    if (!reply) {
+      return "Загрузка сообщения...";
+    }
+
+    if (reply.deletedAt !== null) {
+      return "Удалённое сообщение";
+    }
+
+    return reply.text;
+  }
+
   function formatFullDate(date: Date): string {
     return date.toLocaleString([], {
       dateStyle: "full",
@@ -80,12 +104,30 @@
 
 <div
   class={[
-    "flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors msg",
+    "relative flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors msg",
     mentionsCurrentUser && "bg-accent/20",
   ]}
 >
-  <div class="w-9 flex justify-center">
+  {#if message.replyTo && showHeader}
+    <svg
+      class="pointer-events-none absolute left-2 top-1 h-10 w-16 overflow-visible text-border/70"
+      aria-hidden="true"
+    >
+      <path
+        d="M 18 32 V 10 H 64"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+  {/if}
+  <div class="w-9 flex flex-col items-center">
     {#if showHeader}
+      {#if message.replyTo}
+        <div class="mb-1 h-5 shrink-0"></div>
+      {/if}
       <Avatar name={user ? user.username : "?"} class="mt-1 shrink-0 size-9" />
     {:else}
       <div
@@ -103,6 +145,31 @@
     {/if}
   </div>
   <div class="flex flex-col min-w-0">
+    {#if message.replyTo}
+      <div
+        class="mb-1 flex max-w-full items-center gap-2 rounded-sm py-0.5 pr-2 text-xs text-muted-foreground"
+      >
+        {#if replyToMessage}
+          <Avatar
+            name={replyToUser ? replyToUser.username : "?"}
+            class="size-4 shrink-0"
+          />
+        {:else}
+          <div class="size-4 shrink-0 rounded-full bg-muted"></div>
+        {/if}
+        <span
+          class="shrink-0 font-medium text-foreground"
+          style:color={replyToUser?.colorHex}
+        >
+          {replyToUser
+            ? replyToUser.username
+            : replyToMessage
+              ? "Deleted"
+              : "..."}
+        </span>
+        <span class="min-w-0 truncate">{replyPreviewText(replyToMessage)}</span>
+      </div>
+    {/if}
     {#if showHeader}
       <div class="flex items-baseline gap-2">
         <p
