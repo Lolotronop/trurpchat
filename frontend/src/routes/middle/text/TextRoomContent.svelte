@@ -254,6 +254,22 @@
     // inputFocusRequest += 1;
   }
 
+  function deleteMessage(message: TMessage) {
+    server.gateway.send({
+      type: "action.message.delete",
+      roomId: room.id,
+      id: message.id,
+    });
+
+    if (editingMessage?.id === message.id) {
+      editingMessage = undefined;
+    }
+  }
+
+  function canDeleteMessage(message: TMessage) {
+    return message.userId === server.user.id || server.user.permissions === 1;
+  }
+
   function startEditingLastSelfMessage() {
     let last: TMessage | undefined;
 
@@ -628,6 +644,16 @@
                       >
                         Отметить непрочитанным
                       </Item>
+                      {#if canDeleteMessage(message)}
+                        <Item
+                          variant="destructive"
+                          onclick={() => {
+                            deleteMessage(message);
+                          }}
+                        >
+                          Удалить
+                        </Item>
+                      {/if}
                     {/snippet}
 
                     <div data-message={message.id}>

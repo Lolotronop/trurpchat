@@ -45,7 +45,9 @@
   let handledFocusRequest = 0;
   let loadedEditingMessageId: number | undefined;
 
-  const canSend = $derived(text.trim().length > 0);
+  const canSend = $derived(
+    editingMessage ? text.length === 0 || text.trim().length > 0 : text.trim().length > 0,
+  );
   const isEmpty = $derived(text.length === 0);
   const replyUser = $derived(
     replyTo ? server.users.find(replyTo.userId) : undefined,
@@ -656,12 +658,17 @@
 
   function sendMessage() {
     const trimmed = text.trim();
-    if (!trimmed) {
-      return;
-    }
 
     if (editingMessage) {
-      if (trimmed !== editingMessage.text) {
+      if (text.length === 0) {
+        server.gateway.send({
+          type: "action.message.delete",
+          roomId,
+          id: editingMessage.id,
+        });
+      } else if (!trimmed) {
+        return;
+      } else if (trimmed !== editingMessage.text) {
         server.gateway.send({
           type: "action.message.edit",
           roomId,
@@ -670,6 +677,10 @@
         });
       }
     } else {
+      if (!trimmed) {
+        return;
+      }
+
       server.gateway.send({
         type: "action.message.create",
         roomId,
