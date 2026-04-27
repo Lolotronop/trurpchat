@@ -50,7 +50,7 @@
   });
   const showJumpToPresent = $derived(
     firstVisibleMessageId !== undefined &&
-      cache.lastMessageId() - firstVisibleMessageId > FUTURE_JUMP_DISTANCE,
+      unreadId - firstVisibleMessageId > FUTURE_JUMP_DISTANCE,
   );
 
   onMount(() => {
@@ -63,7 +63,6 @@
     }
 
     if (unreadId <= cache.lastMessageId()) {
-      console.log("Hit onMount");
       newId = unreadId;
     }
 
@@ -287,7 +286,12 @@
     if (!se) return;
     const isBottom = se.scrollHeight - se.scrollTop === se.clientHeight;
 
-    if (intersecting && isBottom && focused()) {
+    if (
+      intersecting &&
+      isBottom &&
+      focused() &&
+      blockId === cache.lastBlockId()
+    ) {
       markRead();
     }
 
