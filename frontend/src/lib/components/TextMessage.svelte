@@ -108,7 +108,7 @@
 
 <div
   class={[
-    "relative flex gap-3 px-2 py-1 hover:bg-accent/20 transition-colors msg",
+    "relative flex gap-3 px-2 py-1 hover:bg-accent/20 msg",
     mentionsCurrentUser && "bg-accent/20",
   ]}
 >
@@ -140,9 +140,7 @@
       {/if}
       <Avatar name={user ? user.username : "?"} class="mt-1 shrink-0 size-9" />
     {:else}
-      <div
-        class="time transition-opacity opacity-0 flex items-start select-none"
-      >
+      <div class="time opacity-0 flex items-start select-none">
         <Tooltip.Root>
           <Tooltip.Trigger class="text-xs text-muted-foreground cursor-default">
             {formatTime(message.createdAt, false)}
