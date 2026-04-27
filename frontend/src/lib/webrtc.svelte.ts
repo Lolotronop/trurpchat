@@ -155,13 +155,6 @@ export class WebRTC {
   }
 
   async handleSignalingMessage(msg: Message) {
-    this.logDebug("signal-received", {
-      messageType: msg.type,
-      senderId: "sender" in msg ? msg.sender : null,
-      targetId: "target" in msg ? msg.target : null,
-      roomId: "room" in msg ? msg.room : (this.room?.id ?? null),
-    });
-
     if (msg.type === "event.voice.joined") {
       this.logDebug("signal-dispatch-voice-joined", {
         joinedUserId: msg.userId,
