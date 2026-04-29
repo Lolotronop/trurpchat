@@ -6,8 +6,7 @@
     {
       "urls": [
         "stun:45.143.95.55:3478",
-        "turn:45.143.95.55:3478?transport=udp",
-        "turn:45.143.95.55:5349?transport=tcp"
+        "turn:45.143.95.55:3478?transport=udp"
       ],
       "username": "testuser",
       "credential": "testtoken"
