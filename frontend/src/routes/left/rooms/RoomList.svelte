@@ -99,13 +99,16 @@
   };
 </script>
 
-<div bind:this={parent} class="h-full p-2 flex flex-col gap-0.5">
+<div bind:this={parent} class="h-full p-2 flex flex-col">
   <DragDropProvider {onDragEnd}>
     {#each sorted as room, index (room.id)}
       {@const sortable = getSortable(room, index)}
-      {#if isAdmin && index !== 0}
+      {#if index !== 0}
         <div
-          class={["h-0.5 rounded", sortable.isDropTarget && "bg-accent"]}
+          class={[
+            "h-0.5 rounded",
+            sortable.isDropTarget && "bg-accent",
+          ]}
           {@attach sortable.attachTarget}
         ></div>
       {/if}
