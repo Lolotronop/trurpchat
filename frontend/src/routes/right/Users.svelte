@@ -76,7 +76,7 @@
           a.username.localeCompare(b.username),
         ),
       }))
-      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+      .sort((a, b) => b.order - a.order || a.name.localeCompare(b.name));
   });
 
   const onlineUnsectioned = $derived.by(() => {
