@@ -97,15 +97,13 @@
     class="group hover:bg-accent/20 -mx-1 flex flex-row items-center gap-2 rounded-xs px-2 py-1 transition-colors"
   >
     <Avatar class="size-6 shrink-0" name={user.username}></Avatar>
-    <p class="truncate text-sm text-foreground transition-colors">
-      <span
-        class="user-name transition-colors"
-        class:text-muted-foreground={offline && !user.colorHex}
-        style:--user-color={getUserColor(user, offline)}
-        style:--hover-user-color={getHoverUserColor(user, offline)}
-      >
-        {user.username}
-      </span>
+    <p
+      class="truncate text-sm text-foreground user-name"
+      class:text-muted-foreground={offline && !user.colorHex}
+      style:--user-color={getUserColor(user, offline)}
+      style:--hover-user-color={getHoverUserColor(user, offline)}
+    >
+      <span> {user.username} </span>
     </p>
   </div>
 {/snippet}
