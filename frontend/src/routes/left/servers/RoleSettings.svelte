@@ -165,38 +165,59 @@
           {@attach sortable.attachTarget}
         />
       {/if}
-      {#if editingRoleId === role.id}
-        <div class="flex flex-row items-center justify-between gap-2">
-          <div class="flex min-w-0 flex-row items-center gap-2">
-            <div
-              class="size-4 shrink-0 rounded-full border"
-              style:background-color={role.colorHex}
-            ></div>
-            <p class="truncate">{role.name}</p>
+
+      <div
+        class="flex flex-row items-center justify-between gap-2 h-full"
+        {@attach sortable.attach}
+      >
+        <div class="flex flex-row items-center gap-2">
+          <div
+            class="cursor-grab size-6 flex items-center justify-center"
+            {@attach sortable.attachHandle}
+          >
+            <List class="size-4" />
           </div>
-          <div>
+          <div
+            class="size-4 shrink-0 rounded-full border"
+            style:background-color={role.colorHex}
+          ></div>
+          <p class="truncate">{role.name}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3">
+            <p class="text-muted-foreground text-sm">
+              {assignedCount(role.id)}
+            </p>
+            <User class="size-4" />
+          </div>
+          {#if editingRoleId === role.id}
             <Button
               variant="secondary"
               onclick={() => {
-              server.gateway.send({
-                type: "action.role.delete",
-                id: role.id,
-              });
-            }}
+                server.gateway.send({
+                  type: "action.role.delete",
+                  id: role.id,
+                });
+              }}
             >
               <Trash />
             </Button>
-            <Button
-              variant="secondary"
-              onclick={() => {
-              editingRoleId = undefined;
+          {/if}
+          <Button
+            variant="secondary"
+            onclick={() => {
+              if (editingRoleId === role.id) {
+                editingRoleId = undefined;
+              } else {
+                editingRoleId = role.id;
+              }
             }}
-            >
-              <Settings />
-            </Button>
-          </div>
+          >
+            <Settings />
+          </Button>
         </div>
-
+      </div>
+      {#if editingRoleId === role.id}
         <EditableTextField
           label="Имя"
           value={role.name}
@@ -212,8 +233,8 @@
               value={role.colorHex}
               class="h-10 w-16 p-1"
               onchange={(e) => {
-              updateRoleColor(role.id, e.currentTarget.value);
-            }}
+                updateRoleColor(role.id, e.currentTarget.value);
+              }}
             />
             <p class="text-muted-foreground text-sm">{role.colorHex}</p>
           </div>
@@ -225,14 +246,14 @@
             <Switch
               checked={role.section}
               onclick={() => {
-              server.gateway.send({
-                type: "action.role.update",
-                role: {
-                  id: role.id,
-                  section: !role.section,
-                },
-              });
-            }}
+                server.gateway.send({
+                  type: "action.role.update",
+                  role: {
+                    id: role.id,
+                    section: !role.section,
+                  },
+                });
+              }}
             />
           </div>
         </div>
@@ -243,14 +264,14 @@
             value={role.order}
             class="h-10 w-16 p-1"
             oninput={(e) => {
-            server.gateway.send({
-              type: "action.role.update",
-              role: {
-                id: role.id,
-                order: Number(e.currentTarget.value),
-              },
-            });
-          }}
+              server.gateway.send({
+                type: "action.role.update",
+                role: {
+                  id: role.id,
+                  order: Number(e.currentTarget.value),
+                },
+              });
+            }}
           />
         </div>
 
@@ -278,44 +299,11 @@
               <Switch
                 {checked}
                 onclick={() => {
-                toggleRole(user, role, !checked);
-              }}
+                  toggleRole(user, role, !checked);
+                }}
               />
             </div>
           {/each}
-        </div>
-      {:else}
-        <div
-          class="flex flex-row items-center justify-between gap-2 h-full"
-          {@attach sortable.attach}
-        >
-          <div class="flex flex-row items-center gap-2">
-            <div
-              class="cursor-grab size-6 flex items-center justify-center"
-              {@attach sortable.attachHandle}
-            >
-              <List class="size-4" />
-            </div>
-            <div
-              class="size-4 shrink-0 rounded-full border"
-              style:background-color={role.colorHex}
-            ></div>
-            <p class="truncate">{role.name}</p>
-          </div>
-          <div class="flex items-center gap-3">
-            <p class="text-muted-foreground text-sm">
-              {assignedCount(role.id)}
-            </p>
-            <User class="size-4" />
-            <Button
-              variant="secondary"
-              onclick={() => {
-              editingRoleId = role.id;
-            }}
-            >
-              <Settings />
-            </Button>
-          </div>
         </div>
       {/if}
     {/each}

@@ -19,7 +19,7 @@
       <Settings class="size-5" />
     </Button>
   </Dialog.Trigger>
-  <Dialog.Content class=" max-w-2xl p-0! px-0! py-0!">
+  <Dialog.Content class="max-w-3xl p-0! px-0! py-0!">
     <ScrollArea class="max-h-[80vh] w-full">
       <Dialog.Header>
         <Dialog.Title

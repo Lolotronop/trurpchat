@@ -126,26 +126,31 @@
   {/if}
   {#each keyByUser.entries() as [ user, keys ] (user.id)}
     <Separator />
-    {#if editingUserId === user.id}
-      <div class="flex flex-row items-center justify-between gap-2">
+    <div class="flex flex-row items-center justify-between gap-2">
+      <div class="flex flex-row items-center gap-2">
         <p class="text-foreground" style:color={user.colorHex}>@{user.name}</p>
-        <div>
-          {#if server.user.permissions === 1}
-            <Button
-              variant="secondary"
-              onclick={() => {
+        <p class="text-foreground" style:color={user.colorHex}>
+          {user.displayName && "| "}{user.displayName}
+        </p>
+      </div>
+
+      <div>
+        {#if editingUserId === user.id && server.user.permissions === 1}
+          <Button
+            variant="secondary"
+            onclick={() => {
                 server.gateway.send({
                   type: "action.user.delete",
                   id: user.id,
                 });
               }}
-            >
-              <Trash />
-            </Button>
+          >
+            <Trash />
+          </Button>
 
-            <Button
-              variant="secondary"
-              onclick={() => {
+          <Button
+            variant="secondary"
+            onclick={() => {
                 const perm = user.permissions === 1 ? 0 : 1;
                 server.gateway.send({
                   type: "action.user.update",
@@ -153,24 +158,30 @@
                   permissions: perm,
                 });
               }}
-            >
-              {#if user.permissions === 1}
-                <Shield />
-              {:else}
-                <UserIcon />
-              {/if}
-            </Button>
-          {/if}
-          <Button
-            variant="secondary"
-            onclick={() => {
-              editingUserId = undefined;
-            }}
           >
-            <Settings />
+            {#if user.permissions === 1}
+              <Shield />
+            {:else}
+              <UserIcon />
+            {/if}
           </Button>
-        </div>
+        {/if}
+        <Button
+          variant="secondary"
+          onclick={() => {
+            if (editingUserId === user.id) {
+              editingUserId = undefined;
+            } else {
+              editingUserId = user.id;
+            }
+          }}
+        >
+          <Settings />
+        </Button>
       </div>
+    </div>
+
+    {#if editingUserId === user.id}
       <EditableTextField
         label="Тэг"
         value={user.name}
@@ -234,20 +245,6 @@
         +
       </Button>
     {:else}
-      <div class="flex flex-row items-center justify-between gap-2">
-        <p class="text-foreground" style:color={user.colorHex}>@{user.name}</p>
-        <p class="text-foreground" style:color={user.colorHex}>
-          {user.displayName}
-        </p>
-        <Button
-          variant="secondary"
-          onclick={() => {
-            editingUserId = user.id;
-          }}
-        >
-          <Settings />
-        </Button>
-      </div>
     {/if}
   {/each}
 </div>
