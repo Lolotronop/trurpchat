@@ -242,14 +242,7 @@ export class UserStore {
       return;
     }
 
-    // TODO: figure out how to update all properties
-    // without recreating the object, but better
-    // needed for the drag and drop
-    this.rawRoles[roleIndex].order = role.order;
-    this.rawRoles[roleIndex].color = role.color;
-    this.rawRoles[roleIndex].permissions = role.permissions;
-    this.rawRoles[roleIndex].section = role.section;
-    this.rawRoles[roleIndex].name = role.name;
+    Object.assign(this.rawRoles[roleIndex], role);
   }
 
   deleteRole(roleId: number) {

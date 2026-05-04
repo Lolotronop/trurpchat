@@ -114,7 +114,7 @@ export class RoomStore {
       return;
     }
 
-    this.rawRooms[roomIndex] = { ...existingRoom, ...room };
+    Object.assign(existingRoom, room);
   }
 
   deleteRoom(roomId: number) {
