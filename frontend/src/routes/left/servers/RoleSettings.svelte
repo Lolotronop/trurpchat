@@ -116,8 +116,6 @@
     if (source.id === target.id) return;
     if (!isSortable(source) || !isSortable(target)) return;
     if (target.index - source.index === 1) return; // no swap
-    console.log(source.index, target.index);
-    console.log(source.data, target.data);
     const from = source.data as RoleWithColorHex;
     const to = target.data as RoleWithColorHex;
     const pivot = sorted[target.index - 1];

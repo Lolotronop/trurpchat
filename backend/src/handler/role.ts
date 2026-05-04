@@ -1,8 +1,9 @@
-import { and, desc, eq, getColumns, isNull } from "drizzle-orm";
+import { and, desc, eq, getColumns, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import { db, roles, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { Role, RoleAction, UserRole } from "$src/types";
+import { shouldNormalizeOrder } from "./order";
 import type { Handlers } from "./types";
 
 function isAdmin(permissions: number) {
@@ -125,7 +126,7 @@ export const roleHandlers: Handlers<RoleAction> = {
     }
 
     const { id, ...rest } = msg.role;
-    const updated = await db.transaction(async (tx) => {
+    const { updated, normalizedRoles } = await db.transaction(async (tx) => {
       const [updatedRole] = await tx
         .update(roles)
         .set(rest)
@@ -139,17 +140,75 @@ export const roleHandlers: Handlers<RoleAction> = {
           order: roles.order,
         });
 
-      return updatedRole;
+      if (!updatedRole) {
+        return { updated: undefined, normalizedRoles: undefined };
+      }
+
+      if (rest.order === undefined) {
+        return { updated: updatedRole, normalizedRoles: undefined };
+      }
+
+      const [neighbor] = await tx
+        .select({ order: roles.order })
+        .from(roles)
+        .where(and(ne(roles.id, id), isNull(roles.deletedAt)))
+        .orderBy(sql`abs(${roles.order} - ${updatedRole.order})`)
+        .limit(1);
+
+      if (!shouldNormalizeOrder(updatedRole.order, neighbor)) {
+        return { updated: updatedRole, normalizedRoles: undefined };
+      }
+
+      const allRoles = (
+        await tx.select().from(roles).where(isNull(roles.deletedAt))
+      ).sort((a, b) => a.order - b.order);
+
+      const normalizedRoles: Role[] = [];
+      for (let index = 0; index < allRoles.length; index++) {
+        const role = allRoles[index];
+        if (!role) continue;
+
+        const order = index * 100;
+        const [normalizedRole] = await tx
+          .update(roles)
+          .set({ order })
+          .where(eq(roles.id, role.id))
+          .returning({
+            id: roles.id,
+            name: roles.name,
+            color: roles.color,
+            permissions: roles.permissions,
+            section: roles.section,
+            order: roles.order,
+          });
+
+        if (normalizedRole) {
+          normalizedRoles.push(normalizedRole);
+        }
+      }
+
+      return {
+        updated: normalizedRoles.find((role) => role.id === updatedRole.id),
+        normalizedRoles,
+      };
     });
 
     if (!updated) {
       return err(new Error(`Role ${id} not found`));
     }
 
-    sendAll(ctx.clients.values(), {
-      type: "event.role.updated",
-      role: updated,
-    });
+    if (normalizedRoles) {
+      sendAll(ctx.clients.values(), {
+        type: "event.role.list",
+        roles: normalizedRoles,
+        assignments: await getAllAssignments(),
+      });
+    } else {
+      sendAll(ctx.clients.values(), {
+        type: "event.role.updated",
+        role: updated,
+      });
+    }
 
     return ok();
   },
