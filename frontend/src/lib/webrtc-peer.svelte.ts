@@ -54,6 +54,7 @@ export class Peer {
   ping: number = $state(0);
 
   interval: NodeJS.Timeout | number | null = null;
+  private lastPingHealthLogKey: string | null = null;
 
   constructor(
     public targetId: number,
@@ -153,6 +154,35 @@ export class Peer {
     log.info(`[Peer:${event}]`, this.createLogContext(context));
   }
 
+  private logWarn(event: string, context: LogContext = {}) {
+    log.warn(`[Peer:${event}]`, this.createLogContext(context));
+  }
+
+  private getPingHealthIssues() {
+    const issues: string[] = [];
+
+    if (this.pc.connectionState !== "connected") {
+      issues.push(`connectionState:${this.pc.connectionState}`);
+    }
+
+    if (
+      this.pc.iceConnectionState !== "connected" &&
+      this.pc.iceConnectionState !== "completed"
+    ) {
+      issues.push(`iceConnectionState:${this.pc.iceConnectionState}`);
+    }
+
+    if (this.pc.signalingState !== "stable") {
+      issues.push(`signalingState:${this.pc.signalingState}`);
+    }
+
+    if (this.datachannel && this.datachannel.readyState !== "open") {
+      issues.push(`datachannelState:${this.datachannel.readyState}`);
+    }
+
+    return issues;
+  }
+
   private describeDatachannelMessage(message: DatachannelMessage) {
     return {
       type: message.type,
@@ -176,9 +206,25 @@ export class Peer {
       }
     });
 
-    if (!foundCandidatePair) {
-      this.logTrace("ping-update-no-active-candidate-pair", {});
+    if (foundCandidatePair) {
+      this.lastPingHealthLogKey = null;
+      return;
     }
+
+    const issues = this.getPingHealthIssues();
+    if (issues.length === 0) {
+      return;
+    }
+
+    const logKey = issues.join("|");
+    if (this.lastPingHealthLogKey === logKey) {
+      return;
+    }
+
+    this.lastPingHealthLogKey = logKey;
+    this.logWarn("ping-update-skipped-connection-unhealthy", {
+      reasons: issues,
+    });
   }
 
   handleOntrack(event: RTCTrackEvent) {

@@ -1,13 +1,13 @@
 <script lang="ts">
-  import {
-    DragDropProvider,
-    PointerSensor,
-    type DragDropEventHandlers,
-  } from "@dnd-kit/svelte";
-  import { createSortable, isSortable } from "@dnd-kit/svelte/sortable";
+  import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers";
   import { PointerActivationConstraints } from "@dnd-kit/dom";
   import { RestrictToElement } from "@dnd-kit/dom/modifiers";
-  import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers";
+  import {
+    type DragDropEventHandlers,
+    DragDropProvider,
+    PointerSensor,
+  } from "@dnd-kit/svelte";
+  import { createSortable, isSortable } from "@dnd-kit/svelte/sortable";
   import { Pencil, Trash } from "@lucide/svelte";
   import Avatar from "$lib/components/Avatar.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
