@@ -21,6 +21,10 @@ export class Peer {
   datachannel: RTCDataChannel | null = null;
   cameraStream: MediaStream | undefined = $state(undefined);
 
+  audioTransceiver: RTCRtpTransceiver;
+  videoTransceiver: RTCRtpTransceiver | null = null;
+  localCameraStream: MediaStream | undefined;
+
   gainNode: GainNode;
   muteNode: GainNode;
   source: MediaStreamAudioSourceNode | null = null;
@@ -60,6 +64,7 @@ export class Peer {
   makingOffer = false;
   ignoreOffer = false;
   isSettingRemoteAnswerPending = false;
+  needsNegotiation = false;
   pendingIceCandidates: RTCIceCandidateInit[] = [];
   polite: boolean;
 
@@ -101,18 +106,26 @@ export class Peer {
 
     const [audioTrack] = audioStream.getAudioTracks();
     if (!audioTrack) {
-      log.warn(
+      this.audioTransceiver = this.pc.addTransceiver("audio", {
+        direction: "recvonly",
+      });
+      log.error(
         "[Peer:constructor-no-audio-track] No outgoing audio track was available when creating the peer",
         this.createLogContext({
           audioTrackCount: audioStream.getAudioTracks().length,
         }),
       );
     } else {
-      this.pc.addTrack(audioTrack, audioStream);
-      this.logInfo("outgoing-audio-track-added", {
+      this.audioTransceiver = this.pc.addTransceiver(audioTrack, {
+        direction: "sendrecv",
+        streams: [audioStream],
+      });
+      this.logInfo("outgoing-audio-transceiver-added", {
         trackId: audioTrack.id,
         trackState: audioTrack.readyState,
         streamId: audioStream.id,
+        mid: this.audioTransceiver.mid,
+        direction: this.audioTransceiver.direction,
       });
     }
 
@@ -152,6 +165,7 @@ export class Peer {
       makingOffer: this.makingOffer,
       ignoreOffer: this.ignoreOffer,
       isSettingRemoteAnswerPending: this.isSettingRemoteAnswerPending,
+      needsNegotiation: this.needsNegotiation,
       pendingIceCandidateCount: this.pendingIceCandidates.length,
       connectionState: this.pc?.connectionState ?? null,
       iceConnectionState: this.pc?.iceConnectionState ?? null,
@@ -204,6 +218,22 @@ export class Peer {
     };
   }
 
+  describeTransceivers() {
+    return this.pc.getTransceivers().map((transceiver, index) => ({
+      index,
+      mid: transceiver.mid,
+      direction: transceiver.direction,
+      currentDirection: transceiver.currentDirection,
+      senderTrackKind: transceiver.sender.track?.kind ?? null,
+      senderTrackId: transceiver.sender.track?.id ?? null,
+      senderTrackState: transceiver.sender.track?.readyState ?? null,
+      receiverTrackKind: transceiver.receiver.track?.kind ?? null,
+      receiverTrackId: transceiver.receiver.track?.id ?? null,
+      receiverTrackState: transceiver.receiver.track?.readyState ?? null,
+      receiverTrackMuted: transceiver.receiver.track?.muted ?? null,
+    }));
+  }
+
   async updatePing() {
     const stats = await this.pc.getStats();
     let foundCandidatePair = false;
@@ -248,13 +278,30 @@ export class Peer {
       streamIds: event.streams.map((stream) => stream.id),
     });
 
-    event.streams.forEach((stream) => {
+    const streams =
+      event.streams.length > 0
+        ? event.streams
+        : [new MediaStream([event.track])];
+
+    if (event.streams.length === 0) {
+      this.logWarn("track-dispatch-missing-stream-created-fallback", {
+        trackKind: event.track.kind,
+        trackId: event.track.id,
+        fallbackStreamId: streams[0].id,
+        mid: event.transceiver.mid,
+        direction: event.transceiver.direction,
+        currentDirection: event.transceiver.currentDirection,
+      });
+    }
+
+    streams.forEach((stream) => {
+      const tracks = stream.getTracks();
       this.logTrace("track-dispatch-stream-processing", {
         streamId: stream.id,
-        trackKinds: stream.getTracks().map((track) => track.kind),
-        trackIds: stream.getTracks().map((track) => track.id),
+        trackKinds: tracks.map((track) => track.kind),
+        trackIds: tracks.map((track) => track.id),
       });
-      stream.getTracks().forEach((track) => {
+      tracks.forEach((track) => {
         if (track.kind === "audio") {
           this.logInfo("track-dispatch-audio-track", {
             streamId: stream.id,
@@ -263,9 +310,13 @@ export class Peer {
           this.handleAudioTrack(stream);
         }
         if (track.kind === "video") {
+          this.videoTransceiver = event.transceiver;
           this.logInfo("track-dispatch-video-track", {
             streamId: stream.id,
             trackId: track.id,
+            mid: event.transceiver.mid,
+            direction: event.transceiver.direction,
+            currentDirection: event.transceiver.currentDirection,
           });
           this.handleVideoTrack(stream);
         }
@@ -274,10 +325,136 @@ export class Peer {
   }
 
   handleVideoTrack(stream: MediaStream) {
+    const [videoTrack] = stream.getVideoTracks();
     this.cameraStream = stream;
     this.logInfo("video-track-attached", {
       streamId: stream.id,
       videoTrackIds: stream.getVideoTracks().map((track) => track.id),
+      videoTrackStates: stream
+        .getVideoTracks()
+        .map((track) => track.readyState),
+      videoTrackMuted: stream.getVideoTracks().map((track) => track.muted),
+      transceivers: this.describeTransceivers(),
+    });
+
+    if (!videoTrack) {
+      return;
+    }
+
+    videoTrack.onmute = () => {
+      this.logInfo("video-track-muted", {
+        streamId: stream.id,
+        trackId: videoTrack.id,
+        trackState: videoTrack.readyState,
+      });
+      if (this.cameraStream === stream) {
+        this.cameraStream = undefined;
+      }
+    };
+
+    videoTrack.onunmute = () => {
+      this.cameraStream = stream;
+      this.logInfo("video-track-unmuted", {
+        streamId: stream.id,
+        trackId: videoTrack.id,
+        trackState: videoTrack.readyState,
+      });
+    };
+
+    videoTrack.onended = () => {
+      this.logInfo("video-track-ended", {
+        streamId: stream.id,
+        trackId: videoTrack.id,
+      });
+      if (this.cameraStream === stream) {
+        this.cameraStream = undefined;
+      }
+    };
+  }
+
+  private ensureVideoTransceiver(
+    track?: MediaStreamTrack,
+    stream?: MediaStream,
+  ): RTCRtpTransceiver {
+    const existingVideoTransceiver =
+      this.videoTransceiver ??
+      this.pc
+        .getTransceivers()
+        .find((transceiver) => transceiver.receiver.track.kind === "video");
+
+    if (existingVideoTransceiver) {
+      this.videoTransceiver = existingVideoTransceiver;
+      this.logInfo("video-transceiver-reused", {
+        mid: existingVideoTransceiver.mid,
+        direction: existingVideoTransceiver.direction,
+        currentDirection: existingVideoTransceiver.currentDirection,
+        senderTrackId: existingVideoTransceiver.sender.track?.id ?? null,
+        receiverTrackId: existingVideoTransceiver.receiver.track?.id ?? null,
+      });
+      return existingVideoTransceiver;
+    }
+
+    if (track && stream) {
+      this.videoTransceiver = this.pc.addTransceiver(track, {
+        direction: "sendrecv",
+        streams: [stream],
+      });
+    } else {
+      this.videoTransceiver = this.pc.addTransceiver("video", {
+        direction: "recvonly",
+      });
+    }
+
+    this.logInfo("video-transceiver-created", {
+      mid: this.videoTransceiver.mid,
+      direction: this.videoTransceiver.direction,
+      hasLocalTrack: Boolean(track),
+      localTrackId: track?.id ?? null,
+      localStreamId: stream?.id ?? null,
+    });
+    return this.videoTransceiver;
+  }
+
+  async setLocalCameraTrack(track: MediaStreamTrack, stream: MediaStream) {
+    const transceiver = this.ensureVideoTransceiver(track, stream);
+    this.localCameraStream = stream;
+
+    if (transceiver.sender.track !== track) {
+      await transceiver.sender.replaceTrack(track);
+    }
+    if (transceiver.direction !== "sendrecv") {
+      transceiver.direction = "sendrecv";
+    }
+
+    this.logInfo("local-camera-track-set", {
+      mid: transceiver.mid,
+      direction: transceiver.direction,
+      trackId: track.id,
+      trackState: track.readyState,
+      streamId: stream.id,
+      transceivers: this.describeTransceivers(),
+    });
+  }
+
+  async clearLocalCameraTrack() {
+    const transceiver = this.videoTransceiver;
+    if (!transceiver) {
+      this.logTrace("local-camera-clear-skipped-missing-transceiver", {});
+      return;
+    }
+
+    await transceiver.sender.replaceTrack(null);
+    this.localCameraStream = undefined;
+    if (transceiver.direction === "sendrecv") {
+      transceiver.direction = "recvonly";
+    } else if (transceiver.direction === "sendonly") {
+      transceiver.direction = "inactive";
+    }
+
+    this.logInfo("local-camera-track-cleared", {
+      mid: transceiver.mid,
+      direction: transceiver.direction,
+      transceivers: this.describeTransceivers(),
     });
   }
 
@@ -412,6 +589,7 @@ export class Peer {
     this.logInfo("cleanup-started", {
       hasSource: Boolean(this.source),
       hasCameraStream: Boolean(this.cameraStream),
+      hasLocalCameraStream: Boolean(this.localCameraStream),
       hasInterval: Boolean(this.interval),
     });
     this.pendingIceCandidates = [];

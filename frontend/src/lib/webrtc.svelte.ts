@@ -344,6 +344,92 @@ export class WebRTC {
     return persist;
   }
 
+  private async negotiatePeer(
+    peer: Peer,
+    targetId: number,
+    eventType: string,
+  ) {
+    this.logInfo("peer-negotiation-needed", {
+      targetId,
+      eventType,
+      signalingState: peer.pc.signalingState,
+      makingOffer: peer.makingOffer,
+    });
+
+    if (peer.makingOffer) {
+      peer.needsNegotiation = true;
+      this.logDebug("peer-negotiation-deferred-making-offer", {
+        targetId,
+      });
+      return;
+    }
+
+    if (peer.pc.signalingState !== "stable") {
+      peer.needsNegotiation = true;
+      this.logDebug("peer-negotiation-deferred-non-stable", {
+        targetId,
+        signalingState: peer.pc.signalingState,
+      });
+      return;
+    }
+
+    try {
+      peer.needsNegotiation = false;
+      peer.makingOffer = true;
+      await peer.pc.setLocalDescription();
+      const description = peer.pc.localDescription;
+
+      if (!description) {
+        this.logWarn("peer-negotiation-missing-local-description", {
+          targetId,
+        });
+        return;
+      }
+
+      if (description.type !== "offer") {
+        this.logWarn("peer-negotiation-produced-non-offer", {
+          targetId,
+          localDescription: this.describeSessionDescription(description),
+        });
+        return;
+      }
+
+      this.server.gateway.send({
+        type: "rtc.offer",
+        offer: description,
+        target: targetId,
+        sender: this.server.user.id,
+      });
+      this.logInfo("peer-offer-sent-from-negotiation", {
+        targetId,
+        offer: this.describeSessionDescription(description),
+        transceivers: peer.describeTransceivers(),
+      });
+    } catch (error) {
+      log.error(
+        "[WebRTC:peer-negotiation-needed-failed] Failed to negotiate peer",
+        this.createLogContext({
+          targetId,
+          signalingState: peer.pc.signalingState,
+          error,
+        }),
+      );
+    } finally {
+      peer.makingOffer = false;
+    }
+  }
+
+  private async flushDeferredNegotiation(peer: Peer) {
+    if (!peer.needsNegotiation || peer.pc.signalingState !== "stable") {
+      return;
+    }
+
+    this.logDebug("peer-negotiation-flushing-deferred", {
+      targetId: peer.targetId,
+    });
+    await this.negotiatePeer(peer, peer.targetId, "deferred");
+  }
+
   async createPeer(targetId: number): Promise<Peer> {
     this.logInfo("peer-create-requested", { targetId });
 
@@ -399,22 +485,6 @@ export class WebRTC {
       targetId,
       audioTrackCount: this.mic.output.stream.getAudioTracks().length,
     });
-
-    if (this.cameraStream) {
-      const [cameraTrack] = this.cameraStream.getVideoTracks();
-      if (cameraTrack) {
-        peer.pc.addTrack(cameraTrack, this.cameraStream);
-        this.logInfo("peer-camera-track-added-during-create", {
-          targetId,
-          cameraTrackId: cameraTrack.id,
-          cameraTrackState: cameraTrack.readyState,
-        });
-      } else {
-        this.logWarn("peer-camera-stream-missing-video-track", { targetId });
-      }
-    } else {
-      this.logTrace("peer-create-no-camera-stream-to-attach", { targetId });
-    }
 
     if (!this.mic.stream) {
       const error = new Error("Local stream not available");
@@ -495,64 +565,24 @@ export class WebRTC {
     };
 
     peer.pc.onnegotiationneeded = async (event) => {
-      this.logInfo("peer-negotiation-needed", {
-        targetId,
-        eventType: event.type,
-        signalingState: peer.pc.signalingState,
-        makingOffer: peer.makingOffer,
-      });
-
-      if (peer.pc.signalingState !== "stable") {
-        this.logDebug("peer-negotiation-skipped-non-stable", {
-          targetId,
-          signalingState: peer.pc.signalingState,
-        });
-        return;
-      }
-
-      try {
-        peer.makingOffer = true;
-        await peer.pc.setLocalDescription();
-        const description = peer.pc.localDescription;
-
-        if (!description) {
-          this.logWarn("peer-negotiation-missing-local-description", {
-            targetId,
-          });
-          return;
-        }
-
-        if (description.type !== "offer") {
-          this.logWarn("peer-negotiation-produced-non-offer", {
-            targetId,
-            localDescription: this.describeSessionDescription(description),
-          });
-          return;
-        }
-
-        this.server.gateway.send({
-          type: "rtc.offer",
-          offer: description,
-          target: targetId,
-          sender: this.server.user.id,
-        });
-        this.logInfo("peer-offer-sent-from-negotiation", {
-          targetId,
-          offer: this.describeSessionDescription(description),
-        });
-      } catch (error) {
-        log.error(
-          "[WebRTC:peer-negotiation-needed-failed] Failed to negotiate peer",
-          this.createLogContext({
-            targetId,
-            signalingState: peer.pc.signalingState,
-            error,
-          }),
-        );
-      } finally {
-        peer.makingOffer = false;
-      }
+      await this.negotiatePeer(peer, targetId, event.type);
     };
+
+    if (this.cameraStream) {
+      const [cameraTrack] = this.cameraStream.getVideoTracks();
+      if (cameraTrack) {
+        await peer.setLocalCameraTrack(cameraTrack, this.cameraStream);
+        this.logInfo("peer-camera-track-set-during-create", {
+          targetId,
+          cameraTrackId: cameraTrack.id,
+          cameraTrackState: cameraTrack.readyState,
+        });
+      } else {
+        this.logWarn("peer-camera-stream-missing-video-track", { targetId });
+      }
+    } else {
+      this.logTrace("peer-create-no-camera-stream-to-attach", { targetId });
+    }
 
     return peer;
   }
@@ -647,11 +677,13 @@ export class WebRTC {
           peer.pc.remoteDescription ?? description,
         ),
         signalingState: peer.pc.signalingState,
+        transceivers: peer.describeTransceivers(),
       });
 
       await this.flushPendingIceCandidates(peer);
 
       if (description.type !== "offer") {
+        await this.flushDeferredNegotiation(peer);
         return;
       }
 
@@ -676,7 +708,9 @@ export class WebRTC {
       this.logInfo("remote-offer-answer-sent", {
         senderId,
         answer: this.describeSessionDescription(answer),
+        transceivers: peer.describeTransceivers(),
       });
+      await this.flushDeferredNegotiation(peer);
     } catch (error) {
       peer.isSettingRemoteAnswerPending = false;
       log.error(
@@ -792,10 +826,11 @@ export class WebRTC {
     }
 
     for (const peer of this.peers.values()) {
-      peer.pc.addTrack(videoTrack, stream);
-      this.logInfo("camera-track-added-to-peer", {
+      await peer.setLocalCameraTrack(videoTrack, stream);
+      this.logInfo("camera-track-set-on-peer", {
         targetId: peer.targetId,
         videoTrackId: videoTrack.id,
+        transceivers: peer.describeTransceivers(),
       });
     }
   }
@@ -810,7 +845,19 @@ export class WebRTC {
     this.logInfo("camera-disable-requested", {
       streamId: stream.id,
       videoTrackIds: stream.getVideoTracks().map((track) => track.id),
+      peerIds: Array.from(this.peers.keys()),
     });
+    for (const peer of this.peers.values()) {
+      void peer.clearLocalCameraTrack().catch((error) => {
+        log.error(
+          "[WebRTC:camera-track-clear-failed] Failed to clear local camera track from peer",
+          this.createLogContext({
+            targetId: peer.targetId,
+            error,
+          }),
+        );
+      });
+    }
     this.cam.disable();
     this.logInfo("camera-disabled", {
       previousStreamId: stream.id,

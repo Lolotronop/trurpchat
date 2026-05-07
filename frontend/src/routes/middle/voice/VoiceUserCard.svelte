@@ -23,12 +23,22 @@
 
   const { username, colorHex, muted, deafened, camera } = $derived(user);
 
-  function attachCamera(el: HTMLVideoElement) {
-    if (!cameraStream) {
+  let cameraEl: HTMLVideoElement | undefined = $state(undefined);
+
+  $effect(() => {
+    if (!cameraEl) {
       return;
     }
-    el.srcObject = cameraStream;
-  }
+
+    if (!cameraStream) {
+      cameraEl.srcObject = null;
+      return;
+    }
+
+    if (cameraEl.srcObject !== cameraStream) {
+      cameraEl.srcObject = cameraStream;
+    }
+  });
 </script>
 
 <SpeakingBorder
@@ -40,8 +50,9 @@
     <video
       id="user-{user.id}-camera"
       class="w-full h-full object-fit {edgeToEdge ? 'rounded-none' : 'rounded-md'}"
-      {@attach attachCamera}
+      bind:this={cameraEl}
       autoplay
+      playsinline
       muted
     ></video>
   {:else}
