@@ -56,8 +56,16 @@ export class Peer {
   interval: NodeJS.Timeout | number | null = null;
   private lastPingHealthLogKey: string | null = null;
 
+  /** Perfect-negotiation state. */
+  makingOffer = false;
+  ignoreOffer = false;
+  isSettingRemoteAnswerPending = false;
+  pendingIceCandidates: RTCIceCandidateInit[] = [];
+  polite: boolean;
+
   constructor(
     public targetId: number,
+    public selfUserId: number,
     audioStream: MediaStream,
     public headphones: Headphones,
     iceConfig: IceConfig,
@@ -67,6 +75,7 @@ export class Peer {
       changedField: PeerStateField,
     ) => void,
   ) {
+    this.polite = selfUserId > targetId;
     this.pc = new RTCPeerConnection(iceConfig as RTCConfiguration);
     this.gainNode = audioctx().createGain();
     this.muteNode = audioctx().createGain();
@@ -139,6 +148,11 @@ export class Peer {
       mute: this.#mute,
       speaking: this.speaking,
       pingMs: this.ping,
+      polite: this.polite,
+      makingOffer: this.makingOffer,
+      ignoreOffer: this.ignoreOffer,
+      isSettingRemoteAnswerPending: this.isSettingRemoteAnswerPending,
+      pendingIceCandidateCount: this.pendingIceCandidates.length,
       connectionState: this.pc?.connectionState ?? null,
       iceConnectionState: this.pc?.iceConnectionState ?? null,
       signalingState: this.pc?.signalingState ?? null,
@@ -400,6 +414,7 @@ export class Peer {
       hasCameraStream: Boolean(this.cameraStream),
       hasInterval: Boolean(this.interval),
     });
+    this.pendingIceCandidates = [];
     this.datachannel?.close();
     this.pc?.close();
     this.headphones.removeSource(this.muteNode);

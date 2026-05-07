@@ -95,12 +95,10 @@ export class WebRTC {
     this.mic.onSpeakingChange((speaking) => {
       const effectiveSpeaking = speaking && !this.mic.muted;
       for (const peer of this.peers.values()) {
-        peer.datachannel?.send(
-          JSON.stringify({
-            type: "speaking",
-            speaking: effectiveSpeaking,
-          }),
-        );
+        peer.sendData({
+          type: "speaking",
+          speaking: effectiveSpeaking,
+        });
       }
     });
   }
@@ -172,13 +170,13 @@ export class WebRTC {
         senderId: msg.sender,
         offer: this.describeSessionDescription(msg.offer),
       });
-      await this.acceptCall(msg.offer, msg.sender);
+      await this.handleRemoteDescription(msg.offer, msg.sender);
     } else if (msg.type === "rtc.answer") {
       this.logInfo("signal-dispatch-answer", {
         senderId: msg.sender,
         answer: this.describeSessionDescription(msg.answer),
       });
-      await this.handleAnswer(msg.answer, msg.sender);
+      await this.handleRemoteDescription(msg.answer, msg.sender);
     } else if (msg.type === "rtc.ice") {
       this.logTrace("signal-dispatch-ice", {
         senderId: msg.sender,
@@ -374,6 +372,7 @@ export class WebRTC {
 
     peer = new Peer(
       targetId,
+      this.server.user.id,
       this.mic.output.stream,
       this.headphones,
       this.server.iceConfig,
@@ -500,30 +499,59 @@ export class WebRTC {
         targetId,
         eventType: event.type,
         signalingState: peer.pc.signalingState,
-      });
-      const offer = await peer.pc.createOffer();
-      this.logInfo("peer-offer-created-from-negotiation", {
-        targetId,
-        offer: this.describeSessionDescription(offer),
-      });
-      await peer.pc.setLocalDescription(offer);
-      this.logInfo("peer-local-description-set-from-negotiation", {
-        targetId,
-        localDescription: this.describeSessionDescription(
-          peer.pc.localDescription ?? offer,
-        ),
+        makingOffer: peer.makingOffer,
       });
 
-      this.server.gateway.send({
-        type: "rtc.offer",
-        offer: offer,
-        target: targetId,
-        sender: this.server.user.id,
-      });
-      this.logInfo("peer-offer-sent-from-negotiation", {
-        targetId,
-        offer: this.describeSessionDescription(offer),
-      });
+      if (peer.pc.signalingState !== "stable") {
+        this.logDebug("peer-negotiation-skipped-non-stable", {
+          targetId,
+          signalingState: peer.pc.signalingState,
+        });
+        return;
+      }
+
+      try {
+        peer.makingOffer = true;
+        await peer.pc.setLocalDescription();
+        const description = peer.pc.localDescription;
+
+        if (!description) {
+          this.logWarn("peer-negotiation-missing-local-description", {
+            targetId,
+          });
+          return;
+        }
+
+        if (description.type !== "offer") {
+          this.logWarn("peer-negotiation-produced-non-offer", {
+            targetId,
+            localDescription: this.describeSessionDescription(description),
+          });
+          return;
+        }
+
+        this.server.gateway.send({
+          type: "rtc.offer",
+          offer: description,
+          target: targetId,
+          sender: this.server.user.id,
+        });
+        this.logInfo("peer-offer-sent-from-negotiation", {
+          targetId,
+          offer: this.describeSessionDescription(description),
+        });
+      } catch (error) {
+        log.error(
+          "[WebRTC:peer-negotiation-needed-failed] Failed to negotiate peer",
+          this.createLogContext({
+            targetId,
+            signalingState: peer.pc.signalingState,
+            error,
+          }),
+        );
+      } finally {
+        peer.makingOffer = false;
+      }
     };
 
     return peer;
@@ -558,94 +586,153 @@ export class WebRTC {
     });
     peer.setDatachannel(chan);
 
-    const offer = await peer.pc.createOffer();
-    this.logInfo("call-offer-created", {
+    this.logInfo("call-awaiting-negotiation-needed", {
       targetId,
-      offer: this.describeSessionDescription(offer),
-    });
-    await peer.pc.setLocalDescription(offer);
-    this.logInfo("call-local-description-set", {
-      targetId,
-      localDescription: this.describeSessionDescription(
-        peer.pc.localDescription ?? offer,
-      ),
-    });
-
-    this.server.gateway.send({
-      type: "rtc.offer",
-      offer: offer,
-      target: targetId,
-      sender: this.server.user.id,
-    });
-    this.logInfo("call-offer-sent", {
-      targetId,
-      offer: this.describeSessionDescription(offer),
+      signalingState: peer.pc.signalingState,
     });
   }
 
-  async acceptCall(offer: RTCSessionDescriptionInit, senderId: number) {
-    this.logInfo("call-accept-requested", {
+  async handleRemoteDescription(
+    description: RTCSessionDescriptionInit,
+    senderId: number,
+  ) {
+    this.logInfo("remote-description-handle-requested", {
       senderId,
-      offer: this.describeSessionDescription(offer),
-    });
-    const peer = await this.createPeer(senderId);
-
-    await peer.pc.setRemoteDescription(offer);
-    this.logInfo("call-remote-offer-applied", {
-      senderId,
-      remoteDescription: this.describeSessionDescription(
-        peer.pc.remoteDescription ?? offer,
-      ),
+      description: this.describeSessionDescription(description),
     });
 
-    const answer = await peer.pc.createAnswer();
-    this.logInfo("call-answer-created", {
-      senderId,
-      answer: this.describeSessionDescription(answer),
-    });
-    await peer.pc.setLocalDescription(answer);
-    this.logInfo("call-local-answer-applied", {
-      senderId,
-      localDescription: this.describeSessionDescription(
-        peer.pc.localDescription ?? answer,
-      ),
-    });
-
-    this.server.gateway.send({
-      type: "rtc.answer",
-      answer: answer,
-      target: senderId,
-      sender: this.server.user.id,
-    });
-    this.logInfo("call-answer-sent", {
-      senderId,
-      answer: this.describeSessionDescription(answer),
-    });
-  }
-
-  async handleAnswer(answer: RTCSessionDescriptionInit, senderId: number) {
-    this.logInfo("answer-handle-requested", {
-      senderId,
-      answer: this.describeSessionDescription(answer),
-    });
-    const peer = this.peers.get(senderId);
+    let peer = this.peers.get(senderId);
     if (!peer) {
-      log.error(
-        "[WebRTC:answer-handle-peer-missing] Cannot apply answer because the peer does not exist",
-        this.createLogContext({
-          senderId,
-          answer: this.describeSessionDescription(answer),
-        }),
-      );
+      if (description.type !== "offer") {
+        log.error(
+          "[WebRTC:remote-description-peer-missing] Cannot apply non-offer description because the peer does not exist",
+          this.createLogContext({
+            senderId,
+            description: this.describeSessionDescription(description),
+          }),
+        );
+        return;
+      }
+
+      peer = await this.createPeer(senderId);
+    }
+
+    const readyForOffer =
+      !peer.makingOffer &&
+      (peer.pc.signalingState === "stable" ||
+        peer.isSettingRemoteAnswerPending);
+    const offerCollision = description.type === "offer" && !readyForOffer;
+
+    peer.ignoreOffer = !peer.polite && offerCollision;
+    if (peer.ignoreOffer) {
+      this.logWarn("remote-offer-ignored-due-to-collision", {
+        senderId,
+        polite: peer.polite,
+        signalingState: peer.pc.signalingState,
+        makingOffer: peer.makingOffer,
+        isSettingRemoteAnswerPending: peer.isSettingRemoteAnswerPending,
+      });
       return;
     }
-    await peer.pc.setRemoteDescription(answer);
-    this.logInfo("answer-remote-description-applied", {
-      senderId,
-      remoteDescription: this.describeSessionDescription(
-        peer.pc.remoteDescription ?? answer,
-      ),
+
+    try {
+      peer.isSettingRemoteAnswerPending = description.type === "answer";
+      await peer.pc.setRemoteDescription(description);
+      peer.isSettingRemoteAnswerPending = false;
+
+      this.logInfo("remote-description-applied", {
+        senderId,
+        polite: peer.polite,
+        remoteDescription: this.describeSessionDescription(
+          peer.pc.remoteDescription ?? description,
+        ),
+        signalingState: peer.pc.signalingState,
+      });
+
+      await this.flushPendingIceCandidates(peer);
+
+      if (description.type !== "offer") {
+        return;
+      }
+
+      await peer.pc.setLocalDescription();
+      const answer = peer.pc.localDescription;
+      if (!answer || answer.type !== "answer") {
+        this.logWarn("remote-offer-answer-missing", {
+          senderId,
+          localDescription: answer
+            ? this.describeSessionDescription(answer)
+            : null,
+        });
+        return;
+      }
+
+      this.server.gateway.send({
+        type: "rtc.answer",
+        answer,
+        target: senderId,
+        sender: this.server.user.id,
+      });
+      this.logInfo("remote-offer-answer-sent", {
+        senderId,
+        answer: this.describeSessionDescription(answer),
+      });
+    } catch (error) {
+      peer.isSettingRemoteAnswerPending = false;
+      log.error(
+        "[WebRTC:remote-description-handle-failed] Failed to apply remote description",
+        this.createLogContext({
+          senderId,
+          polite: peer.polite,
+          description: this.describeSessionDescription(description),
+          signalingState: peer.pc.signalingState,
+          error,
+        }),
+      );
+    }
+  }
+
+  private async flushPendingIceCandidates(peer: Peer) {
+    if (!peer.pc.remoteDescription || peer.pendingIceCandidates.length === 0) {
+      return;
+    }
+
+    const pending = peer.pendingIceCandidates.splice(0);
+    this.logDebug("ice-pending-flush-started", {
+      senderId: peer.targetId,
+      candidateCount: pending.length,
     });
+
+    for (const candidate of pending) {
+      await this.addIceCandidate(peer, candidate);
+    }
+  }
+
+  private async addIceCandidate(peer: Peer, candidate: RTCIceCandidateInit) {
+    try {
+      await peer.pc.addIceCandidate(candidate);
+      this.logTrace("ice-candidate-added", {
+        senderId: peer.targetId,
+        candidate: this.describeIceCandidate(candidate),
+      });
+    } catch (error) {
+      if (peer.ignoreOffer) {
+        this.logDebug("ice-candidate-ignored-for-ignored-offer", {
+          senderId: peer.targetId,
+          candidate: this.describeIceCandidate(candidate),
+        });
+        return;
+      }
+
+      log.error(
+        "[WebRTC:ice-candidate-add-failed] Failed to add ICE candidate",
+        this.createLogContext({
+          senderId: peer.targetId,
+          candidate: this.describeIceCandidate(candidate),
+          error,
+        }),
+      );
+    }
   }
 
   async handleIceCandidate(candidate: RTCIceCandidateInit, senderId: number) {
@@ -664,11 +751,18 @@ export class WebRTC {
       );
       return;
     }
-    await peer.pc.addIceCandidate(candidate);
-    this.logTrace("ice-candidate-added", {
-      senderId,
-      candidate: this.describeIceCandidate(candidate),
-    });
+
+    if (!peer.pc.remoteDescription) {
+      peer.pendingIceCandidates.push(candidate);
+      this.logTrace("ice-candidate-queued-until-remote-description", {
+        senderId,
+        queuedCandidateCount: peer.pendingIceCandidates.length,
+        candidate: this.describeIceCandidate(candidate),
+      });
+      return;
+    }
+
+    await this.addIceCandidate(peer, candidate);
   }
 
   async enableCamera() {
