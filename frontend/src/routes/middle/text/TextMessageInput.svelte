@@ -558,13 +558,32 @@
     notifyTyping();
   }
 
+  function hasOwnMessageAfterLastTyping() {
+    const roomCache = server.messages.getRoom(roomId, false);
+    if (!roomCache) return false;
+
+    const lastBlock = roomCache.get(roomCache.lastBlockId(), false);
+    if (!lastBlock) return false;
+
+    for (let i = lastBlock.messages.length - 1; i >= 0; i--) {
+      const message = lastBlock.messages[i];
+      if (message.userId !== server.user.id) continue;
+      return message.createdAt.getTime() > lastTypingSent;
+    }
+
+    return false;
+  }
+
   function notifyTyping() {
     if (text.trim().length === 0) {
       return;
     }
 
     const now = Date.now();
-    if (now - lastTypingSent < TYPING_SEND_INTERVAL) {
+    if (
+      now - lastTypingSent < TYPING_SEND_INTERVAL &&
+      !hasOwnMessageAfterLastTyping()
+    ) {
       return;
     }
 

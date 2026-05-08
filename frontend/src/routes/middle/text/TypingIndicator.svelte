@@ -22,13 +22,34 @@
     return () => clearInterval(interval);
   });
 
+  function hasMessageAfterTyping(userId: number, typingTimestamp: Date) {
+    const roomCache = server.messages.getRoom(roomId, false);
+    if (!roomCache) return false;
+
+    const lastBlock = roomCache.get(roomCache.lastBlockId(), false);
+    if (!lastBlock) return false;
+
+    for (let i = lastBlock.messages.length - 1; i >= 0; i--) {
+      const message = lastBlock.messages[i];
+      if (message.userId !== userId) continue;
+      return message.createdAt.getTime() > typingTimestamp.getTime();
+    }
+
+    return false;
+  }
+
   const typingUsers = $derived.by(() => {
     const currentTime = now.getTime();
 
     return server.typing.entries
-      .filter((entry) => entry.roomId === roomId)
-      .filter((entry) => entry.userId !== server.user.id)
-      .filter((entry) => currentTime - entry.timestamp.getTime() < TYPING_TTL)
+      .filter((entry) => {
+        return (
+          entry.roomId === roomId &&
+          entry.userId !== server.user.id &&
+          currentTime - entry.timestamp.getTime() < TYPING_TTL &&
+          !hasMessageAfterTyping(entry.userId, entry.timestamp)
+        );
+      })
       .map((entry) => server.users.find(entry.userId))
       .filter((user): user is UserWithRoles => user !== undefined);
   });
