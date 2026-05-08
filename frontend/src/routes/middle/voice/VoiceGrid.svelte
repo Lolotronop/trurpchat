@@ -42,6 +42,10 @@
   const CONTAINER_PADDING = 16;
   const ASPECT_RATIO = 16 / 9;
   const AUTO_HIDE_DELAY = 2000;
+  // Leave a tiny amount of slack for sub-pixel rounding and third-party
+  // player wrappers. Without this, exact-fit layouts can overflow by 1px and
+  // show a scrollbar, which is easiest to hit when a stream adds another tile.
+  const LAYOUT_EPSILON = 1;
 
   const roomUsers = $derived.by(() => {
     const userIds = server.state.voiceUsers
@@ -162,7 +166,7 @@
     const maxHeight = (availableHeight - GAP * (rows - 1)) / rows;
     const finalHeight = Math.min(widthPerItem / ASPECT_RATIO, maxHeight);
 
-    return Math.max(finalHeight * ASPECT_RATIO, 0);
+    return Math.max(finalHeight * ASPECT_RATIO - LAYOUT_EPSILON, 0);
   }
 
   function getFocusTileWidth(
@@ -174,7 +178,7 @@
     const availableHeight = Math.max(containerHeight - padding, 0);
 
     return Math.max(
-      Math.min(availableWidth, availableHeight * ASPECT_RATIO),
+      Math.min(availableWidth, availableHeight * ASPECT_RATIO) - LAYOUT_EPSILON,
       0,
     );
   }
@@ -609,6 +613,7 @@
     role="button"
     tabindex="0"
     style:width={width > 0 ? `${width}px` : undefined}
+    style:height={width > 0 ? `${width / ASPECT_RATIO}px` : undefined}
     onclick={(event) => handleTileClick(tile.id, event)}
     onkeydown={(event) => handleTileKeydown(tile.id, event)}
   >
