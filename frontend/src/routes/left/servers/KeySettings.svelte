@@ -20,6 +20,7 @@
   import type { Server } from "$lib/servers.svelte";
   import type { UserWithRoles } from "$lib/users.svelte";
   import EditableTextField from "./EditableTextField.svelte";
+  import PermissionEditor from "./PermissionEditor.svelte";
 
   type Props = {
     server: Server;
@@ -63,6 +64,7 @@
   let editingUserId: number | undefined = $state(undefined);
   let expandedKeyUserIds = $state(new Set<number>());
   let expandedRoleUserIds = $state(new Set<number>());
+  let expandedPermissionUserIds = $state(new Set<number>());
   let roleSearch = $state("");
 
   const filteredRoles = $derived.by(() => {
@@ -271,6 +273,28 @@
         placeholder="Имя"
         onSave={(value) => saveDisplayName(user.id, value)}
       />
+      {#if server.can(Permission.MANAGE_PERMISSIONS)}
+        <div class="mt-2 flex flex-col gap-2">
+          <button
+            type="button"
+            class="flex items-center gap-2 text-left text-sm font-medium"
+            onclick={() => {
+              expandedPermissionUserIds = toggleSetValue(expandedPermissionUserIds, user.id);
+            }}
+          >
+            {#if expandedPermissionUserIds.has(user.id)}
+              <ChevronDown class="size-4" />
+            {:else}
+              <ChevronRight class="size-4" />
+            {/if}
+            <span>Права</span>
+          </button>
+          {#if expandedPermissionUserIds.has(user.id)}
+            <PermissionEditor {server} subjectType="user" subjectId={user.id} />
+          {/if}
+        </div>
+      {/if}
+
       {#if server.can(Permission.MANAGE_ROLES)}
         <div class="mt-2 flex flex-col gap-2">
           <button

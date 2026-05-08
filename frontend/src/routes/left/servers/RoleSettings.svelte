@@ -11,6 +11,7 @@
     type UserWithRoles,
   } from "$lib/users.svelte";
   import EditableTextField from "./EditableTextField.svelte";
+  import PermissionEditor from "./PermissionEditor.svelte";
   import {
     DragDropProvider,
     PointerSensor,
@@ -29,6 +30,7 @@
 
   let editingRoleId: number | undefined = $state(undefined);
   let expandedUserRoleIds = $state(new Set<number>());
+  let expandedPermissionRoleIds = $state(new Set<number>());
   let userSearch = $state("");
 
   function hasRole(user: UserWithRoles, roleId: number) {
@@ -300,6 +302,28 @@
             />
           </div>
         </div>
+
+        {#if server.can(Permission.MANAGE_PERMISSIONS)}
+          <div class="mt-2 flex flex-col gap-2">
+            <button
+              type="button"
+              class="flex items-center gap-2 text-left text-sm font-medium"
+              onclick={() => {
+                expandedPermissionRoleIds = toggleSetValue(expandedPermissionRoleIds, role.id);
+              }}
+            >
+              {#if expandedPermissionRoleIds.has(role.id)}
+                <ChevronDown class="size-4" />
+              {:else}
+                <ChevronRight class="size-4" />
+              {/if}
+              <span>Права</span>
+            </button>
+            {#if expandedPermissionRoleIds.has(role.id)}
+              <PermissionEditor {server} subjectType="role" subjectId={role.id} />
+            {/if}
+          </div>
+        {/if}
 
         <div class="mt-2 flex flex-col gap-2">
           <button
