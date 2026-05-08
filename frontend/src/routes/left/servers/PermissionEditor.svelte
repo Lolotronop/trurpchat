@@ -14,11 +14,12 @@
 
   type Props = {
     server: Server;
-    subjectType: Extract<PermissionSubjectType, "user" | "role">;
-    subjectId: number;
+    subjectType: PermissionSubjectType;
+    subjectId?: number | null;
+    roomId?: number | null;
   };
 
-  const { server, subjectType, subjectId }: Props = $props();
+  const { server, subjectType, subjectId, roomId = null }: Props = $props();
 
   let search = $state("");
 
@@ -29,9 +30,14 @@
       (typeof permissionInfo)[PermissionName],
     ][];
 
-    if (!query) return entries;
+    const scoped = entries.filter(([, info]) => {
+      if (roomId !== null) return info.scope !== "global";
+      return true;
+    });
 
-    return entries.filter(([name, info]) =>
+    if (!query) return scoped;
+
+    return scoped.filter(([name, info]) =>
       [name, info.label, info.description].some((value) =>
         value.toLocaleLowerCase("ru-RU").includes(query),
       ),
@@ -42,8 +48,8 @@
     server.state.permissions.find(
       (permission) =>
         permission.subjectType === subjectType &&
-        permission.subjectId === subjectId &&
-        permission.roomId === null,
+        permission.subjectId === (subjectType === "everyone" ? null : subjectId) &&
+        permission.roomId === roomId,
     ),
   );
 
@@ -74,8 +80,8 @@
         type: "action.permission.create",
         permission: {
           subjectType,
-          subjectId,
-          roomId: null,
+          subjectId: subjectType === "everyone" ? null : (subjectId ?? null),
+          roomId,
           ...next,
         },
       });

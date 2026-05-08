@@ -26,7 +26,7 @@ export type RoomAction =
     }
   | {
       type: "action.room.update";
-      room: Partial<Room> & Pick<Room, "id">;
+      room: Partial<Omit<Room, "type">> & Pick<Room, "id">;
     };
 
 export type RoomEvent =

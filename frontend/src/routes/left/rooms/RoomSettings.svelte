@@ -92,7 +92,7 @@
               ?.label ?? "Обычные"}
             </Select.Trigger>
             <Select.Content>
-              {#each notificationItems as item}
+              {#each notificationItems as item (item.value)}
                 <Select.Item value={item.value} label={item.label}>
                   <div class="flex flex-col gap-0.5">
                     <span>{item.label}</span>

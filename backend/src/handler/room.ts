@@ -104,23 +104,24 @@ export const roomHandlers: Handlers<RoomAction> = {
   },
 
   "action.room.update": async (ctx, ws, { room }) => {
-    const result = cheks(ctx, ws, room);
+    const { type: _type, ...roomUpdate } = room;
+    const result = cheks(ctx, ws, roomUpdate);
     if (result.isErr()) return result;
 
     const { updatedRoom, normalizedRooms } = await db.transaction(async (tx) => {
       const [updatedRoom] = await tx
         .update(rooms)
-        .set(room)
-        .where(and(eq(rooms.id, room.id), isNull(rooms.deletedAt)))
+        .set(roomUpdate)
+        .where(and(eq(rooms.id, roomUpdate.id), isNull(rooms.deletedAt)))
         .returning();
 
       if (!updatedRoom) return { updatedRoom: undefined, normalizedRooms: undefined };
-      if (room.order === undefined) return { updatedRoom, normalizedRooms: undefined };
+      if (roomUpdate.order === undefined) return { updatedRoom, normalizedRooms: undefined };
 
       const [neighbor] = await tx
         .select({ order: rooms.order })
         .from(rooms)
-        .where(and(ne(rooms.id, room.id), isNull(rooms.deletedAt)))
+        .where(and(ne(rooms.id, roomUpdate.id), isNull(rooms.deletedAt)))
         .orderBy(sql`abs(${rooms.order} - ${updatedRoom.order})`)
         .limit(1);
 

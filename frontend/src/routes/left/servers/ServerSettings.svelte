@@ -7,6 +7,7 @@
   import type { Server } from "$lib/servers.svelte";
   import KeySettings from "./KeySettings.svelte";
   import RoleSettings from "./RoleSettings.svelte";
+  import PermissionEditor from "./PermissionEditor.svelte";
 
   type Props = {
     server: Server;
@@ -32,6 +33,12 @@
           <div class="flex flex-col gap-2"><KeySettings {server} /></div>
           {#if server.can(Permission.MANAGE_ROLES)}
             <div class="flex flex-col gap-2"><RoleSettings {server} /></div>
+          {/if}
+          {#if server.can(Permission.MANAGE_PERMISSIONS)}
+            <div class="flex flex-col gap-2">
+              <h1 class="text-foreground mb-2 text-2xl">Базовые права</h1>
+              <PermissionEditor {server} subjectType="everyone" />
+            </div>
           {/if}
         </Dialog.Description>
       </Dialog.Header>

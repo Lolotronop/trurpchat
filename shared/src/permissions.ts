@@ -37,6 +37,7 @@ export const ALL_PERMISSIONS = Object.values(Permission).reduce(
 export const DEFAULT_EVERYONE_PERMISSIONS =
   Permission.VIEW_ROOM |
   Permission.SEND_MESSAGES |
+  Permission.SEND_ATTACHMENTS |
   Permission.STREAM |
   Permission.PAUSE_STREAMS;
 
@@ -61,7 +62,8 @@ export const permissionInfo: Record<
   },
   MANAGE_KEYS: {
     label: "Управление ключами",
-    description: "Создание, отзыв и просмотр ключей входа других пользователей.",
+    description:
+      "Создание, отзыв и просмотр ключей входа других пользователей.",
     scope: "global",
   },
   MANAGE_ROOMS: {
