@@ -30,7 +30,7 @@ function resolveUsername(user: User) {
   return user.name;
 }
 
-function toColorHex(color: number) {
+export function toColorHex(color: number) {
   return `#${color.toString(16).padStart(6, "0")}`;
 }
 

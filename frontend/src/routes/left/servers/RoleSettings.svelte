@@ -5,7 +5,11 @@
   import { Separator } from "$lib/components/ui/separator";
   import { Switch } from "$lib/components/ui/switch";
   import type { Server } from "$lib/servers.svelte";
-  import type { RoleWithColorHex, UserWithRoles } from "$lib/users.svelte";
+  import {
+    toColorHex,
+    type RoleWithColorHex,
+    type UserWithRoles,
+  } from "$lib/users.svelte";
   import EditableTextField from "./EditableTextField.svelte";
   import {
     DragDropProvider,
@@ -16,6 +20,7 @@
   import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers";
   import { RestrictToElement } from "@dnd-kit/dom/modifiers";
   import { PointerActivationConstraints } from "@dnd-kit/dom";
+  import type { Role } from "trurpchat-shared";
 
   type Props = {
     server: Server;
@@ -68,11 +73,7 @@
     });
   }
 
-  function toggleRole(
-    user: UserWithRoles,
-    role: RoleWithColorHex,
-    checked: boolean,
-  ) {
+  function toggleRole(user: UserWithRoles, role: Role, checked: boolean) {
     server.gateway.send({
       type: checked ? "action.role.assign" : "action.role.unassign",
       userId: user.id,
@@ -81,11 +82,11 @@
   }
 
   const sorted = $derived(
-    server.users.roles.toSorted((a, b) => b.order - a.order),
+    server.state.roles.toSorted((a, b) => b.order - a.order),
   );
 
   let parent: HTMLElement | undefined;
-  function getSortable(role: RoleWithColorHex, index: number) {
+  function getSortable(role: Role, index: number) {
     const id = role.id;
     return createSortable({
       data: role,
@@ -179,7 +180,7 @@
           </div>
           <div
             class="size-4 shrink-0 rounded-full border"
-            style:background-color={role.colorHex}
+            style:background-color={toColorHex(role.color)}
           ></div>
           <p class="truncate">{role.name}</p>
         </div>
@@ -230,13 +231,15 @@
           <div class="flex w-full items-center gap-3">
             <Input
               type="color"
-              value={role.colorHex}
+              value={toColorHex(role.color)}
               class="h-10 w-16 p-1"
               onchange={(e) => {
                 updateRoleColor(role.id, e.currentTarget.value);
               }}
             />
-            <p class="text-muted-foreground text-sm">{role.colorHex}</p>
+            <p class="text-muted-foreground text-sm">
+              {toColorHex(role.color)}
+            </p>
           </div>
         </div>
 
