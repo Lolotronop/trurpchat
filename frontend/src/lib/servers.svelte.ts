@@ -429,9 +429,7 @@ export class ServerManager {
       return;
     }
 
-    if (!value.connected) {
-      value.reconnect();
-    }
+    value.reconnect();
 
     const index = Math.max(0, this.values.indexOf(value));
     this.store.set("selectedServerIndex", index);

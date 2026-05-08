@@ -24,15 +24,14 @@ export class Gateway extends EventTarget {
     });
 
     socket.addEventListener("open", () => {
+      if (this.socket !== socket) return;
+
       this.connected = true;
-      // FIXME: because race conditions, yay!
-      // it connects faster than it disconnects
-      // sooo it sets to false after a reconnect
-      // oh well
-      setTimeout(() => (this.connected = true), 500);
       this.onopenCallback();
       for (const callback of this.callbacks) {
         socket.addEventListener("message", (event) => {
+          if (this.socket !== socket) return;
+
           let data: Message;
           try {
             data = parse(event.data);
@@ -46,11 +45,15 @@ export class Gateway extends EventTarget {
     });
 
     socket.addEventListener("close", () => {
+      if (this.socket !== socket) return;
+
       this.connected = false;
       this.oncloseCallback();
     });
 
     socket.addEventListener("error", (error) => {
+      if (this.socket !== socket) return;
+
       log.error("Error connecting to Gateway:", error);
       this.connected = false;
       this.oncloseCallback();
@@ -64,13 +67,21 @@ export class Gateway extends EventTarget {
   }
 
   disconnect() {
-    this.socket?.close();
+    if (!this.socket) return;
+
+    const socket = this.socket;
     this.socket = null;
+    this.connected = false;
+    this.oncloseCallback();
+    socket.close();
   }
 
   onmessage(callback: (data: Message) => void) {
     this.callbacks = [callback];
-    this.socket?.addEventListener("message", (event) => {
+    const socket = this.socket;
+    socket?.addEventListener("message", (event) => {
+      if (this.socket !== socket) return;
+
       let data: Message;
       try {
         data = parse(event.data);
