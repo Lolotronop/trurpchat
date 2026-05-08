@@ -3,6 +3,7 @@
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { ScrollArea } from "$lib/components/ui/scroll-area";
+  import { Permission } from "trurpchat-shared";
   import type { Server } from "$lib/servers.svelte";
   import KeySettings from "./KeySettings.svelte";
   import RoleSettings from "./RoleSettings.svelte";
@@ -29,7 +30,7 @@
         </Dialog.Title>
         <Dialog.Description class="flex flex-col gap-8 px-6 pb-6">
           <div class="flex flex-col gap-2"><KeySettings {server} /></div>
-          {#if server.user.permissions === 1}
+          {#if server.can(Permission.MANAGE_ROLES)}
             <div class="flex flex-col gap-2"><RoleSettings {server} /></div>
           {/if}
         </Dialog.Description>

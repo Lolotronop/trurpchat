@@ -10,6 +10,7 @@
   import { createSortable, isSortable } from "@dnd-kit/svelte/sortable";
   import { PlusIcon } from "@lucide/svelte";
   import { tick } from "svelte";
+  import { Permission } from "trurpchat-shared";
   import { Button } from "$lib/components/ui/button";
   import * as Dialog from "$lib/components/ui/dialog";
   import type { Server } from "$lib/servers.svelte";
@@ -27,7 +28,7 @@
   let { server, selectedRoomId = $bindable(undefined) }: Props = $props();
 
   const rtc = $derived(server.rtc);
-  const isAdmin = $derived(server.user.permissions === 1);
+  const canManageRooms = $derived(server.can(Permission.MANAGE_ROOMS));
   const sorted = $derived(server.rooms.list);
 
   let editOpen = $state(false);
@@ -66,7 +67,7 @@
         }),
       ],
       id: room.id,
-      disabled: !isAdmin,
+      disabled: !canManageRooms,
       get index() {
         return index;
       },
@@ -74,7 +75,7 @@
   }
 
   const onDragEnd: DragDropEventHandlers["onDragEnd"] = (event) => {
-    if (!isAdmin || event.canceled) return;
+    if (!canManageRooms || event.canceled) return;
     const { source, target } = event.operation;
     if (!source || !target) return;
     if (source.id === target.id) return;
@@ -153,7 +154,7 @@
       </div>
     {/each}
   </DragDropProvider>
-  {#if isAdmin}
+  {#if canManageRooms}
     <Dialog.Root bind:open={editOpen}>
       <Dialog.Trigger>
         <Button variant="ghost" class="size-8">

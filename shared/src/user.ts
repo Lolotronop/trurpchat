@@ -2,7 +2,6 @@ export type UserData = {
   id: number;
   name: string;
   displayName: string | null;
-  permissions: number;
   deletedAt: Date | null;
 };
 

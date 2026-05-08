@@ -1,10 +1,10 @@
 import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { MessageAction } from "trurpchat-shared";
-import { mentions, patch } from "trurpchat-shared";
+import { Permission, mentions, patch, perm } from "trurpchat-shared";
 import { db, messages, rooms, unread } from "$src/db";
 import { send, sendAll } from "$src/send";
-import { isSessionAdmin } from "./types";
+import { canSession } from "./types";
 import type { Handlers } from "./types";
 
 export const messageHandlers: Handlers<MessageAction> = {
@@ -17,6 +17,10 @@ export const messageHandlers: Handlers<MessageAction> = {
 
     if (text.length > 1000) {
       return err(new Error("Message text is too long"));
+    }
+
+    if (!canSession(ctx, ws, Permission.SEND_MESSAGES, roomId)) {
+      return err(new Error("Missing SEND_MESSAGES"));
     }
 
     if (replyTo) {
@@ -73,13 +77,17 @@ export const messageHandlers: Handlers<MessageAction> = {
       message,
     };
     patch(ctx.state, event);
-    sendAll(ctx.clients.values(), event);
+    sendAll(ctx.clients.values().filter((client) => perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, roomId)), event);
 
     return ok();
   },
 
   "action.message.edit": async (ctx, ws, { roomId, id, text }) => {
     const userId = ws.data.userId;
+    if (!canSession(ctx, ws, Permission.SEND_MESSAGES, roomId)) {
+      return err(new Error("Missing SEND_MESSAGES"));
+    }
+
     const hasMention = mentions.has(text);
 
     const [message] = await db
@@ -100,17 +108,24 @@ export const messageHandlers: Handlers<MessageAction> = {
       );
     }
 
-    sendAll(ctx.clients.values(), {
-      type: "event.message.edited",
-      message,
-    });
+    sendAll(
+      ctx.clients
+        .values()
+        .filter((client) =>
+          perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, roomId),
+        ),
+      {
+        type: "event.message.edited",
+        message,
+      },
+    );
 
     return ok();
   },
 
   "action.message.delete": async (ctx, ws, { roomId, id }) => {
     const userId = ws.data.userId;
-    const isAdmin = isSessionAdmin(ctx, ws);
+    const canDeleteOthers = canSession(ctx, ws, Permission.DELETE_MESSAGES, roomId);
 
     const [existing] = await db
       .select()
@@ -122,7 +137,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("Message not found"));
     }
 
-    if (existing.userId !== userId && !isAdmin) {
+    if (existing.userId !== userId && !canDeleteOthers) {
       return err(new Error("You can only delete your own messages"));
     }
 
@@ -131,16 +146,27 @@ export const messageHandlers: Handlers<MessageAction> = {
       .set({ deletedAt: new Date() })
       .where(and(eq(messages.id, id), eq(messages.roomId, roomId)));
 
-    sendAll(ctx.clients.values(), {
-      type: "event.message.deleted",
-      roomId,
-      id,
-    });
+    sendAll(
+      ctx.clients
+        .values()
+        .filter((client) =>
+          perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, roomId),
+        ),
+      {
+        type: "event.message.deleted",
+        roomId,
+        id,
+      },
+    );
 
     return ok();
   },
 
-  "action.message.list": async (_ctx, ws, { roomId, fromId, toId }) => {
+  "action.message.list": async (ctx, ws, { roomId, fromId, toId }) => {
+    if (!canSession(ctx, ws, Permission.VIEW_ROOM, roomId)) {
+      return err(new Error("Missing VIEW_ROOM"));
+    }
+
     if (fromId > toId) {
       return err(new Error("fromId must be less than toId"));
     }
@@ -206,7 +232,11 @@ export const messageHandlers: Handlers<MessageAction> = {
     return ok();
   },
 
-  "action.message.unread": async (_ctx, ws, { roomId, unreadId }) => {
+  "action.message.unread": async (ctx, ws, { roomId, unreadId }) => {
+    if (!canSession(ctx, ws, Permission.VIEW_ROOM, roomId)) {
+      return err(new Error("Missing VIEW_ROOM"));
+    }
+
     if (unreadId < 0) {
       return err(new Error("Unread id must be greater than or equal to 0"));
     }

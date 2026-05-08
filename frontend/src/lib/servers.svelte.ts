@@ -3,11 +3,12 @@ import { sendNotification } from "@tauri-apps/plugin-notification";
 import type {
   IceConfig,
   Message,
+  PermissionMask,
   Room,
   ServerEvent,
   User,
 } from "trurpchat-shared";
-import { createSharedState, mentions, patch } from "trurpchat-shared";
+import { createSharedState, mentions, patch, perm } from "trurpchat-shared";
 import { log } from "$lib/log";
 import { focused } from "./focus.svelte";
 import { Gateway } from "./gateway.svelte";
@@ -55,8 +56,6 @@ export class Server {
     id: -1,
     name: "T",
     displayName: "T",
-    type: "text",
-    permissions: 0,
     deletedAt: null,
     online: false,
   });
@@ -71,6 +70,10 @@ export class Server {
       unreadId: messageId,
     });
   });
+
+  can(required: PermissionMask, roomId?: number) {
+    return perm.can(this.state, required, this.user.id, roomId);
+  }
 
   messages = new TextMessageCache(this.rooms, (roomId, blockId) => {
     const room = this.rooms.find(roomId);

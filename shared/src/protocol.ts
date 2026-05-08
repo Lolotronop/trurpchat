@@ -1,6 +1,7 @@
 import type { OtherEvent } from "./config";
 import type { KeyAction, KeyEvent } from "./key";
 import type { MessageAction, MessageEvent } from "./message";
+import type { PermissionAction, PermissionEvent } from "./permissions";
 import type { RoleAction, RoleEvent } from "./role";
 import type { RoomAction, RoomEvent } from "./room";
 import type { RtcMessage } from "./rtc";
@@ -12,6 +13,7 @@ export type ClientAction =
   | VoiceAction
   | KeyAction
   | RoleAction
+  | PermissionAction
   | UserAction
   | RoomAction
   | MessageAction
@@ -22,6 +24,7 @@ export type ServerEvent =
   | VoiceEvent
   | KeyEvent
   | RoleEvent
+  | PermissionEvent
   | UserEvent
   | RtcMessage
   | RoomEvent

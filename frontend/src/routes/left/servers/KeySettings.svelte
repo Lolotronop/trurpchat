@@ -10,7 +10,7 @@
     UserIcon,
     X,
   } from "@lucide/svelte";
-  import type { Key } from "trurpchat-shared";
+  import { Permission, type Key } from "trurpchat-shared";
   import { Button } from "$lib/components/ui/button";
   import { Separator } from "$lib/components/ui/separator";
   import type { Server } from "$lib/servers.svelte";
@@ -39,7 +39,7 @@
 
   function groupById(items: Key[]): Map<UserWithRoles, Key[]> {
     const map = new Map<UserWithRoles, Key[]>();
-    if (server.user.permissions === 1) {
+    if (server.can(Permission.MANAGE_KEYS)) {
       for (const user of server.users.list) {
         map.set(user, []);
       }
@@ -95,7 +95,7 @@
 <div class="flex flex-row items-center justify-between gap-2">
   <h1 class="text-foreground mb-2 text-2xl">Пользователи</h1>
   <div>
-    {#if server.user.permissions === 1}
+    {#if server.can(Permission.MANAGE_USERS)}
       <Button
         variant="secondary"
         onclick={() => {
@@ -135,7 +135,9 @@
       </div>
 
       <div>
-        {#if editingUserId === user.id && server.user.permissions === 1}
+        {#if editingUserId === user.id && server.can(Permission.MANAGE_USERS)}
+          {@const permission = server.state.permissions.find((p) => p.subjectType === "user" && p.subjectId === user.id)}
+          {@const isAdmin = ((permission?.allow ?? 0) & Permission.ADMIN) === 1}
           <Button
             variant="secondary"
             onclick={() => {
@@ -151,15 +153,29 @@
           <Button
             variant="secondary"
             onclick={() => {
-                const perm = user.permissions === 1 ? 0 : 1;
+              if (permission) {
                 server.gateway.send({
-                  type: "action.user.update",
-                  id: user.id,
-                  permissions: perm,
-                });
-              }}
+                  type: "action.permission.update",
+                  permission: {
+                    ...permission,
+                    allow: isAdmin ? 0 : Permission.ADMIN,
+                  }
+                })
+              } else {
+                server.gateway.send({
+                  type: "action.permission.create",
+                  permission: {
+                    subjectType: "user",
+                    subjectId: user.id,
+                    allow: isAdmin ? 0 : Permission.ADMIN,
+                    deny: 0,
+                    roomId: null,
+                  }
+                })
+              }
+            }}
           >
-            {#if user.permissions === 1}
+            {#if isAdmin}
               <Shield />
             {:else}
               <UserIcon />
@@ -220,7 +236,7 @@
           </div>
           <Button
             variant="secondary"
-            disabled={server.user.permissions !== 1 && keys.length === 1}
+            disabled={!server.can(Permission.MANAGE_KEYS) && keys.length === 1}
             onclick={() => {
               server.gateway.send({
                 type: "action.key.remove",
@@ -244,7 +260,6 @@
       >
         +
       </Button>
-    {:else}
     {/if}
   {/each}
 </div>

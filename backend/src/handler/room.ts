@@ -1,15 +1,15 @@
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { Room, RoomAction } from "trurpchat-shared";
-import { patch } from "trurpchat-shared";
+import { Permission, patch, perm } from "trurpchat-shared";
 import { db, rooms } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
-import { isSessionAdmin } from "./types";
+import { canSession } from "./types";
 import type { HandlerContext, Handlers } from "./types";
 
 function cheks(ctx: HandlerContext, ws: Parameters<Handlers<RoomAction>["action.room.create"]>[1], room: Partial<Room>) {
-  if (!isSessionAdmin(ctx, ws)) {
+  if (!canSession(ctx, ws, Permission.MANAGE_ROOMS)) {
     return err(new Error("Only admins can create rooms"));
   }
 
@@ -29,7 +29,11 @@ function sendRoom(ctx: HandlerContext, room: Room) {
     room,
   };
   patch(ctx.state, event);
-  sendAll(ctx.clients.values(), event);
+  for (const client of ctx.clients.values()) {
+    if (perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, room.id)) {
+      send(client, event);
+    }
+  }
 }
 
 function sendRoomList(ctx: HandlerContext, roomList: Room[]) {
@@ -38,7 +42,12 @@ function sendRoomList(ctx: HandlerContext, roomList: Room[]) {
     rooms: roomList,
   };
   patch(ctx.state, event);
-  sendAll(ctx.clients.values(), event);
+  for (const client of ctx.clients.values()) {
+    send(client, {
+      type: "event.room.list",
+      rooms: perm.accessibleRooms(ctx.state, client.data.userId, roomList),
+    });
+  }
 }
 
 export const roomHandlers: Handlers<RoomAction> = {
@@ -65,7 +74,7 @@ export const roomHandlers: Handlers<RoomAction> = {
   },
 
   "action.room.delete": async (ctx, ws, { id }) => {
-    if (!isSessionAdmin(ctx, ws)) {
+    if (!canSession(ctx, ws, Permission.MANAGE_ROOMS)) {
       return err(new Error("Only admins can delete rooms"));
     }
 

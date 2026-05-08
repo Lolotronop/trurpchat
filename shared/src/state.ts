@@ -1,4 +1,5 @@
 import type { Key } from "./key";
+import type { PermissionRow } from "./permissions";
 import type { ServerEvent } from "./protocol";
 import type { Role, UserRole } from "./role";
 import type { Room } from "./room";
@@ -21,6 +22,7 @@ export type SharedState = {
   rooms: Room[];
   roles: Role[];
   userRoles: UserRole[];
+  permissions: PermissionRow[];
   keys: Key[];
   voiceUsers: VoiceUser[];
   typing: TypingEvent[];
@@ -32,6 +34,7 @@ export function createSharedState(): SharedState {
     rooms: [],
     roles: [],
     userRoles: [],
+    permissions: [],
     keys: [],
     voiceUsers: [],
     typing: [],
@@ -135,6 +138,11 @@ export function patch(state: SharedState, message: ServerEvent) {
       return;
     case "event.room.deleted":
       removeById(state.rooms, message.roomId);
+      for (let index = state.permissions.length - 1; index >= 0; index--) {
+        if (state.permissions[index]?.roomId === message.roomId) {
+          state.permissions.splice(index, 1);
+        }
+      }
       for (let index = state.voiceUsers.length - 1; index >= 0; index--) {
         if (state.voiceUsers[index]?.roomId === message.roomId) {
           state.voiceUsers.splice(index, 1);
@@ -182,6 +190,12 @@ export function patch(state: SharedState, message: ServerEvent) {
           state.userRoles.splice(index, 1);
         }
       }
+      for (let index = state.permissions.length - 1; index >= 0; index--) {
+        const permission = state.permissions[index];
+        if (permission?.subjectType === "user" && permission.subjectId === message.userId) {
+          state.permissions.splice(index, 1);
+        }
+      }
       return;
     case "event.user.state":
     case "event.user.me":
@@ -200,6 +214,12 @@ export function patch(state: SharedState, message: ServerEvent) {
       for (let index = state.userRoles.length - 1; index >= 0; index--) {
         if (state.userRoles[index]?.roleId === message.roleId) {
           state.userRoles.splice(index, 1);
+        }
+      }
+      for (let index = state.permissions.length - 1; index >= 0; index--) {
+        const permission = state.permissions[index];
+        if (permission?.subjectType === "role" && permission.subjectId === message.roleId) {
+          state.permissions.splice(index, 1);
         }
       }
       return;
@@ -226,6 +246,16 @@ export function patch(state: SharedState, message: ServerEvent) {
       }
       return;
     }
+    case "event.permission.list":
+      replaceArray(state.permissions, message.permissions);
+      return;
+    case "event.permission.created":
+    case "event.permission.updated":
+      upsertById(state.permissions, message.permission);
+      return;
+    case "event.permission.deleted":
+      removeById(state.permissions, message.id);
+      return;
     case "event.key.list":
       replaceArray(state.keys, message.keys);
       return;

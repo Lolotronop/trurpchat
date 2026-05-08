@@ -7,12 +7,6 @@ export const users = table("users", {
   id: t.integer({ mode: "number" }).primaryKey(),
   name: t.text({ length: 255 }).notNull(),
   displayName: t.text({ length: 255 }),
-
-  /** For now, this will be set to 1 for admins and 0 for everyone else
-   * In the future, I plan to expand this to support different permissions
-   * as a bit mask. The "catchall" admin wil stay at 1, I guess
-   */
-  permissions: t.integer({ mode: "number" }).notNull(),
   deletedAt: t.integer({ mode: "timestamp_ms" }),
 });
 
@@ -22,7 +16,6 @@ export const roles = table("roles", {
   id: t.integer({ mode: "number" }).primaryKey(),
   name: t.text({ length: 255 }).notNull(),
   color: t.integer({ mode: "number" }).notNull(),
-  permissions: t.integer({ mode: "number" }).notNull().default(0),
   section: t.integer({ mode: "boolean" }).notNull().default(false),
   order: t.real().notNull().default(0),
   deletedAt: t.integer({ mode: "timestamp_ms" }),
@@ -72,16 +65,51 @@ export const keys = table("keys", {
 export type Key = typeof keys.$inferSelect;
 
 export const CHANNEL_TYPES = ["text", "voice"] as const;
+export const ROOM_VISIBILITY_MODES = ["inherit", "private"] as const;
 export const rooms = table("rooms", {
   id: t.integer().primaryKey(),
   name: t.text({ length: 255 }).notNull(),
   type: t.text({ mode: "text", enum: CHANNEL_TYPES }).notNull(),
+  visibilityMode: t
+    .text("visibility_mode", { mode: "text", enum: ROOM_VISIBILITY_MODES })
+    .notNull()
+    .default("inherit"),
   order: t.real().notNull(),
   nextMessageId: t.integer().notNull().default(0),
   deletedAt: t.integer({ mode: "timestamp_ms" }),
 });
 
 export type Room = typeof rooms.$inferSelect;
+
+export const PERMISSION_SUBJECT_TYPES = ["everyone", "role", "user"] as const;
+export const permissions = table(
+  "permissions",
+  {
+    id: t.integer().primaryKey(),
+    subjectType: t
+      .text("subject_type", { mode: "text", enum: PERMISSION_SUBJECT_TYPES })
+      .notNull(),
+    subjectId: t.integer("subject_id", { mode: "number" }),
+    roomId: t
+      .integer("room_id", { mode: "number" })
+      .references(() => rooms.id, { onDelete: "cascade" }),
+    allow: t.integer({ mode: "number" }).notNull().default(0),
+    deny: t.integer({ mode: "number" }).notNull().default(0),
+  },
+  (tb) => [
+    t.check(
+      "permissions_subject_check",
+      sql`(${tb.subjectType} = 'everyone' AND ${tb.subjectId} IS NULL) OR (${tb.subjectType} IN ('role', 'user') AND ${tb.subjectId} IS NOT NULL)`,
+    ),
+    t.uniqueIndex("permissions_unique").on(
+      tb.subjectType,
+      tb.subjectId,
+      tb.roomId,
+    ),
+  ],
+);
+
+export type Permission = typeof permissions.$inferSelect;
 
 type AttachmentData =
   | {
@@ -182,11 +210,14 @@ type _AssertServerMetaMatchesShared = Assert<
 >;
 type _AssertKeysMatchShared = Assert<Equal<Key, Shared.Key>>;
 type _AssertRoomsMatchShared = Assert<Equal<Room, Shared.Room>>;
+type _AssertPermissionsMatchShared = Assert<
+  Equal<Permission, Shared.PermissionRow>
+>;
 type _AssertMessagesMatchShared = Assert<Equal<Message, Shared.TextMessage>>;
 type _AssertUnreadMatchesShared = Assert<Equal<UnreadRow, Shared.UnreadRow>>;
 
 export const relations = defineRelations(
-  { users, roles, userRoles, keys, messages, rooms, serverMeta },
+  { users, roles, userRoles, keys, messages, rooms, serverMeta, permissions },
   (r) => ({
     keys: {
       user: r.one.users({
@@ -214,6 +245,13 @@ export const relations = defineRelations(
     },
     rooms: {
       messages: r.many.messages(),
+      permissions: r.many.permissions(),
+    },
+    permissions: {
+      room: r.one.rooms({
+        from: r.permissions.roomId,
+        to: r.rooms.id,
+      }),
     },
     messages: {
       room: r.one.rooms({

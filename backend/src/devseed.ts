@@ -1,5 +1,10 @@
 import { count } from "drizzle-orm";
-import { db, type Key, keys, rooms, users } from "./db";
+import type { PermissionCreate } from "trurpchat-shared";
+import {
+  DEFAULT_EVERYONE_PERMISSIONS,
+  Permission,
+} from "trurpchat-shared";
+import { db, type Key, keys, permissions, rooms, users } from "./db";
 
 export async function getKeys() {
   return await db.query.keys.findMany({
@@ -18,6 +23,7 @@ export async function getKeys() {
 
 export async function seed() {
   await Promise.all([seedRooms(), seedUsers()]);
+  await seedPermissions();
 }
 
 async function seedUsers() {
@@ -42,15 +48,12 @@ async function seedUsers() {
     .values([
       {
         name: "Helium",
-        permissions: 1,
       },
       {
         name: "Tester",
-        permissions: 0,
       },
       {
         name: "Firefox",
-        permissions: 0,
       },
     ])
     .returning();
@@ -66,6 +69,41 @@ async function seedUsers() {
   console.log(newKeys);
 
   await db.insert(keys).values(newKeys);
+}
+
+async function seedPermissions() {
+  const [countRow] = await db
+    .select({
+      count: count(permissions.id),
+    })
+    .from(permissions);
+
+  if (!countRow || countRow.count !== 0) {
+    return;
+  }
+
+  const [admin] = await db.select({ id: users.id }).from(users).limit(1);
+  const values: PermissionCreate[] = [
+    {
+      subjectType: "everyone" as const,
+      subjectId: null,
+      roomId: null,
+      allow: DEFAULT_EVERYONE_PERMISSIONS,
+      deny: 0,
+    },
+  ];
+
+  if (admin) {
+    values.push({
+      subjectType: "user",
+      subjectId: admin.id,
+      roomId: null,
+      allow: Permission.ADMIN,
+      deny: 0,
+    });
+  }
+
+  await db.insert(permissions).values(values);
 }
 
 async function seedRooms() {

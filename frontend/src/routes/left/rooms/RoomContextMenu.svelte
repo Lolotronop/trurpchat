@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
+  import { Permission } from "trurpchat-shared";
   import type { RoomWithData } from "$lib/rooms.svelte";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import Item from "$lib/components/ContextMenuItem.svelte";
@@ -76,7 +77,7 @@
       <Settings />
     </Item>
 
-    {#if server.user.permissions === 1}
+    {#if server.can(Permission.MANAGE_ROOMS)}
       <Item onclick={() => editOpen = true}>
         Изменить
         <Pencil />

@@ -18,10 +18,13 @@
 
   let { onsubmit, oncalcel, initial }: Props = $props();
 
-  initial ??= {
+  const defaultRoom: EditingRoom = {
     name: "",
     type: "voice",
+    visibilityMode: "inherit",
   };
+
+  initial ??= defaultRoom;
 
   // svelte-ignore state_referenced_locally
   let room: EditingRoom = $state({ ...initial });
@@ -32,7 +35,7 @@
   onsubmit={(e) => {
     e.preventDefault();
     onsubmit(room);
-    room = initial;
+    room = initial ?? defaultRoom;
   }}
 >
   <div class="flex flex-row gap-8">
@@ -59,7 +62,7 @@
       variant="secondary"
       onclick={() => {
       oncalcel();
-      room = initial;
+      room = initial ?? defaultRoom;
     }}
     >
       Отмена

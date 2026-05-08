@@ -1,10 +1,10 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { KeyAction } from "trurpchat-shared";
-import { patch, user } from "trurpchat-shared";
+import { Permission, patch, perm } from "trurpchat-shared";
 import { createKey, db, keys, users } from "$src/db";
 import { send, sendAll } from "$src/send";
-import { isSessionAdmin } from "./types";
+import { canSession } from "./types";
 import type { Handlers } from "./types";
 
 async function refreshBackendKeys(ctx: Parameters<Handlers<KeyAction>["action.key.add"]>[0]) {
@@ -17,7 +17,7 @@ async function refreshBackendKeys(ctx: Parameters<Handlers<KeyAction>["action.ke
 
 export const keyHandlers: Handlers<KeyAction> = {
   "action.key.add": async (ctx, ws, msg) => {
-    const isAdmin = isSessionAdmin(ctx, ws);
+    const isAdmin = canSession(ctx, ws, Permission.MANAGE_KEYS);
     if (!isAdmin && ws.data.userId !== msg.userId) {
       return err(
         new Error(
@@ -66,7 +66,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       const userKeys = allKeys.filter((k) => k.userId !== msg.userId);
       const admins = ctx.clients
         .values()
-        .filter((c) => user(ctx.state, c.data.userId)?.permissions === 1);
+        .filter((c) => perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId));
       sendAll([...admins, affectedUser], {
         type: "event.key.list",
         keys: userKeys,
@@ -76,7 +76,7 @@ export const keyHandlers: Handlers<KeyAction> = {
   },
 
   "action.key.remove": async (ctx, ws, msg) => {
-    const isAdmin = isSessionAdmin(ctx, ws);
+    const isAdmin = canSession(ctx, ws, Permission.MANAGE_KEYS);
     const keyss = await db
       .select({
         ...getColumns(keys),
@@ -125,7 +125,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       const userKeys = allKeys.filter((k) => k.userId !== key.userId);
       const admins = ctx.clients
         .values()
-        .filter((c) => user(ctx.state, c.data.userId)?.permissions === 1);
+        .filter((c) => perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId));
       sendAll([...admins, affectedUser], {
         type: "event.key.list",
         keys: userKeys,
@@ -136,7 +136,7 @@ export const keyHandlers: Handlers<KeyAction> = {
   },
 
   "action.key.list": async (ctx, ws, __) => {
-    const isAdmin = isSessionAdmin(ctx, ws);
+    const isAdmin = canSession(ctx, ws, Permission.MANAGE_KEYS);
     const allKeys = await db
       .select({
         ...getColumns(keys),

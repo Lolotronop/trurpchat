@@ -8,7 +8,7 @@
     Trash,
   } from "@lucide/svelte";
   import { onMount, tick } from "svelte";
-  import type { TextMessage as TMessage } from "trurpchat-shared";
+  import { Permission, type TextMessage as TMessage } from "trurpchat-shared";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
   import Stream from "$lib/components/stream/Stream.svelte";
   import { Button } from "$lib/components/ui/button";
@@ -284,7 +284,7 @@
   }
 
   function canDeleteMessage(message: TMessage) {
-    return message.userId === server.user.id || server.user.permissions === 1;
+    return message.userId === server.user.id || server.can(Permission.DELETE_MESSAGES, room.id);
   }
 
   function startEditingLastSelfMessage() {

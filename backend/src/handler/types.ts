@@ -1,6 +1,6 @@
 import type { Result } from "neverthrow";
-import type { Message, SharedState } from "trurpchat-shared";
-import { user } from "trurpchat-shared";
+import type { Message, PermissionMask, SharedState } from "trurpchat-shared";
+import { Permission, perm, user } from "trurpchat-shared";
 import type { WsClient } from "$src/voice";
 
 export type MessageNames<T extends { type: string }> = {
@@ -30,6 +30,15 @@ export function sessionUser(ctx: HandlerContext, ws: WsClient) {
   return found;
 }
 
+export function canSession(
+  ctx: HandlerContext,
+  ws: WsClient,
+  required: PermissionMask,
+  roomId?: number,
+) {
+  return perm.can(ctx.state, required, ws.data.userId, roomId);
+}
+
 export function isSessionAdmin(ctx: HandlerContext, ws: WsClient) {
-  return sessionUser(ctx, ws).permissions === 1;
+  return canSession(ctx, ws, Permission.ADMIN);
 }

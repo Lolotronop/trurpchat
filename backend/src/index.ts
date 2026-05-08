@@ -7,12 +7,13 @@ import type {
   OfflineUser,
   User,
 } from "trurpchat-shared";
-import { createSharedState, defaultConnectedUserState, mentions, patch, user } from "trurpchat-shared";
+import { createSharedState, defaultConnectedUserState, mentions, patch, perm, user } from "trurpchat-shared";
 import {
   db,
   getOrCreateServerId,
   keys,
   messages,
+  permissions,
   roles,
   rooms,
   unread,
@@ -44,6 +45,7 @@ ctx.state.users.push(
 ctx.state.keys.push(...(await db.select().from(keys)));
 ctx.state.roles.push(...(await db.select().from(roles).where(isNull(roles.deletedAt))));
 ctx.state.userRoles.push(...(await db.select().from(userRoles)));
+ctx.state.permissions.push(...(await db.select().from(permissions)));
 
 const PORT = +(env.PORT ?? 3000);
 const serverId = await getOrCreateServerId();
@@ -190,7 +192,7 @@ Bun.serve<WsData, never>({
 
       send(ws, {
         type: "event.room.list",
-        rooms: ctx.state.rooms,
+        rooms: perm.accessibleRooms(ctx.state, ws.data.userId, ctx.state.rooms),
       });
       for (const voiceUser of ctx.state.voiceUsers) {
         send(ws, {
@@ -248,6 +250,11 @@ Bun.serve<WsData, never>({
       });
 
       await sendRoleList(ws);
+
+      send(ws, {
+        type: "event.permission.list",
+        permissions: ctx.state.permissions,
+      });
 
       const users = await getAllUsers(ctx);
       send(ws, {

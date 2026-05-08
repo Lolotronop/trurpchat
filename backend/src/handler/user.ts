@@ -1,15 +1,15 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { UserAction } from "trurpchat-shared";
-import { connectedUser, user as findUser, patch } from "trurpchat-shared";
+import { Permission, connectedUser, user as findUser, patch, perm } from "trurpchat-shared";
 import { createKey, db, keys, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { Handlers } from "./types";
-import { isSessionAdmin } from "./types";
+import { canSession } from "./types";
 
 export const userHandlers: Handlers<UserAction> = {
   "action.user.create": async (ctx, ws, msg) => {
-    const isAdmin = isSessionAdmin(ctx, ws);
+    const isAdmin = canSession(ctx, ws, Permission.MANAGE_USERS);
     if (!isAdmin) {
       return err(
         new Error(`User ${ws.data.userId} is not admin, tryed to create user`),
@@ -21,7 +21,6 @@ export const userHandlers: Handlers<UserAction> = {
       .values([
         {
           name: msg.name,
-          permissions: 0,
         },
       ])
       .returning();
@@ -44,7 +43,7 @@ export const userHandlers: Handlers<UserAction> = {
 
     const admins = ctx.clients
       .values()
-      .filter((c) => findUser(ctx.state, c.data.userId)?.permissions === 1);
+      .filter((c) => perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId));
     sendAll(admins, {
       type: "event.key.list",
       keys: await db
@@ -65,6 +64,14 @@ export const userHandlers: Handlers<UserAction> = {
     if (!me) {
       return err(new Error(`User ${ws.data.userId} is not connected`));
     }
+    if (data.streaming || data.camera) {
+      const voiceRoom = ctx.state.voiceUsers.find(
+        (entry) => entry.userId === ws.data.userId,
+      );
+      if (!voiceRoom || !canSession(ctx, ws, Permission.STREAM, voiceRoom.roomId)) {
+        return err(new Error("Missing STREAM"));
+      }
+    }
     Object.assign(me, data);
 
     const event = {
@@ -78,7 +85,7 @@ export const userHandlers: Handlers<UserAction> = {
   },
 
   "action.user.update": async (ctx, ws, msg) => {
-    const isAdmin = isSessionAdmin(ctx, ws);
+    const isAdmin = canSession(ctx, ws, Permission.MANAGE_USERS);
     if (!isAdmin && ws.data.userId !== msg.id) {
       return err(
         new Error(
@@ -87,13 +94,6 @@ export const userHandlers: Handlers<UserAction> = {
       );
     }
 
-    if (!isAdmin && msg.permissions) {
-      return err(
-        new Error(
-          `User ${ws.data.userId} is not admin, tryed to change permissions for ${msg.id}`,
-        ),
-      );
-    }
 
     const { id: _id, type: _type, ...rest } = msg;
     const updated = await db
@@ -114,7 +114,7 @@ export const userHandlers: Handlers<UserAction> = {
         user: stateUser ?? { ...user, online: false as const },
       };
       send(client, meEvent);
-      const clientIsAdmin = user.permissions === 1;
+      const clientIsAdmin = perm.can(ctx.state, Permission.MANAGE_KEYS, msg.id);
       const userKeys = await db
         .select()
         .from(keys)
@@ -136,7 +136,7 @@ export const userHandlers: Handlers<UserAction> = {
   },
 
   "action.user.delete": async (ctx, ws, msg) => {
-    const isAdmin = isSessionAdmin(ctx, ws);
+    const isAdmin = canSession(ctx, ws, Permission.MANAGE_USERS);
     if (!isAdmin && ws.data.userId !== msg.id) {
       return err(
         new Error(

@@ -20,7 +20,7 @@
   import { RestrictToVerticalAxis } from "@dnd-kit/abstract/modifiers";
   import { RestrictToElement } from "@dnd-kit/dom/modifiers";
   import { PointerActivationConstraints } from "@dnd-kit/dom";
-  import type { Role } from "trurpchat-shared";
+  import { Permission, type Role } from "trurpchat-shared";
 
   type Props = {
     server: Server;
@@ -141,7 +141,7 @@
 <div class="flex flex-row items-center justify-between gap-2">
   <h1 class="text-foreground mb-2 text-2xl">Роли</h1>
   <div>
-    {#if server.user.permissions === 1}
+    {#if server.can(Permission.MANAGE_ROLES)}
       <Button
         variant="secondary"
         onclick={() => {
@@ -150,7 +150,6 @@
             role: {
               name: "New role " + Math.random().toString(36).slice(2, 6),
               color: 0x888888,
-              permissions: 0,
               section: false,
             },
           });

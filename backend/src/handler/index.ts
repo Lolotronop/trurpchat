@@ -3,6 +3,7 @@ import type { ClientAction, Message } from "trurpchat-shared";
 import type { WsClient } from "$src/voice";
 import { keyHandlers } from "./key";
 import { messageHandlers } from "./message";
+import { permissionHandlers } from "./permission";
 import { roleHandlers } from "./role";
 import { roomHandlers } from "./room";
 import { rtcHandlers } from "./rtc";
@@ -18,6 +19,7 @@ const handlers = {
   ...voiceHandlers,
   ...keyHandlers,
   ...roleHandlers,
+  ...permissionHandlers,
   ...userHandlers,
   ...roomHandlers,
   ...messageHandlers,

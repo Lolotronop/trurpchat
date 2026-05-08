@@ -4,7 +4,6 @@ export type RoleData = {
   id: number;
   name: string;
   color: number;
-  permissions: number;
   section: boolean;
   order: number;
   deletedAt: Date | null;
@@ -21,16 +20,16 @@ export type DbUserRole = UserRoleData;
 
 export type Role = Select<
   RoleData,
-  "id" | "name" | "color" | "permissions" | "section" | "order"
+  "id" | "name" | "color" | "section" | "order"
 >;
 export type UserRole = Select<UserRoleData, "userId" | "roleId">;
 
-export type RoleCreate = Select<RoleData, "name" | "color" | "permissions"> &
+export type RoleCreate = Select<RoleData, "name" | "color"> &
   Partial<Select<RoleData, "section" | "order">>;
 
 export type RoleUpdate = Select<RoleData, "id"> &
   Partial<
-    Select<RoleData, "name" | "color" | "permissions" | "section" | "order">
+    Select<RoleData, "name" | "color" | "section" | "order">
   >;
 
 export type RoleAction =

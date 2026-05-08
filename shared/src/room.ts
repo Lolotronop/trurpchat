@@ -1,9 +1,12 @@
+import type { PermissionVisibilityMode } from "./permissions";
+
 export type ChannelType = "text" | "voice";
 
 export type Room = {
   id: number;
   name: string;
   type: ChannelType;
+  visibilityMode: PermissionVisibilityMode;
   order: number;
   nextMessageId: number;
   deletedAt: Date | null;

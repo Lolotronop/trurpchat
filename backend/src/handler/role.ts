@@ -1,16 +1,12 @@
 import { and, desc, eq, getColumns, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { Role, RoleAction, ServerEvent, UserRole } from "trurpchat-shared";
-import { patch } from "trurpchat-shared";
+import { Permission, patch } from "trurpchat-shared";
 import { db, roles, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
-import { isSessionAdmin } from "./types";
+import { canSession } from "./types";
 import type { Handlers } from "./types";
-
-function isAdmin(permissions: number) {
-  return permissions === 1;
-}
 
 function sendRoleEvent(ctx: Parameters<Handlers<RoleAction>["action.role.create"]>[0], event: ServerEvent) {
   patch(ctx.state, event);
@@ -31,7 +27,6 @@ export async function getAllRoles(): Promise<Role[]> {
       id: roles.id,
       name: roles.name,
       color: roles.color,
-      permissions: roles.permissions,
       section: roles.section,
       order: roles.order,
     })
@@ -65,7 +60,7 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.create": async (ctx, ws, msg) => {
-    if (!isSessionAdmin(ctx, ws)) {
+    if (!canSession(ctx, ws, Permission.MANAGE_ROLES)) {
       return err(
         new Error(`User ${ws.data.userId} is not admin, tryed to create role`),
       );
@@ -100,7 +95,6 @@ export const roleHandlers: Handlers<RoleAction> = {
           id: roles.id,
           name: roles.name,
           color: roles.color,
-          permissions: roles.permissions,
           section: roles.section,
           order: roles.order,
         });
@@ -121,7 +115,7 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.update": async (ctx, ws, msg) => {
-    if (!isSessionAdmin(ctx, ws)) {
+    if (!canSession(ctx, ws, Permission.MANAGE_ROLES)) {
       return err(
         new Error(`User ${ws.data.userId} is not admin, tryed to update role`),
       );
@@ -142,7 +136,6 @@ export const roleHandlers: Handlers<RoleAction> = {
           id: roles.id,
           name: roles.name,
           color: roles.color,
-          permissions: roles.permissions,
           section: roles.section,
           order: roles.order,
         });
@@ -184,8 +177,7 @@ export const roleHandlers: Handlers<RoleAction> = {
             id: roles.id,
             name: roles.name,
             color: roles.color,
-            permissions: roles.permissions,
-            section: roles.section,
+              section: roles.section,
             order: roles.order,
           });
 
@@ -221,7 +213,7 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.delete": async (ctx, ws, msg) => {
-    if (!isSessionAdmin(ctx, ws)) {
+    if (!canSession(ctx, ws, Permission.MANAGE_ROLES)) {
       return err(
         new Error(`User ${ws.data.userId} is not admin, tryed to delete role`),
       );
@@ -266,7 +258,7 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.assign": async (ctx, ws, msg) => {
-    if (!isSessionAdmin(ctx, ws)) {
+    if (!canSession(ctx, ws, Permission.MANAGE_ROLES)) {
       return err(
         new Error(`User ${ws.data.userId} is not admin, tryed to assign role`),
       );
@@ -315,7 +307,7 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.unassign": async (ctx, ws, msg) => {
-    if (!isSessionAdmin(ctx, ws)) {
+    if (!canSession(ctx, ws, Permission.MANAGE_ROLES)) {
       return err(
         new Error(`User ${ws.data.userId} is not admin, tryed to unassign role`),
       );
