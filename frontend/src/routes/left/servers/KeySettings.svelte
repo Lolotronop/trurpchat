@@ -7,7 +7,6 @@
     Plus,
     RefreshCw,
     Settings,
-    Shield,
     Trash,
     UserIcon,
     X,
@@ -19,7 +18,7 @@
   import { Switch } from "$lib/components/ui/switch";
   import type { Server } from "$lib/servers.svelte";
   import type { UserWithRoles } from "$lib/users.svelte";
-  import EditableTextField from "./EditableTextField.svelte";
+  import EditableTextField from "$lib/components/EditableTextField.svelte";
   import PermissionEditor from "./PermissionEditor.svelte";
 
   type Props = {

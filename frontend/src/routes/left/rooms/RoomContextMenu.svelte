@@ -48,7 +48,6 @@
         ...roomUpdate,
       },
     });
-    editOpen = false;
   }
 
   function onRoomDelete() {
@@ -72,6 +71,7 @@
 <Dialog.Root bind:open={editOpen}>
   <Dialog.Content class="max-w-2xl p-0">
     <ScrollArea class="max-h-[calc(100vh-64px)] overflow-y-auto px-6 py-6">
+      <h1 class="text-xl">Редактирование комнаты {room.name}</h1>
       <div class="flex flex-col gap-6">
         <RoomForm
           initial={room}

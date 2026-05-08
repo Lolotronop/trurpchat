@@ -40,7 +40,7 @@
 </script>
 
 <div class="flex flex-row items-center justify-between gap-2">
-  <p class="min-w-8">{label}</p>
+  <p>{label}</p>
   {#if editing}
     <Input
       bind:ref={input}

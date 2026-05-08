@@ -10,7 +10,7 @@
     type RoleWithColorHex,
     type UserWithRoles,
   } from "$lib/users.svelte";
-  import EditableTextField from "./EditableTextField.svelte";
+  import EditableTextField from "$lib/components/EditableTextField.svelte";
   import PermissionEditor from "./PermissionEditor.svelte";
   import {
     DragDropProvider,
