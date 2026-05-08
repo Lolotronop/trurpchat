@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Plus, Settings, Trash, User, List } from "@lucide/svelte";
+  import { ChevronDown, ChevronRight, Plus, Settings, Trash, User, List } from "@lucide/svelte";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import { Separator } from "$lib/components/ui/separator";
@@ -28,9 +28,40 @@
   const { server }: Props = $props();
 
   let editingRoleId: number | undefined = $state(undefined);
+  let expandedUserRoleIds = $state(new Set<number>());
+  let userSearch = $state("");
 
   function hasRole(user: UserWithRoles, roleId: number) {
     return user.roles.some((role) => role.id === roleId);
+  }
+
+  function toggleEditingRole(roleId: number) {
+    if (editingRoleId === roleId) {
+      editingRoleId = undefined;
+    } else {
+      editingRoleId = roleId;
+    }
+  }
+
+  const filteredUsers = $derived.by(() => {
+    const query = userSearch.trim().toLocaleLowerCase("ru-RU");
+    if (!query) return server.users.list;
+
+    return server.users.list.filter((user) => {
+      return [user.username, user.name, user.displayName ?? ""].some((value) =>
+        value.toLocaleLowerCase("ru-RU").includes(query),
+      );
+    });
+  });
+
+  function toggleSetValue(set: Set<number>, value: number) {
+    const next = new Set(set);
+    if (next.has(value)) {
+      next.delete(value);
+    } else {
+      next.add(value);
+    }
+    return next;
   }
 
   function assignedCount(roleId: number) {
@@ -173,21 +204,27 @@
       {/if}
 
       <div
-        class="flex flex-row items-center justify-between gap-2 h-full"
+        class="flex h-full cursor-pointer flex-row items-center justify-between gap-2"
+        role="button"
+        tabindex="0"
+        onclick={() => {
+          toggleEditingRole(role.id);
+        }}
+        onkeydown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          toggleEditingRole(role.id);
+        }}
         {@attach sortable.attach}
       >
-        <div class="flex flex-row items-center gap-2">
+        <div class="flex min-w-0 flex-row items-center gap-2">
           <div
-            class="cursor-grab size-6 flex items-center justify-center"
+            class="flex size-6 cursor-grab items-center justify-center"
             {@attach sortable.attachHandle}
           >
             <List class="size-4" />
           </div>
-          <div
-            class="size-4 shrink-0 rounded-full border"
-            style:background-color={toColorHex(role.color)}
-          ></div>
-          <p class="truncate">{role.name}</p>
+          <p class="truncate" style:color={toColorHex(role.color)}>{role.name}</p>
         </div>
         <div class="flex items-center gap-3">
           <div class="flex items-center gap-3">
@@ -199,7 +236,8 @@
           {#if editingRoleId === role.id}
             <Button
               variant="secondary"
-              onclick={() => {
+              onclick={(event) => {
+                event.stopPropagation();
                 server.gateway.send({
                   type: "action.role.delete",
                   id: role.id,
@@ -211,12 +249,9 @@
           {/if}
           <Button
             variant="secondary"
-            onclick={() => {
-              if (editingRoleId === role.id) {
-                editingRoleId = undefined;
-              } else {
-                editingRoleId = role.id;
-              }
+            onclick={(event) => {
+              event.stopPropagation();
+              toggleEditingRole(role.id);
             }}
           >
             <Settings />
@@ -267,34 +302,55 @@
         </div>
 
         <div class="mt-2 flex flex-col gap-2">
-          <p class="text-sm font-medium">Пользователи</p>
-          {#each server.users.list as user (user.id)}
-            {@const checked = hasRole(user, role.id)}
-            <div
-              class="flex items-center justify-between gap-3 rounded border px-3 py-2"
-            >
-              <div class="min-w-0">
-                <p
-                  class="truncate text-sm font-medium text-foreground"
-                  style:color={user.colorHex}
-                >
-                  {user.username}
-                </p>
-                <p
-                  class="truncate text-xs text-foreground"
-                  style:color={user.colorHex}
-                >
-                  @{user.name}
-                </p>
-              </div>
-              <Switch
-                {checked}
+          <button
+            type="button"
+            class="flex items-center gap-2 text-left text-sm font-medium"
+            onclick={() => {
+              expandedUserRoleIds = toggleSetValue(expandedUserRoleIds, role.id);
+            }}
+          >
+            {#if expandedUserRoleIds.has(role.id)}
+              <ChevronDown class="size-4" />
+            {:else}
+              <ChevronRight class="size-4" />
+            {/if}
+            <span>Пользователи</span>
+          </button>
+          {#if expandedUserRoleIds.has(role.id)}
+            <Input bind:value={userSearch} placeholder="Поиск пользователей" />
+            {#each filteredUsers as user (user.id)}
+              {@const checked = hasRole(user, role.id)}
+              <div
+                class="flex cursor-pointer items-center justify-between gap-3 rounded border px-3 py-2"
+                role="button"
+                tabindex="0"
                 onclick={() => {
                   toggleRole(user, role, !checked);
                 }}
-              />
-            </div>
-          {/each}
+                onkeydown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  toggleRole(user, role, !checked);
+                }}
+              >
+                <div class="min-w-0">
+                  <p
+                    class="truncate text-sm font-medium text-foreground"
+                    style:color={user.colorHex}
+                  >
+                    {user.username} <span class="text-muted-foreground">@{user.name}</span>
+                  </p>
+                </div>
+                <Switch
+                  {checked}
+                  onclick={(event) => {
+                    event.stopPropagation();
+                    toggleRole(user, role, !checked);
+                  }}
+                />
+              </div>
+            {/each}
+          {/if}
         </div>
       {/if}
     {/each}

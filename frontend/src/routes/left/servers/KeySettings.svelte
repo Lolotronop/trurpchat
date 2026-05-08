@@ -1,6 +1,8 @@
 <script lang="ts">
   import {
     Clipboard,
+    ChevronDown,
+    ChevronRight,
     Loader2,
     Plus,
     RefreshCw,
@@ -10,9 +12,11 @@
     UserIcon,
     X,
   } from "@lucide/svelte";
-  import { Permission, type Key } from "trurpchat-shared";
+  import { Permission, type Key, type Role } from "trurpchat-shared";
   import { Button } from "$lib/components/ui/button";
+  import { Input } from "$lib/components/ui/input";
   import { Separator } from "$lib/components/ui/separator";
+  import { Switch } from "$lib/components/ui/switch";
   import type { Server } from "$lib/servers.svelte";
   import type { UserWithRoles } from "$lib/users.svelte";
   import EditableTextField from "./EditableTextField.svelte";
@@ -57,6 +61,40 @@
   const keyByUser = $derived(groupById(server.keys));
 
   let editingUserId: number | undefined = $state(undefined);
+  let expandedKeyUserIds = $state(new Set<number>());
+  let expandedRoleUserIds = $state(new Set<number>());
+  let roleSearch = $state("");
+
+  const filteredRoles = $derived.by(() => {
+    const query = roleSearch.trim().toLocaleLowerCase("ru-RU");
+    if (!query) return server.users.roles;
+
+    return server.users.roles.filter((role) =>
+      role.name.toLocaleLowerCase("ru-RU").includes(query),
+    );
+  });
+
+  function toggleSetValue(set: Set<number>, value: number) {
+    const next = new Set(set);
+    if (next.has(value)) {
+      next.delete(value);
+    } else {
+      next.add(value);
+    }
+    return next;
+  }
+
+  function hasRole(user: UserWithRoles, roleId: number) {
+    return user.roles.some((role) => role.id === roleId);
+  }
+
+  function toggleRole(user: UserWithRoles, role: Role, checked: boolean) {
+    server.gateway.send({
+      type: checked ? "action.role.assign" : "action.role.unassign",
+      userId: user.id,
+      roleId: role.id,
+    });
+  }
 
   async function saveUserName(userId: number, value: string | null) {
     if (!value) return false;
@@ -126,33 +164,55 @@
   {/if}
   {#each keyByUser.entries() as [ user, keys ] (user.id)}
     <Separator />
-    <div class="flex flex-row items-center justify-between gap-2">
-      <div class="flex flex-row items-center gap-2">
-        <p class="text-foreground" style:color={user.colorHex}>@{user.name}</p>
-        <p class="text-foreground" style:color={user.colorHex}>
-          {user.displayName && "| "}{user.displayName}
+    <div
+      class="flex h-full cursor-pointer flex-row items-center justify-between gap-2"
+      role="button"
+      tabindex="0"
+      onclick={() => {
+        if (editingUserId === user.id) {
+          editingUserId = undefined;
+        } else {
+          editingUserId = user.id;
+        }
+      }}
+      onkeydown={(event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        if (editingUserId === user.id) {
+          editingUserId = undefined;
+        } else {
+          editingUserId = user.id;
+        }
+      }}
+    >
+      <div class="flex min-w-0 flex-row items-center gap-2">
+        <UserIcon class="size-4 shrink-0" />
+        <p class="truncate text-foreground" style:color={user.colorHex}>
+          {user.username} <span class="text-muted-foreground">@{user.name}</span>
         </p>
       </div>
 
-      <div>
+      <div class="flex items-center gap-2">
         {#if editingUserId === user.id && server.can(Permission.MANAGE_USERS)}
           {@const permission = server.state.permissions.find((p) => p.subjectType === "user" && p.subjectId === user.id)}
           {@const isAdmin = ((permission?.allow ?? 0) & Permission.ADMIN) === 1}
           <Button
             variant="secondary"
-            onclick={() => {
-                server.gateway.send({
-                  type: "action.user.delete",
-                  id: user.id,
-                });
-              }}
+            onclick={(event) => {
+              event.stopPropagation();
+              server.gateway.send({
+                type: "action.user.delete",
+                id: user.id,
+              });
+            }}
           >
             <Trash />
           </Button>
 
           <Button
             variant="secondary"
-            onclick={() => {
+            onclick={(event) => {
+              event.stopPropagation();
               if (permission) {
                 server.gateway.send({
                   type: "action.permission.update",
@@ -184,7 +244,8 @@
         {/if}
         <Button
           variant="secondary"
-          onclick={() => {
+          onclick={(event) => {
+            event.stopPropagation();
             if (editingUserId === user.id) {
               editingUserId = undefined;
             } else {
@@ -210,56 +271,120 @@
         placeholder="Имя"
         onSave={(value) => saveDisplayName(user.id, value)}
       />
-      <p>Ключи</p>
-      {#each keys as key (key.id)}
-        <div class="flex flex-row items-center justify-between gap-2">
-          <Button
-            variant="secondary"
+      {#if server.can(Permission.MANAGE_ROLES)}
+        <div class="mt-2 flex flex-col gap-2">
+          <button
+            type="button"
+            class="flex items-center gap-2 text-left text-sm font-medium"
             onclick={() => {
-              const url = server.definition.url;
-              const base = url.match(/.*\?key=/);
-              if (!base || base.length < 1) {
-                return;
-              }
-              navigator.clipboard.writeText(base + key.key);
+              expandedRoleUserIds = toggleSetValue(expandedRoleUserIds, user.id);
             }}
           >
-            <Clipboard />
-          </Button>
-          <div
-            class="flex w-[80%] flex-row items-center justify-between text-left"
-          >
-            <p class="text-muted-foreground text-base">{key.id}</p>
-            <p class="text-muted-foreground text-base">
-              {formatDate(new Date(key.lastSeen))}
-            </p>
-          </div>
+            {#if expandedRoleUserIds.has(user.id)}
+              <ChevronDown class="size-4" />
+            {:else}
+              <ChevronRight class="size-4" />
+            {/if}
+            <span>Роли</span>
+          </button>
+          {#if expandedRoleUserIds.has(user.id)}
+            <Input bind:value={roleSearch} placeholder="Поиск ролей" />
+            {#each filteredRoles as role (role.id)}
+              {@const checked = hasRole(user, role.id)}
+              <div
+                class="flex cursor-pointer items-center justify-between gap-3 rounded border px-3 py-2"
+                role="button"
+                tabindex="0"
+                onclick={() => {
+                  toggleRole(user, role, !checked);
+                }}
+                onkeydown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  toggleRole(user, role, !checked);
+                }}
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <p class="truncate text-sm font-medium" style:color={role.colorHex}>{role.name}</p>
+                </div>
+                <Switch
+                  {checked}
+                  onclick={(event) => {
+                    event.stopPropagation();
+                    toggleRole(user, role, !checked);
+                  }}
+                />
+              </div>
+            {/each}
+          {/if}
+        </div>
+      {/if}
+
+      <div class="mt-2 flex flex-col gap-2">
+        <button
+          type="button"
+          class="flex items-center gap-2 text-left text-sm font-medium"
+          onclick={() => {
+            expandedKeyUserIds = toggleSetValue(expandedKeyUserIds, user.id);
+          }}
+        >
+          {#if expandedKeyUserIds.has(user.id)}
+            <ChevronDown class="size-4" />
+          {:else}
+            <ChevronRight class="size-4" />
+          {/if}
+          <span>Ключи</span>
+        </button>
+        {#if expandedKeyUserIds.has(user.id)}
+          {#each keys as key (key.id)}
+            <div class="flex flex-row items-center justify-between gap-2">
+              <Button
+                variant="secondary"
+                onclick={() => {
+                  const url = server.definition.url;
+                  const base = url.match(/.*\?key=/);
+                  if (!base || base.length < 1) {
+                    return;
+                  }
+                  navigator.clipboard.writeText(base + key.key);
+                }}
+              >
+                <Clipboard />
+              </Button>
+              <div class="flex w-[80%] flex-row items-center justify-between text-left">
+                <p class="text-muted-foreground text-base">{key.id}</p>
+                <p class="text-muted-foreground text-base">
+                  {formatDate(new Date(key.lastSeen))}
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                disabled={!server.can(Permission.MANAGE_KEYS) && keys.length === 1}
+                onclick={() => {
+                  server.gateway.send({
+                    type: "action.key.remove",
+                    keyId: key.id,
+                  });
+                }}
+              >
+                <X />
+              </Button>
+            </div>
+          {/each}
           <Button
             variant="secondary"
-            disabled={!server.can(Permission.MANAGE_KEYS) && keys.length === 1}
+            class="mb-4"
             onclick={() => {
               server.gateway.send({
-                type: "action.key.remove",
-                keyId: key.id,
+                type: "action.key.add",
+                userId: user.id,
               });
             }}
           >
-            <X />
+            +
           </Button>
-        </div>
-      {/each}
-      <Button
-        variant="secondary"
-        class="mb-4"
-        onclick={() => {
-          server.gateway.send({
-            type: "action.key.add",
-            userId: user.id,
-          });
-        }}
-      >
-        +
-      </Button>
+        {/if}
+      </div>
     {/if}
   {/each}
 </div>
