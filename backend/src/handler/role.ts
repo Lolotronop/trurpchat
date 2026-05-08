@@ -1,8 +1,8 @@
 import { and, desc, eq, getColumns, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
+import type { Role, RoleAction, UserRole } from "trurpchat-shared";
 import { db, roles, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
-import type { Role, RoleAction, UserRole } from "$src/types";
 import { shouldNormalizeOrder } from "./order";
 import type { Handlers } from "./types";
 

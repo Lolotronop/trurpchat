@@ -1,6 +1,6 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { sendNotification } from "@tauri-apps/plugin-notification";
-import type { IceConfig, Key, Message, Room, User } from "trurpchat-backend";
+import type { IceConfig, Key, Message, Room, User } from "trurpchat-shared";
 import { mentions } from "trurpchat-shared";
 import { log } from "$lib/log";
 import { focused } from "./focus.svelte";

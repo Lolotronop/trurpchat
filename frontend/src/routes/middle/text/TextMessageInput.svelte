@@ -4,7 +4,7 @@
   import { Button } from "$lib/components/ui/button";
   import * as InputGroup from "$lib/components/ui/input-group";
   import type { Server } from "$lib/servers.svelte";
-  import type { TextMessage } from "trurpchat-backend";
+  import type { TextMessage } from "trurpchat-shared";
   import { mentions } from "trurpchat-shared";
   import TypingIndicator from "./TypingIndicator.svelte";
 

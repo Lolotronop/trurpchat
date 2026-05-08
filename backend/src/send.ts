@@ -1,6 +1,6 @@
 import { stringify } from "devalue";
 import { err, ok } from "neverthrow";
-import type { Message, ServerEvent } from "./types";
+import type { Message, ServerEvent } from "trurpchat-shared";
 import type { WsClient } from "./voice";
 
 export function safeSend(client: WsClient, message: Message) {

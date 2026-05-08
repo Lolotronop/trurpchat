@@ -1,5 +1,5 @@
 import type { Result } from "neverthrow";
-import type { Message } from "$src/types";
+import type { Message } from "trurpchat-shared";
 import type { Hotel, WsClient } from "$src/voice";
 
 export type MessageNames<T extends { type: string }> = {

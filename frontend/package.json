@@ -33,7 +33,6 @@
     "ovenplayer": "^0.10.47",
     "reconnecting-websocket": "^4.4.0",
     "tailwindcss": "^4.1.11",
-    "trurpchat-backend": "workspace:*",
     "trurpchat-shared": "workspace:*"
   },
   "devDependencies": {

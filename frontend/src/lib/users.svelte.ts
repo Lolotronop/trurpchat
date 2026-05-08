@@ -6,7 +6,7 @@ import type {
   Role,
   User,
   UserRole,
-} from "trurpchat-backend";
+} from "trurpchat-shared";
 
 export type RoleWithColorHex = Role & {
   colorHex: string;

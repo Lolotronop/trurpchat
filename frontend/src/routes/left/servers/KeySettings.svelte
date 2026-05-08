@@ -10,7 +10,7 @@
     UserIcon,
     X,
   } from "@lucide/svelte";
-  import type { Key } from "trurpchat-backend/src/db";
+  import type { Key } from "trurpchat-shared";
   import { Button } from "$lib/components/ui/button";
   import { Separator } from "$lib/components/ui/separator";
   import type { Server } from "$lib/servers.svelte";

@@ -1,8 +1,8 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
+import type { UserAction } from "trurpchat-shared";
 import { createKey, db, keys, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
-import type { UserAction } from "$src/types";
 import type { Handlers } from "./types";
 
 export const userHandlers: Handlers<UserAction> = {

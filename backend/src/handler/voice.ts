@@ -1,6 +1,6 @@
 import { err, ok } from "neverthrow";
+import type { VoiceAction } from "trurpchat-shared";
 import { send, sendAll } from "$src/send";
-import type { VoiceAction } from "$src/types";
 import type { Handlers } from "./types";
 
 function removeWatcherFromTarget(

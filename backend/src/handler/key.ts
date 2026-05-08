@@ -1,8 +1,8 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
+import type { KeyAction } from "trurpchat-shared";
 import { createKey, db, keys, users } from "$src/db";
 import { send, sendAll } from "$src/send";
-import type { KeyAction } from "$src/types";
 import type { Handlers } from "./types";
 
 export const keyHandlers: Handlers<KeyAction> = {

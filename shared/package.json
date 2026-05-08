@@ -3,11 +3,7 @@
   "type": "module",
   "private": true,
   "exports": {
-    ".": "./src/index.ts",
-    "./mentions": "./src/mentions.ts"
-  },
-  "dependencies": {
-    "trurpchat-backend": "workspace:*"
+    ".": "./src/index.ts"
   },
   "peerDependencies": {
     "typescript": "^5"

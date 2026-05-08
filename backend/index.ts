@@ -1,2 +1,2 @@
-export * from "./src/types";
+export * from "trurpchat-shared";
 import "./src/index";

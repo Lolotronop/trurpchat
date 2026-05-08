@@ -1,5 +1,14 @@
 import { env } from "bun";
 import { and, eq, getColumns, gte, isNull } from "drizzle-orm";
+import type {
+  ConnectedUser,
+  ConnectedUserState,
+  IceConfig,
+  Message,
+  OfflineUser,
+  Room,
+  User,
+} from "trurpchat-shared";
 import { mentions } from "trurpchat-shared";
 import {
   db,
@@ -16,15 +25,6 @@ import { type HandlerContext, handleMessage } from "./handler";
 import { sendRoleList } from "./handler/role";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
 import { send, sendAll } from "./send";
-import type {
-  ConnectedUser,
-  ConnectedUserState,
-  IceConfig,
-  Message,
-  OfflineUser,
-  Room,
-  User,
-} from "./types";
 import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
 
 await seed();

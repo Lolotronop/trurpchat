@@ -1,6 +1,7 @@
 import { defineRelations, sql } from "drizzle-orm";
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
+import type * as Shared from "trurpchat-shared";
 
 export const users = table("users", {
   id: t.integer({ mode: "number" }).primaryKey(),
@@ -161,6 +162,28 @@ export const unread = table(
 );
 
 export type UnreadRow = typeof unread.$inferSelect;
+
+type Equal<A, B> =
+  (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+    ? (<T>() => T extends B ? 1 : 2) extends <T>() => T extends A ? 1 : 2
+      ? true
+      : false
+    : false;
+
+type Assert<T extends true> = T;
+
+// These assertions intentionally make the backend fail type-checking when the
+// Drizzle schema drifts away from the explicit shared primitive types.
+type _AssertUsersMatchShared = Assert<Equal<User, Shared.UserData>>;
+type _AssertRolesMatchShared = Assert<Equal<Role, Shared.RoleData>>;
+type _AssertUserRolesMatchShared = Assert<Equal<UserRole, Shared.UserRoleData>>;
+type _AssertServerMetaMatchesShared = Assert<
+  Equal<ServerMeta, Shared.ServerMeta>
+>;
+type _AssertKeysMatchShared = Assert<Equal<Key, Shared.Key>>;
+type _AssertRoomsMatchShared = Assert<Equal<Room, Shared.RoomData>>;
+type _AssertMessagesMatchShared = Assert<Equal<Message, Shared.TextMessage>>;
+type _AssertUnreadMatchesShared = Assert<Equal<UnreadRow, Shared.UnreadRow>>;
 
 export const relations = defineRelations(
   { users, roles, userRoles, keys, messages, rooms, serverMeta },

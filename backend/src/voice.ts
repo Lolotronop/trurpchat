@@ -1,5 +1,5 @@
 import type { ServerWebSocket } from "bun";
-import type { ConnectedUser, RoomData } from "./types";
+import type { ConnectedUser, RoomData } from "trurpchat-shared";
 
 export type WsClient = ServerWebSocket<ConnectedUser>;
 

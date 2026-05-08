@@ -1,6 +1,6 @@
 import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
-import type { Message, VoiceChat } from "trurpchat-backend";
+import type { Message, VoiceChat } from "trurpchat-shared";
 import { log } from "$lib/log";
 import type { Camera } from "./camera.svelte";
 import { OvenPlayerController } from "./components/stream/ovenplayer.svelte";

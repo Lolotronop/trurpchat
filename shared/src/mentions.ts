@@ -1,4 +1,4 @@
-import type { Role, User } from "trurpchat-backend";
+import type { Role, User } from "./types";
 
 export const USER_MENTION_REGEX = /<@(\d+)>/g;
 export const ROLE_MENTION_REGEX = /<@&(\d+)>/g;

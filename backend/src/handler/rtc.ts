@@ -1,6 +1,6 @@
 import { err, ok } from "neverthrow";
+import type { RtcMessage } from "trurpchat-shared";
 import { send } from "$src/send";
-import type { RtcMessage } from "$src/types";
 import type { Handlers } from "./types";
 
 export const rtcHandlers: Handlers<RtcMessage> = {

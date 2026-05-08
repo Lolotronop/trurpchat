@@ -1,6 +1,6 @@
 import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
-import type { TextMessage, Unread } from "trurpchat-backend";
+import type { TextMessage, Unread } from "trurpchat-shared";
 import type { RoomStore } from "./rooms.svelte";
 import { wait } from "./utils.svelte";
 

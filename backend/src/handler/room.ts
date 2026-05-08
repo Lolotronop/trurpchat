@@ -1,8 +1,8 @@
 import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
+import type { Room, RoomAction, RoomData } from "trurpchat-shared";
 import { db, rooms } from "$src/db";
 import { send, sendAll } from "$src/send";
-import type { Room, RoomAction, RoomData } from "$src/types";
 import { VoiceChatInstance, type WsClient } from "$src/voice";
 import { shouldNormalizeOrder } from "./order";
 import type { HandlerContext, Handlers } from "./types";
@@ -119,60 +119,62 @@ export const roomHandlers: Handlers<RoomAction> = {
       return result;
     }
 
-    const { updatedRoom, normalizedRooms } = await db.transaction(async (tx) => {
-      const [updatedRoom] = await tx
-        .update(rooms)
-        .set(room)
-        .where(and(eq(rooms.id, room.id), isNull(rooms.deletedAt)))
-        .returning();
-
-      if (!updatedRoom) {
-        return { updatedRoom: undefined, normalizedRooms: undefined };
-      }
-
-      if (room.order === undefined) {
-        return { updatedRoom, normalizedRooms: undefined };
-      }
-
-      const [neighbor] = await tx
-        .select({ order: rooms.order })
-        .from(rooms)
-        .where(and(ne(rooms.id, room.id), isNull(rooms.deletedAt)))
-        .orderBy(sql`abs(${rooms.order} - ${updatedRoom.order})`)
-        .limit(1);
-
-      if (!shouldNormalizeOrder(updatedRoom.order, neighbor)) {
-        return { updatedRoom, normalizedRooms: undefined };
-      }
-
-      const allRooms = (
-        await tx.select().from(rooms).where(isNull(rooms.deletedAt))
-      ).sort((a, b) => a.order - b.order);
-
-      const normalizedRooms: RoomData[] = [];
-      for (let index = 0; index < allRooms.length; index++) {
-        const currentRoom = allRooms[index];
-        if (!currentRoom) continue;
-
-        const order = index * 100;
-        const [normalizedRoom] = await tx
+    const { updatedRoom, normalizedRooms } = await db.transaction(
+      async (tx) => {
+        const [updatedRoom] = await tx
           .update(rooms)
-          .set({ order })
-          .where(eq(rooms.id, currentRoom.id))
+          .set(room)
+          .where(and(eq(rooms.id, room.id), isNull(rooms.deletedAt)))
           .returning();
 
-        if (normalizedRoom) {
-          normalizedRooms.push(normalizedRoom);
+        if (!updatedRoom) {
+          return { updatedRoom: undefined, normalizedRooms: undefined };
         }
-      }
 
-      return {
-        updatedRoom: normalizedRooms.find(
-          (normalizedRoom) => normalizedRoom.id === updatedRoom.id,
-        ),
-        normalizedRooms,
-      };
-    });
+        if (room.order === undefined) {
+          return { updatedRoom, normalizedRooms: undefined };
+        }
+
+        const [neighbor] = await tx
+          .select({ order: rooms.order })
+          .from(rooms)
+          .where(and(ne(rooms.id, room.id), isNull(rooms.deletedAt)))
+          .orderBy(sql`abs(${rooms.order} - ${updatedRoom.order})`)
+          .limit(1);
+
+        if (!shouldNormalizeOrder(updatedRoom.order, neighbor)) {
+          return { updatedRoom, normalizedRooms: undefined };
+        }
+
+        const allRooms = (
+          await tx.select().from(rooms).where(isNull(rooms.deletedAt))
+        ).sort((a, b) => a.order - b.order);
+
+        const normalizedRooms: RoomData[] = [];
+        for (let index = 0; index < allRooms.length; index++) {
+          const currentRoom = allRooms[index];
+          if (!currentRoom) continue;
+
+          const order = index * 100;
+          const [normalizedRoom] = await tx
+            .update(rooms)
+            .set({ order })
+            .where(eq(rooms.id, currentRoom.id))
+            .returning();
+
+          if (normalizedRoom) {
+            normalizedRooms.push(normalizedRoom);
+          }
+        }
+
+        return {
+          updatedRoom: normalizedRooms.find(
+            (normalizedRoom) => normalizedRoom.id === updatedRoom.id,
+          ),
+          normalizedRooms,
+        };
+      },
+    );
 
     if (!updatedRoom) {
       return err(new Error(`Room ${room.id} not found`));

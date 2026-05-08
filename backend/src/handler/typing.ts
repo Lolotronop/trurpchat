@@ -1,8 +1,8 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
+import type { TypingAction } from "trurpchat-shared";
 import { db, rooms } from "$src/db";
 import { sendAll } from "$src/send";
-import type { TypingAction } from "$src/types";
 import type { Handlers } from "./types";
 
 export const typingHandlers: Handlers<TypingAction> = {

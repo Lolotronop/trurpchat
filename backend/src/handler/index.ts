@@ -1,5 +1,5 @@
 import { err } from "neverthrow";
-import type { ClientAction, Message } from "$src/types";
+import type { ClientAction, Message } from "trurpchat-shared";
 import type { WsClient } from "$src/voice";
 import { keyHandlers } from "./key";
 import { messageHandlers } from "./message";

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { RoomData } from "trurpchat-backend";
+  import type { RoomData } from "trurpchat-shared";
   import * as ButtonGroup from "$lib/components/ui/button-group";
   import * as ToggleGroup from "$lib/components/ui/toggle-group";
   import { Button } from "$lib/components/ui/button";

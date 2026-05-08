@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Pencil } from "@lucide/svelte";
-  import type { TextMessage } from "trurpchat-backend";
+  import type { TextMessage } from "trurpchat-shared";
   import { mentions } from "trurpchat-shared";
   import Avatar from "$lib/components/Avatar.svelte";
   import * as Tooltip from "$lib/components/ui/tooltip";

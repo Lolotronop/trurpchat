@@ -1,4 +1,4 @@
-import type { IceConfig } from "trurpchat-backend";
+import type { IceConfig } from "trurpchat-shared";
 import { log } from "$lib/log";
 import { audioctx } from "./audio/context";
 import type { Headphones } from "./headphones.svelte";

@@ -1,4 +1,4 @@
-import type { Room, VoiceChat } from "trurpchat-backend";
+import type { Room, VoiceChat } from "trurpchat-shared";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export type RoomNotificationMode = "muted" | "suppressed" | "normal";
