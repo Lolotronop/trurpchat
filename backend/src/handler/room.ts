@@ -8,7 +8,11 @@ import { shouldNormalizeOrder } from "./order";
 import { canSession } from "./types";
 import type { HandlerContext, Handlers } from "./types";
 
-function cheks(ctx: HandlerContext, ws: Parameters<Handlers<RoomAction>["action.room.create"]>[1], room: Partial<Room>) {
+function cheks(
+  ctx: HandlerContext,
+  ws: Parameters<Handlers<RoomAction>["action.room.create"]>[1],
+  room: Partial<Room>,
+) {
   if (!canSession(ctx, ws, Permission.MANAGE_ROOMS)) {
     return err(new Error("Only admins can create rooms"));
   }
@@ -30,7 +34,9 @@ function sendRoom(ctx: HandlerContext, room: Room) {
   };
   patch(ctx.state, event);
   for (const client of ctx.clients.values()) {
-    if (perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, room.id)) {
+    if (
+      perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, room.id)
+    ) {
       send(client, event);
     }
   }
@@ -64,7 +70,12 @@ export const roomHandlers: Handlers<RoomAction> = {
         .limit(1);
 
       const order = roomOrderRow ? roomOrderRow.order + 1 : 0;
-      return (await tx.insert(rooms).values([{ ...room, order }]).returning())[0];
+      return (
+        await tx
+          .insert(rooms)
+          .values([{ ...room, order }])
+          .returning()
+      )[0];
     });
 
     if (!created) return err(new Error(`Failed to crate room ${room.name}`));
@@ -86,7 +97,9 @@ export const roomHandlers: Handlers<RoomAction> = {
 
     if (deleted.length === 0) return err(new Error(`Room ${id} not found`));
 
-    for (const voiceUser of ctx.state.voiceUsers.filter((entry) => entry.roomId === id)) {
+    for (const voiceUser of ctx.state.voiceUsers.filter(
+      (entry) => entry.roomId === id,
+    )) {
       const client = ctx.clients.get(voiceUser.userId);
       if (client) {
         send(client, {
@@ -104,57 +117,68 @@ export const roomHandlers: Handlers<RoomAction> = {
   },
 
   "action.room.update": async (ctx, ws, { room }) => {
-    const { type: _type, ...roomUpdate } = room;
+    const roomUpdate = room;
     const result = cheks(ctx, ws, roomUpdate);
     if (result.isErr()) return result;
 
-    const { updatedRoom, normalizedRooms } = await db.transaction(async (tx) => {
-      const [updatedRoom] = await tx
-        .update(rooms)
-        .set(roomUpdate)
-        .where(and(eq(rooms.id, roomUpdate.id), isNull(rooms.deletedAt)))
-        .returning();
-
-      if (!updatedRoom) return { updatedRoom: undefined, normalizedRooms: undefined };
-      if (roomUpdate.order === undefined) return { updatedRoom, normalizedRooms: undefined };
-
-      const [neighbor] = await tx
-        .select({ order: rooms.order })
-        .from(rooms)
-        .where(and(ne(rooms.id, roomUpdate.id), isNull(rooms.deletedAt)))
-        .orderBy(sql`abs(${rooms.order} - ${updatedRoom.order})`)
-        .limit(1);
-
-      if (!shouldNormalizeOrder(updatedRoom.order, neighbor)) {
-        return { updatedRoom, normalizedRooms: undefined };
-      }
-
-      const allRooms = (await tx.select().from(rooms).where(isNull(rooms.deletedAt))).sort(
-        (a, b) => a.order - b.order,
-      );
-
-      const normalizedRooms: Room[] = [];
-      for (let index = 0; index < allRooms.length; index++) {
-        const currentRoom = allRooms[index];
-        if (!currentRoom) continue;
-        const [normalizedRoom] = await tx
+    const { updatedRoom, normalizedRooms } = await db.transaction(
+      async (tx) => {
+        const [updatedRoom] = await tx
           .update(rooms)
-          .set({ order: index * 100 })
-          .where(eq(rooms.id, currentRoom.id))
+          .set(roomUpdate)
+          .where(and(eq(rooms.id, roomUpdate.id), isNull(rooms.deletedAt)))
           .returning();
-        if (normalizedRoom) normalizedRooms.push(normalizedRoom);
-      }
 
-      return {
-        updatedRoom: normalizedRooms.find((normalizedRoom) => normalizedRoom.id === updatedRoom.id),
-        normalizedRooms,
-      };
-    });
+        if (!updatedRoom)
+          return { updatedRoom: undefined, normalizedRooms: undefined };
+        if (roomUpdate.order === undefined)
+          return { updatedRoom, normalizedRooms: undefined };
+
+        const [neighbor] = await tx
+          .select({ order: rooms.order })
+          .from(rooms)
+          .where(and(ne(rooms.id, roomUpdate.id), isNull(rooms.deletedAt)))
+          .orderBy(sql`abs(${rooms.order} - ${updatedRoom.order})`)
+          .limit(1);
+
+        if (!shouldNormalizeOrder(updatedRoom.order, neighbor)) {
+          return { updatedRoom, normalizedRooms: undefined };
+        }
+
+        const allRooms = (
+          await tx.select().from(rooms).where(isNull(rooms.deletedAt))
+        ).sort((a, b) => a.order - b.order);
+
+        const normalizedRooms: Room[] = [];
+        for (let index = 0; index < allRooms.length; index++) {
+          const currentRoom = allRooms[index];
+          if (!currentRoom) continue;
+          const [normalizedRoom] = await tx
+            .update(rooms)
+            .set({ order: index * 100 })
+            .where(eq(rooms.id, currentRoom.id))
+            .returning();
+          if (normalizedRoom) normalizedRooms.push(normalizedRoom);
+        }
+
+        return {
+          updatedRoom: normalizedRooms.find(
+            (normalizedRoom) => normalizedRoom.id === updatedRoom.id,
+          ),
+          normalizedRooms,
+        };
+      },
+    );
 
     if (!updatedRoom) return err(new Error(`Room ${room.id} not found`));
 
     if (normalizedRooms) {
       sendRoomList(ctx, normalizedRooms);
+    } else if ("visibilityMode" in roomUpdate) {
+      sendRoomList(
+        ctx,
+        await db.select().from(rooms).where(isNull(rooms.deletedAt)),
+      );
     } else {
       sendRoom(ctx, updatedRoom);
     }
