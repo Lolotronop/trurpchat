@@ -181,7 +181,7 @@ type _AssertServerMetaMatchesShared = Assert<
   Equal<ServerMeta, Shared.ServerMeta>
 >;
 type _AssertKeysMatchShared = Assert<Equal<Key, Shared.Key>>;
-type _AssertRoomsMatchShared = Assert<Equal<Room, Shared.RoomData>>;
+type _AssertRoomsMatchShared = Assert<Equal<Room, Shared.Room>>;
 type _AssertMessagesMatchShared = Assert<Equal<Message, Shared.TextMessage>>;
 type _AssertUnreadMatchesShared = Assert<Equal<UnreadRow, Shared.UnreadRow>>;
 

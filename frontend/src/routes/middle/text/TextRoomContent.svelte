@@ -87,7 +87,11 @@
   let se = $state<HTMLElement>();
 
   const activeStream = $derived.by(() => {
-    for (const userId of server.rtc.room?.users ?? []) {
+    for (const { roomId, userId } of server.state.voiceUsers) {
+      if (roomId !== server.rtc.roomId) {
+        continue;
+      }
+
       const player = server.rtc.streamPlayers.get(userId);
       if (player?.state !== "playing") {
         continue;

@@ -1,6 +1,7 @@
 import type { Result } from "neverthrow";
-import type { Message } from "trurpchat-shared";
-import type { Hotel, WsClient } from "$src/voice";
+import type { Message, SharedState } from "trurpchat-shared";
+import { user } from "trurpchat-shared";
+import type { WsClient } from "$src/voice";
 
 export type MessageNames<T extends { type: string }> = {
   [K in keyof T]: T[K];
@@ -8,7 +9,7 @@ export type MessageNames<T extends { type: string }> = {
 
 export type HandlerContext = {
   clients: Map<number, WsClient>;
-  hotel: Hotel;
+  state: SharedState;
 };
 
 export type HandlerFunction<T extends Message> = (
@@ -20,3 +21,15 @@ export type HandlerFunction<T extends Message> = (
 export type Handlers<T extends Message> = {
   [K in MessageNames<T>]: HandlerFunction<Extract<T, { type: K }>>;
 };
+
+export function sessionUser(ctx: HandlerContext, ws: WsClient) {
+  const found = user(ctx.state, ws.data.userId);
+  if (!found) {
+    throw new Error(`User ${ws.data.userId} not found in shared state`);
+  }
+  return found;
+}
+
+export function isSessionAdmin(ctx: HandlerContext, ws: WsClient) {
+  return sessionUser(ctx, ws).permissions === 1;
+}

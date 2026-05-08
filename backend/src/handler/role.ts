@@ -1,13 +1,20 @@
 import { and, desc, eq, getColumns, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
-import type { Role, RoleAction, UserRole } from "trurpchat-shared";
+import type { Role, RoleAction, ServerEvent, UserRole } from "trurpchat-shared";
+import { patch } from "trurpchat-shared";
 import { db, roles, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
+import { isSessionAdmin } from "./types";
 import type { Handlers } from "./types";
 
 function isAdmin(permissions: number) {
   return permissions === 1;
+}
+
+function sendRoleEvent(ctx: Parameters<Handlers<RoleAction>["action.role.create"]>[0], event: ServerEvent) {
+  patch(ctx.state, event);
+  sendAll(ctx.clients.values(), event);
 }
 
 function validateRoleInput(role: Partial<Role>) {
@@ -58,9 +65,9 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.create": async (ctx, ws, msg) => {
-    if (!isAdmin(ws.data.permissions)) {
+    if (!isSessionAdmin(ctx, ws)) {
       return err(
-        new Error(`User ${ws.data.id} is not admin, tryed to create role`),
+        new Error(`User ${ws.data.userId} is not admin, tryed to create role`),
       );
     }
 
@@ -105,7 +112,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       return err(new Error(`Failed to create role ${msg.role.name}`));
     }
 
-    sendAll(ctx.clients.values(), {
+    sendRoleEvent(ctx, {
       type: "event.role.created",
       role: created,
     });
@@ -114,9 +121,9 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.update": async (ctx, ws, msg) => {
-    if (!isAdmin(ws.data.permissions)) {
+    if (!isSessionAdmin(ctx, ws)) {
       return err(
-        new Error(`User ${ws.data.id} is not admin, tryed to update role`),
+        new Error(`User ${ws.data.userId} is not admin, tryed to update role`),
       );
     }
 
@@ -198,13 +205,13 @@ export const roleHandlers: Handlers<RoleAction> = {
     }
 
     if (normalizedRoles) {
-      sendAll(ctx.clients.values(), {
+      sendRoleEvent(ctx, {
         type: "event.role.list",
         roles: normalizedRoles,
         assignments: await getAllAssignments(),
       });
     } else {
-      sendAll(ctx.clients.values(), {
+      sendRoleEvent(ctx, {
         type: "event.role.updated",
         role: updated,
       });
@@ -214,9 +221,9 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.delete": async (ctx, ws, msg) => {
-    if (!isAdmin(ws.data.permissions)) {
+    if (!isSessionAdmin(ctx, ws)) {
       return err(
-        new Error(`User ${ws.data.id} is not admin, tryed to delete role`),
+        new Error(`User ${ws.data.userId} is not admin, tryed to delete role`),
       );
     }
 
@@ -242,13 +249,13 @@ export const roleHandlers: Handlers<RoleAction> = {
       return err(new Error(`Role ${msg.id} not found`));
     }
 
-    sendAll(ctx.clients.values(), {
+    sendRoleEvent(ctx, {
       type: "event.role.deleted",
       roleId: deleted.id,
     });
 
     for (const assignment of deletedAssignments) {
-      sendAll(ctx.clients.values(), {
+      sendRoleEvent(ctx, {
         type: "event.role.unassigned",
         userId: assignment.userId,
         roleId: assignment.roleId,
@@ -259,9 +266,9 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.assign": async (ctx, ws, msg) => {
-    if (!isAdmin(ws.data.permissions)) {
+    if (!isSessionAdmin(ctx, ws)) {
       return err(
-        new Error(`User ${ws.data.id} is not admin, tryed to assign role`),
+        new Error(`User ${ws.data.userId} is not admin, tryed to assign role`),
       );
     }
 
@@ -298,7 +305,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       return ok();
     }
 
-    sendAll(ctx.clients.values(), {
+    sendRoleEvent(ctx, {
       type: "event.role.assigned",
       userId: assignment.userId,
       roleId: assignment.roleId,
@@ -308,9 +315,9 @@ export const roleHandlers: Handlers<RoleAction> = {
   },
 
   "action.role.unassign": async (ctx, ws, msg) => {
-    if (!isAdmin(ws.data.permissions)) {
+    if (!isSessionAdmin(ctx, ws)) {
       return err(
-        new Error(`User ${ws.data.id} is not admin, tryed to unassign role`),
+        new Error(`User ${ws.data.userId} is not admin, tryed to unassign role`),
       );
     }
 
@@ -328,7 +335,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       return ok();
     }
 
-    sendAll(ctx.clients.values(), {
+    sendRoleEvent(ctx, {
       type: "event.role.unassigned",
       userId: assignment.userId,
       roleId: assignment.roleId,

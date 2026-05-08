@@ -1,32 +1,43 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { KeyAction } from "trurpchat-shared";
+import { patch, user } from "trurpchat-shared";
 import { createKey, db, keys, users } from "$src/db";
 import { send, sendAll } from "$src/send";
+import { isSessionAdmin } from "./types";
 import type { Handlers } from "./types";
+
+async function refreshBackendKeys(ctx: Parameters<Handlers<KeyAction>["action.key.add"]>[0]) {
+  const event = {
+    type: "event.key.list" as const,
+    keys: await db.select().from(keys),
+  };
+  patch(ctx.state, event);
+}
 
 export const keyHandlers: Handlers<KeyAction> = {
   "action.key.add": async (ctx, ws, msg) => {
-    const isAdmin = ws.data.permissions === 1;
-    if (!isAdmin && ws.data.id !== msg.userId) {
+    const isAdmin = isSessionAdmin(ctx, ws);
+    if (!isAdmin && ws.data.userId !== msg.userId) {
       return err(
         new Error(
-          `User ${ws.data.id} is not admin, tryed to add key for ${msg.userId}`,
+          `User ${ws.data.userId} is not admin, tryed to add key for ${msg.userId}`,
         ),
       );
     }
 
-    const [user] = await db
+    const [targetUser] = await db
       .select({ id: users.id })
       .from(users)
       .where(and(eq(users.id, msg.userId), isNull(users.deletedAt)))
       .limit(1);
 
-    if (!user) {
+    if (!targetUser) {
       return err(new Error(`User ${msg.userId} not found`));
     }
 
     await createKey(msg.userId);
+    await refreshBackendKeys(ctx);
 
     const allKeys = await db
       .select({
@@ -37,7 +48,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       .where(
         and(
           isNull(users.deletedAt),
-          !isAdmin ? eq(keys.userId, ws.data.id) : undefined,
+          !isAdmin ? eq(keys.userId, ws.data.userId) : undefined,
         ),
       );
 
@@ -46,7 +57,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       keys: allKeys,
     });
 
-    if (msg.userId !== ws.data.id) {
+    if (msg.userId !== ws.data.userId) {
       const affectedUser = ctx.clients.get(msg.userId);
       if (!affectedUser) {
         // the user is not connected
@@ -55,7 +66,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       const userKeys = allKeys.filter((k) => k.userId !== msg.userId);
       const admins = ctx.clients
         .values()
-        .filter((c) => c.data.permissions === 1);
+        .filter((c) => user(ctx.state, c.data.userId)?.permissions === 1);
       sendAll([...admins, affectedUser], {
         type: "event.key.list",
         keys: userKeys,
@@ -65,7 +76,7 @@ export const keyHandlers: Handlers<KeyAction> = {
   },
 
   "action.key.remove": async (ctx, ws, msg) => {
-    const isAdmin = ws.data.permissions === 1;
+    const isAdmin = isSessionAdmin(ctx, ws);
     const keyss = await db
       .select({
         ...getColumns(keys),
@@ -78,14 +89,15 @@ export const keyHandlers: Handlers<KeyAction> = {
     }
     const key = keyss[0];
 
-    if (!isAdmin && ws.data.id !== key.userId) {
+    if (!isAdmin && ws.data.userId !== key.userId) {
       return err(
         new Error(
-          `User ${ws.data.id} is not admin, tryed to remove key for ${key.userId}`,
+          `User ${ws.data.userId} is not admin, tryed to remove key for ${key.userId}`,
         ),
       );
     }
     await db.delete(keys).where(eq(keys.id, msg.keyId));
+    await refreshBackendKeys(ctx);
     const allKeys = await db
       .select({
         ...getColumns(keys),
@@ -95,7 +107,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       .where(
         and(
           isNull(users.deletedAt),
-          !isAdmin ? eq(keys.userId, ws.data.id) : undefined,
+          !isAdmin ? eq(keys.userId, ws.data.userId) : undefined,
         ),
       );
 
@@ -104,7 +116,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       keys: allKeys,
     });
 
-    if (key.userId !== ws.data.id) {
+    if (key.userId !== ws.data.userId) {
       const affectedUser = ctx.clients.get(key.userId);
       if (!affectedUser) {
         // the user is not connected
@@ -113,7 +125,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       const userKeys = allKeys.filter((k) => k.userId !== key.userId);
       const admins = ctx.clients
         .values()
-        .filter((c) => c.data.permissions === 1);
+        .filter((c) => user(ctx.state, c.data.userId)?.permissions === 1);
       sendAll([...admins, affectedUser], {
         type: "event.key.list",
         keys: userKeys,
@@ -123,8 +135,8 @@ export const keyHandlers: Handlers<KeyAction> = {
     return ok();
   },
 
-  "action.key.list": async (_, ws, __) => {
-    const isAdmin = ws.data.permissions === 1;
+  "action.key.list": async (ctx, ws, __) => {
+    const isAdmin = isSessionAdmin(ctx, ws);
     const allKeys = await db
       .select({
         ...getColumns(keys),
@@ -134,7 +146,7 @@ export const keyHandlers: Handlers<KeyAction> = {
       .where(
         and(
           isNull(users.deletedAt),
-          !isAdmin ? eq(keys.userId, ws.data.id) : undefined,
+          !isAdmin ? eq(keys.userId, ws.data.userId) : undefined,
         ),
       );
 

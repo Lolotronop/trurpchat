@@ -2,19 +2,18 @@ import { env } from "bun";
 import { and, eq, getColumns, gte, isNull } from "drizzle-orm";
 import type {
   ConnectedUser,
-  ConnectedUserState,
   IceConfig,
   Message,
   OfflineUser,
-  Room,
   User,
 } from "trurpchat-shared";
-import { mentions } from "trurpchat-shared";
+import { createSharedState, defaultConnectedUserState, mentions, patch, user } from "trurpchat-shared";
 import {
   db,
   getOrCreateServerId,
   keys,
   messages,
+  roles,
   rooms,
   unread,
   userRoles,
@@ -25,24 +24,26 @@ import { type HandlerContext, handleMessage } from "./handler";
 import { sendRoleList } from "./handler/role";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
 import { send, sendAll } from "./send";
-import { Hotel, VoiceChatInstance, type WsClient } from "./voice";
+import { voiceRoomByUserId, type WsClient, type WsData } from "./voice";
 
 await seed();
 console.log(await getKeys());
 
 const ctx: HandlerContext = {
   clients: new Map<number, WsClient>(),
-  hotel: new Hotel(),
+  state: createSharedState(),
 };
-const existingRooms = await db
-  .select()
-  .from(rooms)
-  .where(isNull(rooms.deletedAt));
-for (const r of existingRooms) {
-  if (r.type === "voice") {
-    ctx.hotel.rooms.push(new VoiceChatInstance(r));
-  }
-}
+ctx.state.rooms.push(
+  ...(await db.select().from(rooms).where(isNull(rooms.deletedAt))),
+);
+ctx.state.users.push(
+  ...(
+    await db.select().from(users).where(isNull(users.deletedAt))
+  ).map((user): OfflineUser => ({ ...user, online: false })),
+);
+ctx.state.keys.push(...(await db.select().from(keys)));
+ctx.state.roles.push(...(await db.select().from(roles).where(isNull(roles.deletedAt))));
+ctx.state.userRoles.push(...(await db.select().from(userRoles)));
 
 const PORT = +(env.PORT ?? 3000);
 const serverId = await getOrCreateServerId();
@@ -100,32 +101,25 @@ async function loadIceConfig() {
 
 const iceConfig = await loadIceConfig();
 
-function createDefaultTalkingUserState(): ConnectedUserState {
-  return {
-    muted: false,
-    deafened: false,
-    camera: false,
-    streaming: false,
-    watchedBy: [],
-    online: true,
-  };
-}
-
 export async function getAllUsers(ctx: HandlerContext): Promise<User[]> {
   const allUsers = await db.select().from(users).where(isNull(users.deletedAt));
-  const onlineUsers = ctx.clients
-    .values()
-    .map((c) => c.data)
-    .toArray();
-
   const offlineUsers: OfflineUser[] = allUsers
     .filter((u) => !ctx.clients.has(u.id))
     .map((u) => ({ ...u, online: false }));
 
-  return [...onlineUsers, ...offlineUsers];
+  return [
+    ...ctx.clients
+      .keys()
+      .flatMap((id) => {
+        const found = user(ctx.state, id);
+        return found ? [found] : [];
+      })
+      .toArray(),
+    ...offlineUsers,
+  ];
 }
 
-Bun.serve<ConnectedUser, never>({
+Bun.serve<WsData, never>({
   port: PORT,
   async fetch(req, server) {
     const url = new URL(req.url);
@@ -136,7 +130,7 @@ Bun.serve<ConnectedUser, never>({
       return new Response("Missing key parameter", { status: 400 });
     }
 
-    const [user] = await db
+    const [dbUser] = await db
       .select({
         ...getColumns(users),
       })
@@ -145,7 +139,7 @@ Bun.serve<ConnectedUser, never>({
       .where(and(eq(keys.key, key), isNull(users.deletedAt)))
       .limit(1);
 
-    if (!user) {
+    if (!dbUser) {
       console.log("User not found");
       return new Response("User not found", { status: 400 });
     }
@@ -155,12 +149,14 @@ Bun.serve<ConnectedUser, never>({
       .set({ lastSeen: new Date() })
       .where(eq(keys.key, key));
 
-    ctx.hotel.removeById(user.id);
+    const existingClient = ctx.clients.get(dbUser.id);
+    if (existingClient) {
+      existingClient.close();
+    }
 
     const options = {
       data: {
-        ...user,
-        ...createDefaultTalkingUserState(),
+        userId: dbUser.id,
       },
     };
 
@@ -172,7 +168,13 @@ Bun.serve<ConnectedUser, never>({
   },
   websocket: {
     async open(ws) {
-      ctx.clients.set(ws.data.id, ws);
+      ctx.clients.set(ws.data.userId, ws);
+      const me = user(ctx.state, ws.data.userId);
+      if (!me) {
+        ws.close();
+        return;
+      }
+      Object.assign(me, defaultConnectedUserState());
 
       send(ws, {
         type: "event.startup.config",
@@ -183,31 +185,30 @@ Bun.serve<ConnectedUser, never>({
 
       send(ws, {
         type: "event.connected",
-        user: ws.data,
+        user: me as ConnectedUser,
       });
 
-      const textRooms = (await db
-        .select()
-        .from(rooms)
-        .where(
-          and(eq(rooms.type, "text"), isNull(rooms.deletedAt)),
-        )) as Extract<Room, { type: "text" }>[];
-
-      const allRooms = [...ctx.hotel.toJson(), ...textRooms];
       send(ws, {
         type: "event.room.list",
-        rooms: allRooms,
+        rooms: ctx.state.rooms,
       });
+      for (const voiceUser of ctx.state.voiceUsers) {
+        send(ws, {
+          type: "event.voice.joined",
+          room: voiceUser.roomId,
+          userId: voiceUser.userId,
+        });
+      }
 
       const unreadRows = await db
         .select()
         .from(unread)
-        .where(eq(unread.userId, ws.data.id));
+        .where(eq(unread.userId, ws.data.userId));
 
       const assignedRoles = await db
         .select({ roleId: userRoles.roleId })
         .from(userRoles)
-        .where(eq(userRoles.userId, ws.data.id));
+        .where(eq(userRoles.userId, ws.data.userId));
       const roleIds = assignedRoles.map((assignment) => assignment.roleId);
 
       const unreadPromises = unreadRows.map(async (u) => {
@@ -227,7 +228,7 @@ Bun.serve<ConnectedUser, never>({
           const m = msgs[i];
           if (!m) continue;
 
-          const mentionsUser = mentions.user.includes(m.text, ws.data.id);
+          const mentionsUser = mentions.user.includes(m.text, ws.data.userId);
           const mentionsRole = roleIds.some((roleId) =>
             mentions.role.includes(m.text, roleId),
           );
@@ -254,12 +255,14 @@ Bun.serve<ConnectedUser, never>({
         users,
       });
 
+      const onlineEvent = {
+        type: "event.user.online" as const,
+        userId: ws.data.userId,
+      };
+      patch(ctx.state, onlineEvent);
       sendAll(
         ctx.clients.values().filter((client) => client !== ws),
-        {
-          type: "event.user.online",
-          userId: ws.data.id,
-        },
+        onlineEvent,
       );
     },
 
@@ -282,22 +285,24 @@ Bun.serve<ConnectedUser, never>({
     },
 
     async close(ws) {
-      const room = ctx.hotel.roomByClient(ws);
+      const room = voiceRoomByUserId(ctx.state, ws.data.userId);
       if (room) {
         voiceHandlers["action.voice.leave"](ctx, ws, {
           type: "action.voice.leave",
-          room: room.data.id,
+          room: room.roomId,
         });
       }
 
-      removeWatcherFromAllUsers(ctx, ws.data.id);
+      removeWatcherFromAllUsers(ctx, ws.data.userId);
 
-      ctx.clients.delete(ws.data.id);
+      ctx.clients.delete(ws.data.userId);
 
-      sendAll(ctx.clients.values(), {
-        type: "event.user.offline",
-        userId: ws.data.id,
-      });
+      const event = {
+        type: "event.user.offline" as const,
+        userId: ws.data.userId,
+      };
+      patch(ctx.state, event);
+      sendAll(ctx.clients.values(), event);
     },
   },
 });

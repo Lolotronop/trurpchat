@@ -87,8 +87,6 @@
     if (!pivot) return;
 
     const order = (pivot.order + to.order) / 2;
-    from.order = order;
-    server.rooms.upsertRoom(from);
     server.gateway.send({
       type: "action.room.update",
       room: {

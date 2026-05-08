@@ -18,7 +18,7 @@ export const rtcHandlers: Handlers<RtcMessage> = {
     send(target, {
       type: "rtc.ice",
       candidate: msg.candidate,
-      sender: ws.data.id,
+      sender: ws.data.userId,
       target: msg.target,
     });
     return ok();
@@ -38,7 +38,7 @@ export const rtcHandlers: Handlers<RtcMessage> = {
     send(target, {
       type: "rtc.offer",
       offer: msg.offer,
-      sender: ws.data.id,
+      sender: ws.data.userId,
       target: msg.target,
     });
     return ok();
@@ -58,7 +58,7 @@ export const rtcHandlers: Handlers<RtcMessage> = {
     send(target, {
       type: "rtc.answer",
       answer: msg.answer,
-      sender: ws.data.id,
+      sender: ws.data.userId,
       target: msg.target,
     });
     return ok();

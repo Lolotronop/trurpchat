@@ -1,8 +1,6 @@
-import type { Flatten } from "./utils";
-
 export type ChannelType = "text" | "voice";
 
-export type RoomData = {
+export type Room = {
   id: number;
   name: string;
   type: ChannelType;
@@ -11,19 +9,11 @@ export type RoomData = {
   deletedAt: Date | null;
 };
 
-export type VoiceChat = Flatten<
-  RoomData & { type: "voice" } & {
-    users: number[];
-  }
->;
-
-export type Room = VoiceChat | Flatten<RoomData & { type: "text" }>;
-
 export type RoomAction =
   | {
       type: "action.room.create";
       room: Omit<
-        RoomData,
+        Room,
         "id" | "createdAt" | "deletedAt" | "nextMessageId" | "order"
       >;
     }
@@ -33,7 +23,7 @@ export type RoomAction =
     }
   | {
       type: "action.room.update";
-      room: Partial<RoomData> & Pick<RoomData, "id">;
+      room: Partial<Room> & Pick<Room, "id">;
     };
 
 export type RoomEvent =

@@ -1,16 +1,18 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { UserAction } from "trurpchat-shared";
+import { connectedUser, user as findUser, patch } from "trurpchat-shared";
 import { createKey, db, keys, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { Handlers } from "./types";
+import { isSessionAdmin } from "./types";
 
 export const userHandlers: Handlers<UserAction> = {
   "action.user.create": async (ctx, ws, msg) => {
-    const isAdmin = ws.data.permissions === 1;
+    const isAdmin = isSessionAdmin(ctx, ws);
     if (!isAdmin) {
       return err(
-        new Error(`User ${ws.data.id} is not admin, tryed to create user`),
+        new Error(`User ${ws.data.userId} is not admin, tryed to create user`),
       );
     }
 
@@ -30,15 +32,19 @@ export const userHandlers: Handlers<UserAction> = {
 
     await createKey(user.id);
 
-    sendAll(ctx.clients.values(), {
-      type: "event.user.created",
+    const createdEvent = {
+      type: "event.user.created" as const,
       user: {
         ...user,
-        online: false,
+        online: false as const,
       },
-    });
+    };
+    patch(ctx.state, createdEvent);
+    sendAll(ctx.clients.values(), createdEvent);
 
-    const admins = ctx.clients.values().filter((c) => c.data.permissions === 1);
+    const admins = ctx.clients
+      .values()
+      .filter((c) => findUser(ctx.state, c.data.userId)?.permissions === 1);
     sendAll(admins, {
       type: "event.key.list",
       keys: await db
@@ -53,24 +59,30 @@ export const userHandlers: Handlers<UserAction> = {
     return ok();
   },
 
-  "action.user.state": async (_ctx, ws, msg) => {
+  "action.user.state": async (ctx, ws, msg) => {
     const { type: _type, ...data } = msg;
-    ws.data = { ...ws.data, ...data };
+    const me = connectedUser(ctx.state, ws.data.userId);
+    if (!me) {
+      return err(new Error(`User ${ws.data.userId} is not connected`));
+    }
+    Object.assign(me, data);
 
-    sendAll(_ctx.clients.values(), {
-      type: "event.user.state",
-      user: ws.data,
-    });
+    const event = {
+      type: "event.user.state" as const,
+      user: me,
+    };
+    patch(ctx.state, event);
+    sendAll(ctx.clients.values(), event);
 
     return ok();
   },
 
   "action.user.update": async (ctx, ws, msg) => {
-    const isAdmin = ws.data.permissions === 1;
-    if (!isAdmin && ws.data.id !== msg.id) {
+    const isAdmin = isSessionAdmin(ctx, ws);
+    if (!isAdmin && ws.data.userId !== msg.id) {
       return err(
         new Error(
-          `User ${ws.data.id} is not admin, tryed to rename user for ${msg.id}`,
+          `User ${ws.data.userId} is not admin, tryed to rename user for ${msg.id}`,
         ),
       );
     }
@@ -78,7 +90,7 @@ export const userHandlers: Handlers<UserAction> = {
     if (!isAdmin && msg.permissions) {
       return err(
         new Error(
-          `User ${ws.data.id} is not admin, tryed to change permissions for ${msg.id}`,
+          `User ${ws.data.userId} is not admin, tryed to change permissions for ${msg.id}`,
         ),
       );
     }
@@ -96,12 +108,13 @@ export const userHandlers: Handlers<UserAction> = {
 
     const client = ctx.clients.get(msg.id);
     if (client) {
-      client.data = { ...client.data, ...user };
-      send(client, {
-        type: "event.user.me",
-        user: client.data,
-      });
-      const clientIsAdmin = client.data.permissions === 1;
+      const stateUser = findUser(ctx.state, msg.id);
+      const meEvent = {
+        type: "event.user.me" as const,
+        user: stateUser ?? { ...user, online: false as const },
+      };
+      send(client, meEvent);
+      const clientIsAdmin = user.permissions === 1;
       const userKeys = await db
         .select()
         .from(keys)
@@ -112,20 +125,22 @@ export const userHandlers: Handlers<UserAction> = {
       });
     }
 
-    sendAll(ctx.clients.values(), {
-      type: "event.user.updated",
+    const updatedEvent = {
+      type: "event.user.updated" as const,
       user,
-    });
+    };
+    patch(ctx.state, updatedEvent);
+    sendAll(ctx.clients.values(), updatedEvent);
 
     return ok();
   },
 
   "action.user.delete": async (ctx, ws, msg) => {
-    const isAdmin = ws.data.permissions === 1;
-    if (!isAdmin && ws.data.id !== msg.id) {
+    const isAdmin = isSessionAdmin(ctx, ws);
+    if (!isAdmin && ws.data.userId !== msg.id) {
       return err(
         new Error(
-          `User ${ws.data.id} is not admin, tryed to delete user for ${msg.id}`,
+          `User ${ws.data.userId} is not admin, tryed to delete user for ${msg.id}`,
         ),
       );
     }
@@ -152,10 +167,12 @@ export const userHandlers: Handlers<UserAction> = {
       return err(new Error(`User ${msg.id} not found`));
     }
 
-    sendAll(ctx.clients.values(), {
-      type: "event.user.deleted",
+    const deletedEvent = {
+      type: "event.user.deleted" as const,
       userId: msg.id,
-    });
+    };
+    patch(ctx.state, deletedEvent);
+    sendAll(ctx.clients.values(), deletedEvent);
 
     return ok();
   },

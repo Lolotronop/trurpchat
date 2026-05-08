@@ -1,14 +1,15 @@
 import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { MessageAction } from "trurpchat-shared";
-import { mentions } from "trurpchat-shared";
+import { mentions, patch } from "trurpchat-shared";
 import { db, messages, rooms, unread } from "$src/db";
 import { send, sendAll } from "$src/send";
+import { isSessionAdmin } from "./types";
 import type { Handlers } from "./types";
 
 export const messageHandlers: Handlers<MessageAction> = {
   "action.message.create": async (ctx, ws, { roomId, text, replyTo }) => {
-    const userId = ws.data.id;
+    const userId = ws.data.userId;
 
     if (text.length === 0) {
       return err(new Error("Message text is empty"));
@@ -67,16 +68,18 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("Failed to create message. Room doens't exist"));
     }
 
-    sendAll(ctx.clients.values(), {
-      type: "event.message.created",
+    const event = {
+      type: "event.message.created" as const,
       message,
-    });
+    };
+    patch(ctx.state, event);
+    sendAll(ctx.clients.values(), event);
 
     return ok();
   },
 
   "action.message.edit": async (ctx, ws, { roomId, id, text }) => {
-    const userId = ws.data.id;
+    const userId = ws.data.userId;
     const hasMention = mentions.has(text);
 
     const [message] = await db
@@ -106,8 +109,8 @@ export const messageHandlers: Handlers<MessageAction> = {
   },
 
   "action.message.delete": async (ctx, ws, { roomId, id }) => {
-    const userId = ws.data.id;
-    const isAdmin = ws.data.permissions === 1;
+    const userId = ws.data.userId;
+    const isAdmin = isSessionAdmin(ctx, ws);
 
     const [existing] = await db
       .select()
@@ -208,7 +211,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("Unread id must be greater than or equal to 0"));
     }
 
-    const userId = ws.data.id;
+    const userId = ws.data.userId;
 
     const [room] = await db
       .select()

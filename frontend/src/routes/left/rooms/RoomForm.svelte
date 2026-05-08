@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { RoomData } from "trurpchat-shared";
+  import type { Room } from "trurpchat-shared";
   import * as ButtonGroup from "$lib/components/ui/button-group";
   import * as ToggleGroup from "$lib/components/ui/toggle-group";
   import { Button } from "$lib/components/ui/button";
@@ -7,7 +7,7 @@
   import { Label } from "$lib/components/ui/label";
 
   export type EditingRoom = Omit<
-    RoomData,
+    Room,
     "id" | "order" | "nextMessageId" | "deletedAt"
   >;
   type Props = {

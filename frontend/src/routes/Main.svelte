@@ -34,7 +34,7 @@
   }
 
   function showCurrentVoiceRoom() {
-    const roomId = server.rtc.room?.id;
+    const roomId = server.rtc.roomId;
     if (roomId === undefined) {
       return;
     }

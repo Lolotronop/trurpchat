@@ -112,8 +112,9 @@
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
                   onclick={() => {
-                  servers.selected = server;
-                }}
+                    servers.selected?.gateway.disconnect();
+                    servers.selected = server;
+                  }}
                   {@attach sortable.attachHandle}
                 >
                   <Avatar

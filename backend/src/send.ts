@@ -19,7 +19,7 @@ export function safeSend(client: WsClient, message: Message) {
     return err(
       new Error("Message  dropped", {
         cause: {
-          clientId: client.data.id,
+          clientId: client.data.userId,
           message,
         },
       }),

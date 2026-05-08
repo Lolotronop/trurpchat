@@ -39,6 +39,9 @@
   }
 
   let rtc = $derived(server.rtc);
+  let currentVoiceRoom = $derived.by(() =>
+    rtc.roomId === undefined ? undefined : server.rooms.find(rtc.roomId),
+  );
   let currentUser = $derived(server.users.find(server.user.id));
 
   let streamSettings = $state(new StreamSettingsClass());
@@ -61,13 +64,13 @@
 <div
   class="text-muted-foreground relative z-10 rounded border-t px-2 flex flex-col w-full"
 >
-  {#if rtc.connected && rtc.room}
+  {#if rtc.connected && currentVoiceRoom}
     <div class="flex flex-row items-center justify-between gap-2 py-2">
       <Tooltip.Root delayDuration={100}>
         <Tooltip.Trigger class="flex flex-col items-start">
           <div class="hover:text-foreground flex flex-row items-center gap-2">
             <Info size={16} />
-            {rtc.room.name}
+            {currentVoiceRoom.name}
           </div>
         </Tooltip.Trigger>
         <Tooltip.Content class="w-34">
@@ -77,7 +80,7 @@
             </p>
           </div>
           <div>
-            {#each rtc.room.users as userId (userId)}
+            {#each server.state.voiceUsers.filter((uv) => uv.roomId === rtc.roomId) as { userId } (userId)}
               {@const user = server.users.find(userId)}
               {#if user?.online && user.id !== server.user.id}
                 {@const peer = rtc.peers.get(user.id)}

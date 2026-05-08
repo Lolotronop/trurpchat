@@ -1,22 +1,11 @@
-export type TypingEntry = {
-  roomId: number;
-  userId: number;
-  timestamp: Date;
-};
+import type { SharedState, TypingEvent } from "trurpchat-shared";
+
+export type TypingEntry = TypingEvent;
 
 export class TypingStore {
-  entries: TypingEntry[] = $state([]);
+  constructor(readonly state: SharedState) {}
 
-  set(roomId: number, userId: number, timestamp: Date) {
-    const existing = this.entries.find(
-      (entry) => entry.roomId === roomId && entry.userId === userId,
-    );
-
-    if (existing) {
-      existing.timestamp = timestamp;
-      return;
-    }
-
-    this.entries.push({ roomId, userId, timestamp });
+  get entries() {
+    return this.state.typing;
   }
 }

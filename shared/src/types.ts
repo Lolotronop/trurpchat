@@ -5,6 +5,7 @@ export * from "./protocol";
 export * from "./role";
 export * from "./room";
 export * from "./rtc";
+export * from "./state";
 export * from "./typing";
 export * from "./user";
 export * from "./utils";

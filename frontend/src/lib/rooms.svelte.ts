@@ -1,4 +1,4 @@
-import type { Room, VoiceChat } from "trurpchat-shared";
+import type { Room, SharedState } from "trurpchat-shared";
 import { getPlatformStore, type IPersistantStore } from "./webstore";
 
 export type RoomNotificationMode = "muted" | "suppressed" | "normal";
@@ -8,13 +8,14 @@ export type RoomUserData = {
   colorHex: string | undefined;
 };
 
-export type RoomData = {
+export type ClientRoomData = {
   roomId: number;
 } & RoomUserData;
 
-export type RoomWithData = Room & RoomUserData;
-export type VoiceRoom = VoiceChat & RoomUserData;
-export type TextRoom = Extract<RoomWithData, { type: "text" }>;
+export type TextRoom = Room & RoomUserData & { type: "text" };
+export type VoiceRoom = Room &
+  RoomUserData & { type: "voice"; users: number[] };
+export type RoomWithData = TextRoom | VoiceRoom;
 
 const defaultRoomUserData: RoomUserData = {
   notificationMode: "normal",
@@ -31,29 +32,59 @@ function toStorageKey(serverId: string, roomId: number) {
 
 export class RoomStore {
   store: IPersistantStore = getPlatformStore("room-data");
-  rawRooms: Room[] = $state([]);
-  data: RoomData[] = $state([]);
+  data: ClientRoomData[] = $state([]);
 
   #serverId: string | undefined = $state(undefined);
   #loadVersion = 0;
+
+  constructor(
+    readonly state: SharedState,
+    serverId?: string | null,
+  ) {
+    void this.setServerId(serverId ?? undefined);
+  }
 
   #dataByRoomId = $derived.by(() => {
     return new Map(this.data.map((entry) => [entry.roomId, entry]));
   });
 
-  list: RoomWithData[] = $derived.by(() => {
-    return sortRooms(
-      this.rawRooms.map((room) => ({
-        ...defaultRoomUserData,
-        ...room,
-        ...(this.#dataByRoomId.get(room.id) ?? {}),
-      })),
-    );
+  #voiceUsersByRoomId = $derived.by(() => {
+    const byRoomId = new Map<number, number[]>();
+    for (const entry of this.state.voiceUsers) {
+      const existing = byRoomId.get(entry.roomId);
+      if (existing) {
+        existing.push(entry.userId);
+      } else {
+        byRoomId.set(entry.roomId, [entry.userId]);
+      }
+    }
+    return byRoomId;
   });
 
-  constructor(serverId?: string | null) {
-    void this.setServerId(serverId ?? undefined);
-  }
+  list: RoomWithData[] = $derived.by(() => {
+    return sortRooms(
+      this.state.rooms.map((room) => {
+        const base = {
+          ...defaultRoomUserData,
+          ...room,
+          ...(this.#dataByRoomId.get(room.id) ?? {}),
+        };
+
+        if (room.type === "voice") {
+          return {
+            ...base,
+            type: "voice" as const,
+            users: this.#voiceUsersByRoomId.get(room.id) ?? [],
+          };
+        }
+
+        return {
+          ...base,
+          type: "text" as const,
+        };
+      }),
+    );
+  });
 
   async setServerId(serverId?: string | null) {
     const normalizedServerId = serverId ?? undefined;
@@ -96,34 +127,6 @@ export class RoomStore {
     });
   }
 
-  setRooms(rooms: Room[]) {
-    this.rawRooms = rooms;
-  }
-
-  upsertRoom(room: Room) {
-    const roomIndex = this.rawRooms.findIndex(
-      (existing) => existing.id === room.id,
-    );
-    if (roomIndex === -1) {
-      this.rawRooms.push(room);
-      return;
-    }
-
-    const existingRoom = this.rawRooms[roomIndex];
-    if (!existingRoom) {
-      return;
-    }
-
-    Object.assign(existingRoom, room);
-  }
-
-  deleteRoom(roomId: number) {
-    const roomIndex = this.rawRooms.findIndex((room) => room.id === roomId);
-    if (roomIndex !== -1) {
-      this.rawRooms.splice(roomIndex, 1);
-    }
-  }
-
   find(id: number) {
     return this.list.find((room) => room.id === id);
   }
@@ -142,47 +145,9 @@ export class RoomStore {
     return undefined;
   }
 
-  addUserToVoiceRoom(roomId: number, userId: number) {
-    const room = this.find(roomId);
-    if (!room || room.type !== "voice") {
-      return undefined;
-    }
-
-    if (room.users.includes(userId)) {
-      return room;
-    }
-
-    room.users.push(userId);
-    return room;
-  }
-
-  removeUserFromVoiceRoom(roomId: number, userId: number) {
-    const room = this.find(roomId);
-    if (!room || room.type !== "voice") {
-      return undefined;
-    }
-
-    const index = room.users.indexOf(userId);
-    if (index === -1) {
-      return room;
-    }
-
-    room.users.splice(index, 1);
-    return room;
-  }
-
-  setNextMessageId(roomId: number, nextMessageId: number) {
-    const room = this.rawRooms.find((room) => room.id === roomId);
-    if (!room || room.type !== "text") {
-      return undefined;
-    }
-
-    room.nextMessageId = nextMessageId;
-  }
-
   setData(roomId: number, patch: Partial<RoomUserData>) {
     const existing = this.findData(roomId);
-    const next: RoomData = {
+    const next: ClientRoomData = {
       roomId,
       ...defaultRoomUserData,
       ...existing,
@@ -219,11 +184,11 @@ export class RoomStore {
     void this.store.delete(toStorageKey(this.#serverId, roomId));
   }
 
-  async persistData(roomId: number, value: RoomUserData) {
+  async persistData(roomId: number, data: RoomUserData) {
     if (!this.#serverId) {
       return;
     }
 
-    await this.store.set(toStorageKey(this.#serverId, roomId), value);
+    await this.store.set(toStorageKey(this.#serverId, roomId), data);
   }
 }

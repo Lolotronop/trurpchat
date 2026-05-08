@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { TypingAction } from "trurpchat-shared";
+import { patch } from "trurpchat-shared";
 import { db, rooms } from "$src/db";
 import { sendAll } from "$src/send";
 import type { Handlers } from "./types";
@@ -21,12 +22,14 @@ export const typingHandlers: Handlers<TypingAction> = {
       return err(new Error("Room is not a text room"));
     }
 
-    sendAll(ctx.clients.values(), {
-      type: "event.typing",
+    const event = {
+      type: "event.typing" as const,
       roomId,
-      userId: ws.data.id,
+      userId: ws.data.userId,
       timestamp: new Date(),
-    });
+    };
+    patch(ctx.state, event);
+    sendAll(ctx.clients.values(), event);
 
     return ok();
   },

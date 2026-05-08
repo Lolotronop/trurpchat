@@ -44,7 +44,9 @@
   const AUTO_HIDE_DELAY = 2000;
 
   const roomUsers = $derived.by(() => {
-    const userIds = server.rtc.room?.users ?? [];
+    const userIds = server.state.voiceUsers
+      .filter((vu) => vu.roomId === server.selectedRoomId)
+      .map((vu) => vu.userId);
 
     return userIds
       .map((userId) => server.users.find(userId))

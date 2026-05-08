@@ -1,6 +1,6 @@
 import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
-import type { Message, VoiceChat } from "trurpchat-shared";
+import type { Message } from "trurpchat-shared";
 import { log } from "$lib/log";
 import type { Camera } from "./camera.svelte";
 import { OvenPlayerController } from "./components/stream/ovenplayer.svelte";
@@ -19,8 +19,8 @@ export class WebRTC {
   peers = new SvelteMap<number, Peer>();
   streamPlayers = new SvelteMap<number, OvenPlayerController>();
   store: IPersistantStore = getPlatformStore("webrtc");
-  room: VoiceChat | undefined = $state(undefined);
-  connected = $derived(this.room !== undefined);
+  roomId: number | undefined = $state(undefined);
+  connected = $derived(this.roomId !== undefined);
   connectedFor: number = $state(0);
   connectedTimeout: NodeJS.Timeout | null = null;
   persistPeerState = new Map<string, (state: PeerState) => void>();
@@ -106,7 +106,7 @@ export class WebRTC {
   private createLogContext(context: LogContext = {}) {
     return {
       selfUserId: this.server.user.id,
-      roomId: this.room?.id ?? null,
+      roomId: this.roomId ?? null,
       peerCount: this.peers.size,
       streamPlayerCount: this.streamPlayers.size,
       cameraEnabled: this.#cameraEnabled,
@@ -143,13 +143,12 @@ export class WebRTC {
     };
   }
 
-  connect(room: VoiceChat) {
+  connect(roomId: number) {
     this.logInfo("connect-room-selected", {
-      nextRoomId: room.id,
-      nextRoomUserIds: [...room.users],
-      previousRoomId: this.room?.id ?? null,
+      nextRoomId: roomId,
+      previousRoomId: this.roomId ?? null,
     });
-    this.room = room;
+    this.roomId = roomId;
   }
 
   async handleSignalingMessage(msg: Message) {
@@ -192,11 +191,11 @@ export class WebRTC {
       eventRoomId: roomId,
     });
 
-    if (this.room?.id !== roomId) {
+    if (this.roomId !== roomId) {
       this.logDebug("voice-join-ignored-room-mismatch", {
         joinedUserId: userId,
         eventRoomId: roomId,
-        activeRoomId: this.room?.id ?? null,
+        activeRoomId: this.roomId ?? null,
       });
       return;
     }
@@ -208,9 +207,7 @@ export class WebRTC {
       return;
     }
 
-    this.logInfo("voice-join-self-confirmed", {
-      roomUserIds: [...this.room.users],
-    });
+    this.logInfo("voice-join-self-confirmed", {});
 
     this.connectedFor = 0;
     if (this.connectedTimeout) {
@@ -230,7 +227,11 @@ export class WebRTC {
       hasMicOutputStream: Boolean(this.mic.output.stream),
     });
 
-    for (const existingUserId of this.room.users) {
+    for (const { roomId: existingRoomId, userId: existingUserId } of this.server.state.voiceUsers) {
+      if (existingRoomId !== this.roomId) {
+        continue;
+      }
+
       if (existingUserId === this.server.user.id) {
         this.logTrace("call-initiation-skip-self", {
           targetId: existingUserId,
@@ -251,11 +252,11 @@ export class WebRTC {
       eventRoomId: roomId,
     });
 
-    if (this.room?.id !== roomId) {
+    if (this.roomId !== roomId) {
       this.logDebug("voice-leave-ignored-room-mismatch", {
         leftUserId: userId,
         eventRoomId: roomId,
-        activeRoomId: this.room?.id ?? null,
+        activeRoomId: this.roomId ?? null,
       });
       return;
     }
@@ -590,13 +591,15 @@ export class WebRTC {
   async initiateCall(targetId: number) {
     this.logInfo("call-initiate-requested", { targetId });
 
-    if (!this.room?.users.includes(targetId)) {
+    if (
+      this.roomId === undefined ||
+      !this.server.state.voiceUsers.some(
+        (entry) => entry.roomId === this.roomId && entry.userId === targetId,
+      )
+    ) {
       log.error(
         "[WebRTC:call-initiate-target-missing-from-room] Cannot initiate call because target user is not in the active room",
-        this.createLogContext({
-          targetId,
-          roomUserIds: this.room?.users ?? [],
-        }),
+        this.createLogContext({ targetId }),
       );
       return;
     }
@@ -890,7 +893,7 @@ export class WebRTC {
       this.logDebug("cleanup-connected-timer-cleared", {});
     }
     this.connectedTimeout = null;
-    this.room = undefined;
+    this.roomId = undefined;
 
     this.logInfo("cleanup-disabling-local-media", {});
     this.mic.disable();

@@ -120,11 +120,13 @@
     const to = target.data as RoleWithColorHex;
     const pivot = sorted[target.index - 1];
     if (!pivot) return;
-    from.order = (pivot.order + to.order) / 2;
-    server.users.updateRole(from);
+    const order = (pivot.order + to.order) / 2;
     server.gateway.send({
       type: "action.role.update",
-      role: from,
+      role: {
+        ...from,
+        order,
+      },
     });
   };
 </script>
