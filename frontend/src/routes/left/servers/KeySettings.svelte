@@ -67,11 +67,15 @@
   let expandedPermissionUserIds = $state(new Set<number>());
   let roleSearch = $state("");
 
+  const sortedRoles = $derived(
+    server.users.roles.toSorted((a, b) => b.order - a.order),
+  );
+
   const filteredRoles = $derived.by(() => {
     const query = roleSearch.trim().toLocaleLowerCase("ru-RU");
-    if (!query) return server.users.roles;
+    if (!query) return sortedRoles;
 
-    return server.users.roles.filter((role) =>
+    return sortedRoles.filter((role) =>
       role.name.toLocaleLowerCase("ru-RU").includes(query),
     );
   });
@@ -190,14 +194,13 @@
       <div class="flex min-w-0 flex-row items-center gap-2">
         <UserIcon class="size-4 shrink-0" />
         <p class="truncate text-foreground" style:color={user.colorHex}>
-          {user.username} <span class="text-muted-foreground">@{user.name}</span>
+          {user.username}
+          <span class="text-muted-foreground">@{user.name}</span>
         </p>
       </div>
 
       <div class="flex items-center gap-2">
         {#if editingUserId === user.id && server.can(Permission.MANAGE_USERS)}
-          {@const permission = server.state.permissions.find((p) => p.subjectType === "user" && p.subjectId === user.id)}
-          {@const isAdmin = ((permission?.allow ?? 0) & Permission.ADMIN) === 1}
           <Button
             variant="secondary"
             onclick={(event) => {
@@ -209,39 +212,6 @@
             }}
           >
             <Trash />
-          </Button>
-
-          <Button
-            variant="secondary"
-            onclick={(event) => {
-              event.stopPropagation();
-              if (permission) {
-                server.gateway.send({
-                  type: "action.permission.update",
-                  permission: {
-                    ...permission,
-                    allow: isAdmin ? 0 : Permission.ADMIN,
-                  }
-                })
-              } else {
-                server.gateway.send({
-                  type: "action.permission.create",
-                  permission: {
-                    subjectType: "user",
-                    subjectId: user.id,
-                    allow: isAdmin ? 0 : Permission.ADMIN,
-                    deny: 0,
-                    roomId: null,
-                  }
-                })
-              }
-            }}
-          >
-            {#if isAdmin}
-              <Shield />
-            {:else}
-              <UserIcon />
-            {/if}
           </Button>
         {/if}
         <Button
@@ -329,7 +299,12 @@
                 }}
               >
                 <div class="flex min-w-0 items-center gap-2">
-                  <p class="truncate text-sm font-medium" style:color={role.colorHex}>{role.name}</p>
+                  <p
+                    class="truncate text-sm font-medium"
+                    style:color={role.colorHex}
+                  >
+                    {role.name}
+                  </p>
                 </div>
                 <Switch
                   {checked}
@@ -375,7 +350,9 @@
               >
                 <Clipboard />
               </Button>
-              <div class="flex w-[80%] flex-row items-center justify-between text-left">
+              <div
+                class="flex w-[80%] flex-row items-center justify-between text-left"
+              >
                 <p class="text-muted-foreground text-base">{key.id}</p>
                 <p class="text-muted-foreground text-base">
                   {formatDate(new Date(key.lastSeen))}

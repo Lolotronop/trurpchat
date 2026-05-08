@@ -58,6 +58,9 @@
     });
   }
 
+  const sortedRoles = $derived(
+    server.users.roles.toSorted((a, b) => b.order - a.order),
+  );
   const isText = $derived(room.type === "text");
   const unread = $derived(server.unread.get(room.id));
   const unreadCount = $derived(room.nextMessageId - unread);
@@ -80,7 +83,7 @@
         {#if server.can(Permission.MANAGE_PERMISSIONS)}
           <div class="flex flex-col gap-2">
             <Label>Роли</Label>
-            {#each server.users.roles as role (role.id)}
+            {#each sortedRoles as role (role.id)}
               <div class="flex flex-col gap-2 rounded border px-3 py-2">
                 <button
                   type="button"
