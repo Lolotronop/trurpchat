@@ -23,7 +23,7 @@ const defaultRoomUserData: RoomUserData = {
 };
 
 function sortRooms(rooms: RoomWithData[]) {
-  return [...rooms].sort((a, b) => a.order - b.order);
+  return rooms.toSorted((a, b) => a.order - b.order);
 }
 
 function toStorageKey(serverId: string, roomId: number) {

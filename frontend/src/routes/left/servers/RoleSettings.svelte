@@ -122,6 +122,12 @@
     const pivot = sorted[target.index - 1];
     if (!pivot) return;
     const order = (pivot.order + to.order) / 2;
+    for (const role of server.state.roles) {
+      if (role.id === from.id) {
+        role.order = order;
+        break;
+      }
+    }
     server.gateway.send({
       type: "action.role.update",
       role: {

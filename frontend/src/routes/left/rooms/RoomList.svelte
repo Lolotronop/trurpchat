@@ -87,6 +87,12 @@
     if (!pivot) return;
 
     const order = (pivot.order + to.order) / 2;
+    for (const room of server.state.rooms) {
+      if (room.id === from.id) {
+        room.order = order;
+        break;
+      }
+    }
     server.gateway.send({
       type: "action.room.update",
       room: {
