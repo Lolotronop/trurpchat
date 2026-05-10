@@ -94,7 +94,7 @@
 
 {#snippet userRow(user: UserWithRoles, offline = false)}
   <div
-    class="group hover:bg-accent/20 -mx-1 flex flex-row items-center gap-2 rounded-xs px-2 py-1 transition-colors"
+    class="group hover:bg-accent/20 -mx-1 flex flex-row items-center gap-2 rounded-xs px-2 py-1"
   >
     <Avatar class="size-6 shrink-0" name={user.username}></Avatar>
     <p
