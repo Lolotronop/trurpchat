@@ -1,4 +1,3 @@
-import { tick } from "svelte";
 import { SvelteMap } from "svelte/reactivity";
 import type { Message } from "trurpchat-shared";
 import { log } from "$lib/log";
@@ -18,6 +17,7 @@ type LogContext = Record<string, unknown>;
 export class WebRTC {
   peers = new SvelteMap<number, Peer>();
   streamPlayers = new SvelteMap<number, OvenPlayerController>();
+  #pendingStreamPlayerCreates = new Set<number>();
   store: IPersistantStore = getPlatformStore("webrtc");
   roomId: number | undefined = $state(undefined);
   connected = $derived(this.roomId !== undefined);
@@ -312,21 +312,31 @@ export class WebRTC {
   }
 
   getStreamPlayer(userId: number) {
-    let player = this.streamPlayers.get(userId);
+    const player = this.streamPlayers.get(userId);
 
-    if (!player) {
-      this.logInfo("stream-player-create-scheduled", { targetId: userId });
-      tick().then(() => {
-        this.logInfo("stream-player-create-executing", { targetId: userId });
-        player = new OvenPlayerController(this.server, userId, this.headphones);
-        this.streamPlayers.set(userId, player);
-        this.logInfo("stream-player-created", { targetId: userId });
-      });
-    } else {
+    if (player) {
       this.logTrace("stream-player-reused", { targetId: userId });
+      return player;
     }
 
-    return player;
+    if (!this.#pendingStreamPlayerCreates.has(userId)) {
+      this.#pendingStreamPlayerCreates.add(userId);
+      this.logInfo("stream-player-create-scheduled", { targetId: userId });
+      queueMicrotask(() => {
+        this.#pendingStreamPlayerCreates.delete(userId);
+        if (this.streamPlayers.has(userId)) {
+          return;
+        }
+
+        this.logInfo("stream-player-create", { targetId: userId });
+        this.streamPlayers.set(
+          userId,
+          new OvenPlayerController(this.server, userId, this.headphones),
+        );
+      });
+    }
+
+    return undefined;
   }
 
   getPeerStatePersister(key: string) {

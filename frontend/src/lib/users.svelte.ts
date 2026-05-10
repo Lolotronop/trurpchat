@@ -96,6 +96,10 @@ export class UserStore {
     );
   });
 
+  findRaw(id: number) {
+    return this.state.users.find((user) => user.id === id);
+  }
+
   find(id: number) {
     return this.list.find((user) => user.id === id);
   }

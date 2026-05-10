@@ -141,7 +141,7 @@ export class Server {
   handleMessage(message: Message) {
     const previousUser =
       message.type === "event.user.state"
-        ? structuredClone(this.users.find(message.user.id))
+        ? structuredClone($state.snapshot(this.users.findRaw(message.user.id)))
         : undefined;
 
     patch(this.state, message as ServerEvent);
