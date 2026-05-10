@@ -85,7 +85,9 @@ type OvenErrorMessage = {
   error?: string;
 };
 
-function parseOvenMessage(data: string): OvenOfferMessage | OvenErrorMessage | undefined {
+function parseOvenMessage(
+  data: string,
+): OvenOfferMessage | OvenErrorMessage | undefined {
   try {
     const message = JSON.parse(data) as OvenOfferMessage | OvenErrorMessage;
     if ("code" in message && message.code !== 200) {
@@ -99,7 +101,9 @@ function parseOvenMessage(data: string): OvenOfferMessage | OvenErrorMessage | u
   }
 }
 
-function normalizeIceServers(iceServers: OvenOfferMessage["ice_servers"] = []): RTCIceServer[] {
+function normalizeIceServers(
+  iceServers: OvenOfferMessage["ice_servers"] = [],
+): RTCIceServer[] {
   return iceServers.map(({ user_name, ...server }) => ({
     ...server,
     username: server.username ?? user_name,
@@ -136,7 +140,11 @@ export class OvenPlayerController {
   ) {
     const ctx = audioctx();
     this.gainnode = ctx.createGain();
-    this.gainnode.gain.setTargetAtTime(DEFAULT_GAIN, audioctx().currentTime, 0.01);
+    this.gainnode.gain.setTargetAtTime(
+      DEFAULT_GAIN,
+      audioctx().currentTime,
+      0.01,
+    );
     headphones.addSource(this.gainnode);
 
     this.#playerId = `oven-player-${userId}-${nextPlayerId++}`;
@@ -163,7 +171,8 @@ export class OvenPlayerController {
       return;
     }
 
-    this.gain = this.#lastAudibleGain > 0 ? this.#lastAudibleGain : DEFAULT_GAIN;
+    this.gain =
+      this.#lastAudibleGain > 0 ? this.#lastAudibleGain : DEFAULT_GAIN;
   }
 
   toggleMuted() {
@@ -278,7 +287,11 @@ export class OvenPlayerController {
     this.#sendUnwatch();
     this.#disconnectAudio();
 
-    if (sendStop && this.#omeSessionId && this.#ws?.readyState === WebSocket.OPEN) {
+    if (
+      sendStop &&
+      this.#omeSessionId &&
+      this.#ws?.readyState === WebSocket.OPEN
+    ) {
       this.#sendSignal({ id: this.#omeSessionId, command: "stop" });
     }
 
@@ -337,7 +350,11 @@ export class OvenPlayerController {
     this.#omeSessionId = offer.id;
     this.#omePeerId = offer.peer_id;
 
-    const iceServers = this.server.iceConfig?.iceServers ?? normalizeIceServers(offer.ice_servers);
+    const iceServers = normalizeIceServers(offer.ice_servers);
+    if (this.server.iceConfig?.iceServers) {
+      iceServers.push(...this.server.iceConfig.iceServers);
+    }
+
     this.#logInfo("offer-received", {
       omeSessionId: offer.id,
       omePeerId: offer.peer_id ?? null,
@@ -352,7 +369,8 @@ export class OvenPlayerController {
     pc.onicecandidate = (iceEvent) => this.#handleLocalIceCandidate(iceEvent);
     pc.ontrack = (trackEvent) => this.#handleTrack(trackEvent);
     pc.onconnectionstatechange = () => this.#handleConnectionStateChange();
-    pc.oniceconnectionstatechange = () => this.#handleIceConnectionStateChange();
+    pc.oniceconnectionstatechange = () =>
+      this.#handleIceConnectionStateChange();
     pc.onicecandidateerror = (iceEvent) => {
       this.#logWarn("ice-candidate-error", {
         address: iceEvent.address,
@@ -432,7 +450,8 @@ export class OvenPlayerController {
     }
 
     const hasVideoTrack = stream.getVideoTracks().length > 0;
-    const hasCurrentFrame = video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+    const hasCurrentFrame =
+      video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
     const hasDimensions = video.videoWidth > 0 && video.videoHeight > 0;
 
     if (!hasVideoTrack || !hasCurrentFrame || !hasDimensions) {
