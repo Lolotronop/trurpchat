@@ -253,7 +253,7 @@ export class OvenPlayerController {
     this.#ensureElements();
     this.state = "loading";
 
-    const protocol = import.meta.env.DEV ? "ws" : "wss";
+    const protocol = "ws"; // TODO: make this a server-side config
     const url = `${protocol}://${this.server.overServerUrl}/app/${this.server.definition.id}-${this.userId}`;
     this.#logInfo("connect", { url });
 
