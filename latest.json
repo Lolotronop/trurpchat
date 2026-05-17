@@ -1,11 +1,11 @@
 {
-  "version": "0.1.3",
+  "version": "0.1.4",
   "notes": "No notes for now",
-  "pub_date": "2026-05-17T20:07:06.347Z",
+  "pub_date": "2026-05-17T20:15:02.634Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSR3cvUjluR0tKWFJCbVhpbDNSbCtjZGxSWGRWcDZkeTRaWkZNdmwrSmN5K1lFeTZFSHVQQXhPeGZ3VEh4bGthMXc2TkVweE54WUtrNGZOU25sUTJDbUFJOGk3QkkydVFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5MDQ4NTk3CWZpbGU6dHJ1cnBjaGF0XzAuMS4zX3g2NC1zZXR1cC5leGUKL0RXNzdqSGZUTDlIQ3JRS2dNb2tKL1BCRUhyUzBkVUx4THlOYXlkNzF3ZEU3ZEhOWnUwMjhjMmR1a0JUMGJlT2liUEsza0xPT1ZwQkhEeWJrSElXQ3c9PQo=",
-      "url": "https://github.com/Lolotronop/trurpchat/releases/download/v0.1.3/trurpchat_0.1.3_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSR3cvUjluR0tKWGFUdTVHTkpjdTBwYk1aelBIUlorQnFVVjlzMGpPUm1UemFZemdCcStCb3dadUZBQzdHb3JMeEtOdFZ1U0lBd3lhajg0ZForY1BEeEVCQUtRYTMvNkFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5MDQ5MDc3CWZpbGU6dHJ1cnBjaGF0XzAuMS40X3g2NC1zZXR1cC5leGUKUVVaQm1rR3RidGJLeGZ0RXF1ak1mMm4xUjB4cWJjRXR6V05YVmNEQThtSGpQTkxaZDJaWDU3aUFFbFo1QlVvL3NZSnZVUE45cEJ6MkxQMDVRZW5nQUE9PQo=",
+      "url": "https://github.com/Lolotronop/trurpchat/releases/download/v0.1.4/trurpchat_0.1.4_x64-setup.exe"
     }
   }
 }
