@@ -14,11 +14,21 @@ export type IceConfig = {
   iceServers: IceServerConfig[];
 };
 
+export type OvenMediaEngineConfig = {
+  host: string;
+  watchPort: number;
+  streamPort: number;
+  appName: string;
+  secure: boolean;
+};
+
 export type OtherEvent =
   | {
       type: "event.startup.config";
       serverId: string;
+      // TODO: remove in future versions
       ovenServerUrl?: string;
+      ovenMediaEngine?: OvenMediaEngineConfig;
       iceConfig: IceConfig;
     }
   | {

@@ -185,7 +185,7 @@ export class OvenPlayerController {
       targetId: this.userId,
       serverId: this.server.definition.id,
       playerId: this.#playerId,
-      streamKey: `${this.server.definition.id}-${this.userId}`,
+      streamKey: this.server.streamKey(this.userId),
       state: this.state,
       watching: this.#watching,
       hasAudio: Boolean(this.audioSource),
@@ -241,10 +241,12 @@ export class OvenPlayerController {
   }
 
   start() {
-    if (!browser || !this.server.overServerUrl) {
+    const url = this.server.watchStreamUrl(this.userId);
+    if (!browser || !url) {
       this.#logWarn("start-blocked-missing-config", {
         browser,
         hasOvenServerUrl: Boolean(this.server.overServerUrl),
+        hasOvenMediaEngine: Boolean(this.server.ovenMediaEngine),
       });
       return;
     }
@@ -253,8 +255,6 @@ export class OvenPlayerController {
     this.#ensureElements();
     this.state = "loading";
 
-    const protocol = "ws"; // TODO: make this a server-side config
-    const url = `${protocol}://${this.server.overServerUrl}/app/${this.server.definition.id}-${this.userId}`;
     this.#logInfo("connect", { url });
 
     this.#ws = new WebSocket(url);

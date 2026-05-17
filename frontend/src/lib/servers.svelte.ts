@@ -3,6 +3,7 @@ import { sendNotification } from "@tauri-apps/plugin-notification";
 import type {
   IceConfig,
   Message,
+  OvenMediaEngineConfig,
   PermissionMask,
   Room,
   ServerEvent,
@@ -47,6 +48,7 @@ export class Server {
    * trailing slash is MANDATORY(no it isnt its just funny to think it is)
    */
   overServerUrl: string | undefined = $state(undefined);
+  ovenMediaEngine: OvenMediaEngineConfig | undefined = $state(undefined);
   iceConfig: IceConfig | undefined = $state(undefined);
   gateway: Gateway;
   state = $state(createSharedState());
@@ -70,6 +72,37 @@ export class Server {
       unreadId: messageId,
     });
   });
+
+  streamKey(userId: number) {
+    if (!this.definition.id) return undefined;
+    return `${this.definition.id}-${userId}`;
+  }
+
+  watchStreamUrl(userId: number) {
+    const streamKey = this.streamKey(userId);
+    if (!streamKey) return undefined;
+
+    if (this.ovenMediaEngine) {
+      const protocol = this.ovenMediaEngine.secure ? "wss" : "ws";
+      return `${protocol}://${this.ovenMediaEngine.host}:${this.ovenMediaEngine.watchPort}/${this.ovenMediaEngine.appName}/${streamKey}`;
+    }
+
+    if (!this.overServerUrl) return undefined;
+    return `ws://${this.overServerUrl}/app/${streamKey}`;
+  }
+
+  publishStreamUrl(userId = this.user.id) {
+    const streamKey = this.streamKey(userId);
+    if (!streamKey) return undefined;
+
+    if (this.ovenMediaEngine) {
+      return `rtmp://${this.ovenMediaEngine.host}:${this.ovenMediaEngine.streamPort}/${this.ovenMediaEngine.appName}/${streamKey}`;
+    }
+
+    const domain = this.overServerUrl?.split(":")[0];
+    if (!domain) return undefined;
+    return `rtmp://${domain}:1935/app/${streamKey}`;
+  }
 
   can(required: PermissionMask, roomId?: number) {
     return perm.can(this.state, required, this.user.id, roomId);
@@ -122,6 +155,7 @@ export class Server {
     });
     this.gateway.onclose(() => {
       this.overServerUrl = undefined;
+      this.ovenMediaEngine = undefined;
       this.iceConfig = undefined;
       this.leaveRoom(false);
       // TODO: this is a hack to make the cache derive work
@@ -193,6 +227,7 @@ export class Server {
         void this.#persistDefinition();
       }
       this.overServerUrl = message.ovenServerUrl;
+      this.ovenMediaEngine = message.ovenMediaEngine;
       this.iceConfig = message.iceConfig;
     } else if (message.type === "event.user.me") {
       this.user = message.user;
@@ -296,6 +331,7 @@ export class Server {
 
   reconnect() {
     this.overServerUrl = undefined;
+    this.ovenMediaEngine = undefined;
     this.iceConfig = undefined;
     this.gateway.disconnect();
     this.gateway.connect(this.definition.url);

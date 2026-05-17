@@ -50,6 +50,30 @@ ctx.state.permissions.push(...(await db.select().from(permissions)));
 const PORT = +(env.PORT ?? 3000);
 const serverId = await getOrCreateServerId();
 
+function parsePort(value: string | undefined, defaultValue: number) {
+  const port = Number(value);
+  return Number.isFinite(port) && port > 0 ? port : defaultValue;
+}
+
+function parseBoolean(value: string | undefined, defaultValue: boolean) {
+  if (value === undefined) return defaultValue;
+  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
+}
+
+function ovenHost(value: string | undefined) {
+  if (!value) return undefined;
+  const withoutProtocol = value.replace(/^\w+:\/\//, "");
+  return withoutProtocol.split("/")[0]?.split(":")[0] || undefined;
+}
+
+const ovenMediaEngine = {
+  host: ovenHost(env.OVEN_HOST) ?? ovenHost(env.OVEN_SERVER_URL) ?? "localhost",
+  watchPort: parsePort(env.OVEN_WATCH_PORT, 3333),
+  streamPort: parsePort(env.OVEN_STREAM_PORT, 1935),
+  appName: env.OVEN_APP_NAME ?? "app",
+  secure: parseBoolean(env.OVEN_SECURE, false),
+};
+
 function isIceConfig(value: unknown): value is IceConfig {
   if (typeof value !== "object" || value === null) {
     return false;
@@ -181,7 +205,9 @@ Bun.serve<WsData, never>({
       send(ws, {
         type: "event.startup.config",
         serverId,
+        // TODO: remove in future versions
         ovenServerUrl: env.OVEN_SERVER_URL,
+        ovenMediaEngine,
         iceConfig,
       });
 

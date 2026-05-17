@@ -100,7 +100,7 @@
       </Tooltip.Root>
 
       <div class="flex flex-row items-center gap-2">
-        {#if server.overServerUrl}
+        {#if server.publishStreamUrl()}
           <Tooltip.Root delayDuration={300}>
             <Tooltip.Trigger class="max-w-28">
               <Button
@@ -113,10 +113,10 @@
                     return;
                   }
 
-                  const domain = server.overServerUrl?.split(":")[0];
-                  if (!domain) return;
+                  const url = server.publishStreamUrl();
+                  if (!url) return;
                   const options = {
-                    url: `rtmp://${domain}:1935/app/${server.definition.id}-${server.user.id}`,
+                    url,
                     width: streamSettings.width,
                     height: streamSettings.height,
                     audioBitrate: streamSettings.audioBitrate,
