@@ -1,13 +1,12 @@
-import { env } from "bun";
 import { and, eq, getColumns, gte, isNull } from "drizzle-orm";
 import type {
   ConnectedUser,
-  IceConfig,
   Message,
   OfflineUser,
   User,
 } from "trurpchat-shared";
 import { createSharedState, defaultConnectedUserState, mentions, patch, perm, user } from "trurpchat-shared";
+import { loadConfig } from "./config";
 import {
   db,
   getOrCreateServerId,
@@ -26,6 +25,17 @@ import { sendRoleList } from "./handler/role";
 import { removeWatcherFromAllUsers, voiceHandlers } from "./handler/voice";
 import { send, sendAll } from "./send";
 import { voiceRoomByUserId, type WsClient, type WsData } from "./voice";
+
+async function loadBackendConfig() {
+  try {
+    return await loadConfig();
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  }
+}
+
+const config = await loadBackendConfig();
 
 await seed();
 console.log(await getKeys());
@@ -47,85 +57,10 @@ ctx.state.roles.push(...(await db.select().from(roles).where(isNull(roles.delete
 ctx.state.userRoles.push(...(await db.select().from(userRoles)));
 ctx.state.permissions.push(...(await db.select().from(permissions)));
 
-const PORT = +(env.PORT ?? 3000);
+const PORT = config.port;
+const ovenMediaEngine = config.ovenMediaEngine;
+const iceConfig = config.iceConfig;
 const serverId = await getOrCreateServerId();
-
-function parsePort(value: string | undefined, defaultValue: number) {
-  const port = Number(value);
-  return Number.isFinite(port) && port > 0 ? port : defaultValue;
-}
-
-function parseBoolean(value: string | undefined, defaultValue: boolean) {
-  if (value === undefined) return defaultValue;
-  return ["1", "true", "yes", "on"].includes(value.toLowerCase());
-}
-
-function ovenHost(value: string | undefined) {
-  if (!value) return undefined;
-  const withoutProtocol = value.replace(/^\w+:\/\//, "");
-  return withoutProtocol.split("/")[0]?.split(":")[0] || undefined;
-}
-
-const ovenMediaEngine = {
-  host: ovenHost(env.OVEN_HOST) ?? ovenHost(env.OVEN_SERVER_URL) ?? "localhost",
-  watchPort: parsePort(env.OVEN_WATCH_PORT, 3333),
-  streamPort: parsePort(env.OVEN_STREAM_PORT, 1935),
-  appName: env.OVEN_APP_NAME ?? "app",
-  secure: parseBoolean(env.OVEN_SECURE, false),
-};
-
-function isIceConfig(value: unknown): value is IceConfig {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const iceServers = (value as { iceServers?: unknown }).iceServers;
-  if (!Array.isArray(iceServers)) {
-    return false;
-  }
-
-  return iceServers.every((server) => {
-    if (typeof server !== "object" || server === null) {
-      return false;
-    }
-
-    const { urls, username, credential } = server as {
-      urls?: unknown;
-      username?: unknown;
-      credential?: unknown;
-    };
-
-    const validUrls =
-      typeof urls === "string" ||
-      (Array.isArray(urls) && urls.every((url) => typeof url === "string"));
-
-    return (
-      validUrls &&
-      (username === undefined || typeof username === "string") &&
-      (credential === undefined || typeof credential === "string")
-    );
-  });
-}
-
-async function loadIceConfig() {
-  const file = Bun.file(new URL("../ice.json", import.meta.url));
-  const content = await file.text();
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(content);
-  } catch (error) {
-    throw new Error(`Failed to parse backend/ice.json: ${error}`);
-  }
-
-  if (!isIceConfig(parsed)) {
-    throw new Error("Invalid backend/ice.json: expected { iceServers: [...] }");
-  }
-
-  return parsed;
-}
-
-const iceConfig = await loadIceConfig();
 
 export async function getAllUsers(ctx: HandlerContext): Promise<User[]> {
   const allUsers = await db.select().from(users).where(isNull(users.deletedAt));
@@ -206,7 +141,7 @@ Bun.serve<WsData, never>({
         type: "event.startup.config",
         serverId,
         // TODO: remove in future versions
-        ovenServerUrl: env.OVEN_SERVER_URL,
+        ovenServerUrl: config.ovenServerUrl,
         ovenMediaEngine,
         iceConfig,
       });
