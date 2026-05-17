@@ -1,6 +1,6 @@
 [package]
 name = "trurpchat"
-version = "0.1.0"
+version = "0.1.2"
 description = "A chat app for the rest of us"
 authors = ["you"]
 edition = "2021"
@@ -30,7 +30,9 @@ windows = "0.61.3"
 webview2-com = "0.38.0"
 tauri-plugin-fs = "2"
 ffmpeg-rs = { path = "../ffmpeg-rs" }
+tauri-plugin-process = "2"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"

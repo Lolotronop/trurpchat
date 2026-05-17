@@ -1,6 +1,6 @@
 {
   "name": "trurpchat-frontend",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "",
   "type": "module",
   "scripts": {
@@ -24,7 +24,9 @@
     "@tauri-apps/plugin-log": "^2",
     "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-opener": "2.4.0",
+    "@tauri-apps/plugin-process": "~2",
     "@tauri-apps/plugin-store": "2.3.0",
+    "@tauri-apps/plugin-updater": "~2",
     "@tauri-apps/plugin-window-state": "2.3.0",
     "@types/bun": "^1.2.18",
     "@types/ovenplayer": "^0.10.13",

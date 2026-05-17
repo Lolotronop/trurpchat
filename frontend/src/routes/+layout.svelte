@@ -9,17 +9,17 @@
   import { gitGud } from "$lib/god.svelte";
   import { initCustomModules } from "$lib/audio/context";
   import { initLogging } from "$lib/log";
+  import { runStartupUpdater } from "$lib/updater";
 
   let { children } = $props();
 
-  let perm: Promise<any>;
-  if (isTauri()) {
-    perm = invoke("get_permissions", { origin: window.location.origin });
-  } else {
-    perm = Promise.resolve();
-  }
+  const p = runStartupUpdater().then(() => {
+    const perm = isTauri()
+      ? invoke("get_permissions", { origin: window.location.origin })
+      : Promise.resolve();
 
-  const p = Promise.all([initCustomModules(), perm, initLogging()]);
+    return Promise.all([initCustomModules(), perm, initLogging()]);
+  });
 
   const loaded = p.then(() => {
     return gitGud();

@@ -2,7 +2,8 @@
   "name": "trurpchat",
   "private": true,
   "scripts": {
-    "build": "cd frontend && bun run build"
+    "build": "cd frontend && bun run build",
+    "prod-build": "bun make-update.ts --build"
   },
   "workspaces": [
     "backend",

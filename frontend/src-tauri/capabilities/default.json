@@ -15,6 +15,7 @@
     "log:default",
     "fs:default",
     "fs:scope-appconfig-recursive",
-    "fs:allow-resource-read-recursive"
+    "fs:allow-resource-read-recursive",
+    "updater:default"
   ]
 }
