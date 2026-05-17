@@ -1,0 +1,15 @@
+version: "3.8"
+
+services:
+  ome:
+    image: airensoft/ovenmediaengine:v0.20.0
+    container_name: ome
+    environment:
+      - OME_HOST_IP=127.0.0.1
+    ports:
+      - "1935:1935"
+      - "9999:9999/udp"
+      - "9000:9000"
+      - "3333:3333"
+      - "3478:3478"
+      - "10000-10009:10000-10009/udp"

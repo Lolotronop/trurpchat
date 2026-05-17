@@ -1,0 +1,11 @@
+{
+  "version": "0.1.2",
+  "notes": "No notes for now",
+  "pub_date": "2026-05-17T19:51:48.180Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSR3cvUjluR0tKWFhhMTNqcElNeUFRbG5JeDVWZU0yY0w0WncyNnBZVmt1M0tCcTg1NURIejBRaldzbHByMVVTS21UOFRpTFhKZmVJei9nRm8zYTZXK24rNzNCR1hNc3c4PQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc5MDQ3NzAwCWZpbGU6dHJ1cnBjaGF0XzAuMS4yX3g2NC1zZXR1cC5leGUKVUVHZ1FwcmVlTVRRc0JqOXdvVlppeFBhSldXZUdxeTRpNE8rN1V6QkNHVUpyeFA5K2lmV2d3NTFuNkVGUXJyTDl4aUtYTFBCbjBPb25keGJwRWFLRHc9PQo=",
+      "url": "https://github.com/Lolotronop/trurpchat/releases/download/v0.1.2/trurpchat_0.1.2_x64-setup.exe"
+    }
+  }
+}

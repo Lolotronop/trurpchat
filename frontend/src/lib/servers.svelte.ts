@@ -1,0 +1,549 @@
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { sendNotification } from "@tauri-apps/plugin-notification";
+import type {
+  IceConfig,
+  Message,
+  OvenMediaEngineConfig,
+  PermissionMask,
+  Room,
+  ServerEvent,
+  User,
+} from "trurpchat-shared";
+import { createSharedState, mentions, patch, perm } from "trurpchat-shared";
+import { log } from "$lib/log";
+import { focused } from "./focus.svelte";
+import { Gateway } from "./gateway.svelte";
+import { gitGud } from "./god.svelte";
+import { BLOCK_SIZE, TextMessageCache, UnreadThing } from "./messages.svelte";
+import { RoomStore } from "./rooms.svelte";
+import { sound } from "./sound.svelte";
+import { TypingStore } from "./typing.svelte";
+import { UserStore } from "./users.svelte";
+import { WebRTC } from "./webrtc.svelte";
+import { getPlatformStore, type IPersistantStore } from "./webstore";
+
+export type ServerDefinition = {
+  id: string | null;
+  name: string;
+  url: string;
+};
+
+function findAddedIds(previous: number[], next: number[]) {
+  return next.filter((id) => !previous.includes(id));
+}
+
+function findRemovedIds(previous: number[], next: number[]) {
+  return previous.filter((id) => !next.includes(id));
+}
+
+export class Server {
+  definition: ServerDefinition = $state({
+    id: null,
+    name: "",
+    url: "",
+  });
+  #persistDefinition: () => void | Promise<void>;
+  /**
+   * expeceted to be in format "http(s)://domain:port/"
+   * trailing slash is MANDATORY(no it isnt its just funny to think it is)
+   */
+  overServerUrl: string | undefined = $state(undefined);
+  ovenMediaEngine: OvenMediaEngineConfig | undefined = $state(undefined);
+  iceConfig: IceConfig | undefined = $state(undefined);
+  gateway: Gateway;
+  state = $state(createSharedState());
+  rooms: RoomStore = new RoomStore(this.state);
+  rtc: WebRTC;
+  user: User = $state({
+    id: -1,
+    name: "T",
+    displayName: "T",
+    deletedAt: null,
+    online: false,
+  });
+
+  users: UserStore = new UserStore(this.state);
+  typing: TypingStore = new TypingStore(this.state);
+  keys = $derived(this.state.keys);
+  unread: UnreadThing = new UnreadThing(this.user.id, (roomId, messageId) => {
+    this.gateway.send({
+      type: "action.message.unread",
+      roomId,
+      unreadId: messageId,
+    });
+  });
+
+  streamKey(userId: number) {
+    if (!this.definition.id) return undefined;
+    return `${this.definition.id}-${userId}`;
+  }
+
+  watchStreamUrl(userId: number) {
+    const streamKey = this.streamKey(userId);
+    if (!streamKey) return undefined;
+
+    if (this.ovenMediaEngine) {
+      const protocol = this.ovenMediaEngine.secure ? "wss" : "ws";
+      return `${protocol}://${this.ovenMediaEngine.host}:${this.ovenMediaEngine.watchPort}/${this.ovenMediaEngine.appName}/${streamKey}`;
+    }
+
+    if (!this.overServerUrl) return undefined;
+    return `ws://${this.overServerUrl}/app/${streamKey}`;
+  }
+
+  publishStreamUrl(userId = this.user.id) {
+    const streamKey = this.streamKey(userId);
+    if (!streamKey) return undefined;
+
+    if (this.ovenMediaEngine) {
+      return `rtmp://${this.ovenMediaEngine.host}:${this.ovenMediaEngine.streamPort}/${this.ovenMediaEngine.appName}/${streamKey}`;
+    }
+
+    const domain = this.overServerUrl?.split(":")[0];
+    if (!domain) return undefined;
+    return `rtmp://${domain}:1935/app/${streamKey}`;
+  }
+
+  can(required: PermissionMask, roomId?: number) {
+    return perm.can(this.state, required, this.user.id, roomId);
+  }
+
+  messages = new TextMessageCache(this.rooms, (roomId, blockId) => {
+    const room = this.rooms.find(roomId);
+    if (!room) return;
+    if (room.type !== "text") return;
+    if (blockId > room.nextMessageId - 1) {
+      log.error(
+        `onfetchrequest: blockId ${blockId} is greater than nextMessageId ${room.nextMessageId}`,
+      );
+      return;
+    }
+    this.gateway.send({
+      type: "action.message.list",
+      roomId: roomId,
+      fromId: blockId,
+      toId: blockId + BLOCK_SIZE,
+    });
+  });
+
+  selectedRoomId: number | undefined = $state(undefined);
+  selectedRoom = $derived.by(() => {
+    if (this.selectedRoomId === undefined) {
+      return undefined;
+    }
+
+    return this.rooms.find(this.selectedRoomId);
+  });
+
+  constructor(
+    definition: ServerDefinition,
+    persistDefinition: () => void | Promise<void>,
+  ) {
+    this.definition = definition;
+    this.#persistDefinition = persistDefinition;
+    void this.rooms.setServerId(this.definition.id);
+    this.gateway = new Gateway();
+    this.rtc = new WebRTC(
+      gitGud().mic,
+      gitGud().headphones,
+      gitGud().camera,
+      this,
+    );
+    this.gateway.onmessage((msg) => {
+      this.handleMessage(msg);
+      this.rtc.handleSignalingMessage(msg);
+    });
+    this.gateway.onclose(() => {
+      this.overServerUrl = undefined;
+      this.ovenMediaEngine = undefined;
+      this.iceConfig = undefined;
+      this.leaveRoom(false);
+      // TODO: this is a hack to make the cache derive work
+      for (const value of Object.values(this.state)) {
+        value.splice(0, value.length);
+      }
+    });
+    this.gateway.onopen(() => {
+      this.gateway.send({
+        type: "action.user.state",
+        muted: gitGud().mic.muted,
+        deafened: gitGud().deafened,
+      });
+    });
+  }
+
+  handleMessage(message: Message) {
+    const previousUser =
+      message.type === "event.user.state"
+        ? structuredClone($state.snapshot(this.users.findRaw(message.user.id)))
+        : undefined;
+
+    patch(this.state, message as ServerEvent);
+
+    if (message.type === "event.room.list") {
+      const id = this.rtc.roomId;
+      if (id && !message.rooms.some((room) => room.id === id)) {
+        this.leaveRoom();
+      }
+    } else if (message.type === "event.room.updated") {
+      // TODO: don't allow changing room type
+    } else if (message.type === "event.room.deleted") {
+      const room = this.rooms.find(message.roomId);
+      if (!room) {
+        log.error(
+          `event.room.deleted: room ${message.roomId} not found in rooms`,
+        );
+        return;
+      }
+
+      if (this.rtc.roomId === message.roomId) {
+        this.leaveRoom();
+      }
+    } else if (message.type === "event.connected") {
+      this.user = message.user;
+    } else if (message.type === "event.user.state") {
+      if (
+        previousUser?.online &&
+        previousUser.streaming &&
+        !message.user.streaming
+      ) {
+        this.rtc.streamPlayers.get(message.user.id)?.stop();
+      }
+
+      if (previousUser) {
+        this.handleUserStateSound(previousUser, message.user);
+      }
+    } else if (message.type === "event.startup.config") {
+      if (this.definition.id === null) {
+        this.definition.id = message.serverId;
+        void this.rooms.setServerId(this.definition.id);
+        void this.#persistDefinition();
+      } else if (this.definition.id !== message.serverId) {
+        log.warn(
+          `Server id mismatch for ${this.definition.name}: expected ${this.definition.id}, got ${message.serverId}`,
+        );
+        this.definition.id = message.serverId;
+        void this.rooms.setServerId(this.definition.id);
+        void this.#persistDefinition();
+      }
+      this.overServerUrl = message.ovenServerUrl;
+      this.ovenMediaEngine = message.ovenMediaEngine;
+      this.iceConfig = message.iceConfig;
+    } else if (message.type === "event.user.me") {
+      this.user = message.user;
+    } else if (message.type === "event.voice.joined") {
+      const room = this.rooms.find(message.room);
+      if (!room || room.type !== "voice") {
+        return;
+      }
+      const isMe = message.userId === this.user.id;
+
+      if (!isMe || this.rtc.roomId === room.id) {
+        return;
+      }
+
+      if (this.rtc.connected) {
+        this.leaveRoom();
+      }
+
+      this.rtc.connect(room.id);
+    } else if (message.type === "event.voice.left") {
+      const room = this.rooms.find(message.room);
+      if (!room || room.type !== "voice") {
+        return;
+      }
+
+      const isMe = message.userId === this.user.id;
+      const inRoom = this.rtc.roomId === room.id;
+      if (isMe && inRoom) {
+        this.leaveRoom(false);
+      }
+    } else if (message.type === "event.message.list") {
+      this.messages.set(message.roomId, message.fromId, message.messages);
+    } else if (message.type === "event.message.edited") {
+      this.messages.edit(message.message);
+    } else if (message.type === "event.message.deleted") {
+      this.messages.delete(message.roomId, message.id);
+    } else if (message.type === "event.message.created") {
+      this.messages.append(message.message);
+
+      if (message.message.hasMention) {
+        this.hadnleMessageMention(message);
+      }
+    } else if (message.type === "event.message.unread.list") {
+      this.unread.unread = message.unread;
+    }
+  }
+
+  hadnleMessageMention(message: Message) {
+    if (message.type !== "event.message.created") return;
+    const mentionsMeDirectly = mentions.user.includes(
+      message.message.text,
+      this.user.id,
+    );
+    const myRoles = this.users.find(this.user.id)?.roles ?? [];
+    const mentionsMyRole = myRoles.some((role) =>
+      mentions.role.includes(message.message.text, role.id),
+    );
+
+    if (mentionsMeDirectly || mentionsMyRole) {
+      this.unread.incMentiones(message.message.roomId);
+
+      if (!this.shouldSendRoomNotification(message.message.roomId)) {
+        return;
+      }
+
+      const room = this.messages.getRoom(message.message.roomId, false);
+
+      if (
+        !focused() ||
+        this.selectedRoomId !== message.message.roomId ||
+        !room?.isAtBottom
+      ) {
+        sound.play("message");
+        const room = this.rooms.find(message.message.roomId);
+        const author = this.users.find(message.message.userId);
+        if (!author || !room) return;
+        let body = "";
+        const parts = mentions.split(message.message.text);
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
+          if (part.type === "text") {
+            body += part.value;
+          } else if (part.type === "user") {
+            body += mentions.user.format.name(
+              this.users.find(part.userId) ?? part.userId,
+            );
+          } else {
+            body += mentions.role.format.name(
+              this.users.findRole(part.roleId) ?? part.roleId,
+            );
+          }
+        }
+        sendNotification({
+          title: `#${room.name} @${author.username}`,
+          body,
+        });
+        return;
+      }
+    }
+  }
+
+  reconnect() {
+    this.overServerUrl = undefined;
+    this.ovenMediaEngine = undefined;
+    this.iceConfig = undefined;
+    this.gateway.disconnect();
+    this.gateway.connect(this.definition.url);
+  }
+
+  get connected() {
+    return this.gateway.connected;
+  }
+
+  getRoomNotificationMode(roomId: number) {
+    return this.rooms.find(roomId)?.notificationMode ?? "normal";
+  }
+
+  shouldSendRoomNotification(roomId: number) {
+    return this.getRoomNotificationMode(roomId) === "normal";
+  }
+
+  shouldHearStreamSound(user: User) {
+    if (!user.online) {
+      return false;
+    }
+
+    if (user.id === this.user.id) {
+      return true;
+    }
+
+    const room = this.rooms.findVoiceRoomByUserId(user.id);
+    return room?.users.includes(this.user.id) ?? false;
+  }
+
+  shouldHearViewerSound(streamerId: number, watcherIds: number[]) {
+    return streamerId === this.user.id || watcherIds.includes(this.user.id);
+  }
+
+  handleUserStateSound(previous: User, next: User) {
+    if (!previous.online || !next.online) {
+      return;
+    }
+
+    if (
+      previous.streaming !== next.streaming &&
+      this.shouldHearStreamSound(next)
+    ) {
+      sound.play(next.streaming ? "stream started" : "stream stopped");
+    }
+
+    const addedWatchers = findAddedIds(previous.watchedBy, next.watchedBy);
+    if (
+      addedWatchers.length > 0 &&
+      this.shouldHearViewerSound(next.id, [next.id, ...next.watchedBy])
+    ) {
+      sound.play("viewer join");
+    }
+
+    const removedWatchers = findRemovedIds(previous.watchedBy, next.watchedBy);
+    if (
+      removedWatchers.length > 0 &&
+      this.shouldHearViewerSound(next.id, [next.id, ...previous.watchedBy])
+    ) {
+      sound.play("viewer leave");
+    }
+  }
+
+  async joinRoom(room: Room) {
+    if (room.type !== "voice") {
+      throw new Error("Tried to join a non-voice room");
+    }
+
+    if (this.gateway.connected !== true) {
+      throw new Error("Gateway is not connected");
+    }
+
+    if (this.rtc.roomId === room.id) {
+      return;
+    }
+
+    if (this.rtc.connected) {
+      this.leaveRoom();
+    }
+
+    this.rtc.connect(room.id);
+
+    this.gateway.send({
+      type: "action.voice.join",
+      room: room.id,
+    });
+  }
+
+  leaveRoom(send = true) {
+    if (this.rtc.roomId === undefined) return;
+
+    const id = this.rtc.roomId;
+    this.rtc.cleanup();
+    sound.play("voice disconnected");
+    if (isTauri()) {
+      invoke("stop_stream");
+    }
+
+    if (send) {
+      this.gateway.send({
+        type: "action.voice.leave",
+        room: id,
+      });
+    }
+
+    if (this.selectedRoomId === id) {
+      this.selectedRoomId = undefined;
+    }
+  }
+}
+
+export class ServerManager {
+  store: IPersistantStore = getPlatformStore("servers");
+  values: Server[] = $state([]);
+
+  #selected: Server | undefined = $state(undefined);
+  get selected() {
+    return this.#selected;
+  }
+  set selected(value: Server | undefined) {
+    if (value === this.#selected) {
+      return;
+    }
+
+    // TODO: think about connection/disconnection strategies
+    // this just assumes that you want to be on 1 server at a time
+    this.#selected?.gateway.disconnect();
+
+    this.#selected = value;
+    if (value === undefined) {
+      return;
+    }
+
+    value.reconnect();
+
+    const index = Math.max(0, this.values.indexOf(value));
+    this.store.set("selectedServerIndex", index);
+  }
+
+  constructor() {
+    this.load();
+  }
+
+  async load() {
+    const definitions = await this.store.get<ServerDefinition[]>("servers");
+    if (!definitions) {
+      return;
+    }
+    this.values = definitions.map(
+      (definition) =>
+        new Server(
+          {
+            id: definition.id ?? null,
+            name: definition.name,
+            url: definition.url,
+          },
+          () => this.save(),
+        ),
+    );
+    if (this.values.length > 0) {
+      let selectedIndex =
+        (await this.store.get<number>("selectedServerIndex")) ?? 0;
+      selectedIndex = Math.min(selectedIndex, this.values.length - 1);
+      selectedIndex = Math.max(selectedIndex, 0);
+      this.selected = this.values[selectedIndex];
+    }
+  }
+
+  async save() {
+    const definitions = this.values.map((s) => s.definition);
+    this.store.set("servers", definitions);
+  }
+
+  add(server: ServerDefinition) {
+    this.values.push(new Server(server, () => this.save()));
+    this.save();
+  }
+
+  update(server: Server, definition: ServerDefinition) {
+    const value = this.values.find((s) => s === server);
+    if (!value) {
+      throw new Error("trying to update a server that does not exist");
+    }
+
+    const previousUrl = value.definition.url;
+    value.definition = {
+      id: value.definition.id,
+      name: definition.name,
+      url: definition.url,
+    };
+
+    this.save();
+
+    if (this.selected === value && previousUrl !== definition.url) {
+      value.reconnect();
+    }
+  }
+
+  remove(server: Server) {
+    const value = this.values.find((s) => s === server);
+    if (!value) {
+      throw new Error("trying do delete a server that does not exist");
+    }
+
+    value.gateway.disconnect();
+
+    this.values = this.values.filter((v) => v !== value);
+
+    if (this.selected === value) {
+      this.selected = this.values[0] || undefined;
+    }
+
+    this.save();
+  }
+}

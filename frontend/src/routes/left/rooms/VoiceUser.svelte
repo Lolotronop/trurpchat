@@ -1,0 +1,41 @@
+<script lang="ts">
+  import { Camera, HeadphoneOff, MicOff, TvMinimalPlay } from "@lucide/svelte";
+  import Avatar from "$lib/components/Avatar.svelte";
+  import SpeakingBorder from "$lib/components/SpeakingBorder.svelte";
+  import type { ConnectedUserWithRoles } from "$lib/users.svelte";
+
+  type Props = {
+    user: ConnectedUserWithRoles;
+    mutedByMe: boolean;
+    speaking: boolean;
+  };
+
+  const { user, speaking, mutedByMe }: Props = $props();
+</script>
+
+<div
+  class="hover:bg-accent/20 flex flex-row items-center justify-between gap-2 rounded p-1 select-none"
+>
+  <div class="flex flex-row items-center gap-2 min-w-0">
+    <SpeakingBorder {speaking} rounded class="size-6 shrink-0 rounded-full">
+      <Avatar class="size-full" name={user.username}></Avatar>
+    </SpeakingBorder>
+    <p class="truncate flex-1 text-foreground" style:color={user.colorHex}>
+      {user.username}
+    </p>
+  </div>
+  <div class="flex h-6 flex-row shrink-0 items-center gap-2 pr-2">
+    {#if user.muted || mutedByMe}
+      <MicOff class={`size-4 ${mutedByMe ? "text-yellow-600" : ""}`} />
+    {/if}
+    {#if user.deafened}
+      <HeadphoneOff class="size-4" />
+    {/if}
+    {#if user.camera}
+      <Camera class="size-4" />
+    {/if}
+    {#if user.streaming}
+      <TvMinimalPlay class="size-4" />
+    {/if}
+  </div>
+</div>

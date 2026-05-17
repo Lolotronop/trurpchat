@@ -1,57 +1,13 @@
 {
-  "name": "tauri-app",
-  "version": "0.1.0",
-  "description": "",
-  "type": "module",
+  "name": "trurpchat",
+  "private": true,
   "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "tauri": "tauri",
-    "backend": "bun --watch src-backend/index.ts"
+    "build": "cd frontend && bun run build",
+    "prod-build": "bun make-update.ts --build"
   },
-  "license": "MIT",
-  "dependencies": {
-    "@tailwindcss/vite": "^4.1.11",
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-fs": "~2",
-    "@tauri-apps/plugin-global-shortcut": "~2",
-    "@tauri-apps/plugin-opener": "^2",
-    "@tauri-apps/plugin-store": "~2",
-    "@tauri-apps/plugin-window-state": "~2",
-    "@types/bun": "^1.2.18",
-    "@types/ovenplayer": "^0.10.13",
-    "mode-watcher": "^1.1.0",
-    "ovenplayer": "^0.10.43",
-    "prettier": "^3.6.2",
-    "prettier-plugin-svelte": "^3.4.0",
-    "prettier-plugin-tailwindcss": "^0.6.14",
-    "reconnecting-websocket": "^4.4.0",
-    "tailwindcss": "^4.1.11"
-  },
-  "devDependencies": {
-    "@internationalized/date": "^3.8.1",
-    "@lucide/svelte": "^0.515.0",
-    "@sveltejs/adapter-static": "^3.0.6",
-    "@sveltejs/kit": "^2.9.0",
-    "@sveltejs/vite-plugin-svelte": "^5.0.0",
-    "@tauri-apps/cli": "^2",
-    "bits-ui": "^2.8.6",
-    "clsx": "^2.1.1",
-    "svelte": "^5.36.14",
-    "svelte-check": "^4.0.0",
-    "tailwind-merge": "^3.3.1",
-    "tailwind-variants": "^1.0.0",
-    "tw-animate-css": "^1.3.5",
-    "typescript": "~5.6.2",
-    "vite": "^6.0.3",
-    "vite-plugin-devtools-json": "^0.2.0"
-  },
-  "trustedDependencies": [
-    "@tailwindcss/oxide",
-    "core-js",
-    "ejs"
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
   ]
 }

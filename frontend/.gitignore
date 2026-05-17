@@ -8,11 +8,4 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-
-**/*.dll
-
-# Tauri updater signing keys - keep private and never commit
-/private-keys/
-*.key
-*.key.pub
-*.pem
+send.nu
