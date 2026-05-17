@@ -5442,7 +5442,7 @@ dependencies = [
 
 [[package]]
 name = "trurpchat"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "ffmpeg-rs",
  "log",
