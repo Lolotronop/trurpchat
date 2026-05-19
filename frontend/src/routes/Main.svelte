@@ -6,13 +6,19 @@
   import RoomList from "./left/rooms/RoomList.svelte";
   import ServerSettings from "./left/servers/ServerSettings.svelte";
   import TextRoomContent from "./middle/text/TextRoomContent.svelte";
-  import VoiceGrid from "./middle/voice/VoiceGrid.svelte";
+  import VoiceGrid, {
+    createVoiceGridState,
+    resetVoiceGridState,
+    type VoiceGridState,
+  } from "./middle/voice/VoiceGrid.svelte";
   import Users from "./right/Users.svelte";
 
   type Props = {
     server: Server;
   };
   const { server }: Props = $props();
+  const voiceGridState: VoiceGridState = $state(createVoiceGridState());
+  let previousVoiceRoomId = $state<number | undefined>(undefined);
 
   // TODO: this hacky
   const cache = $derived.by(() => {
@@ -41,6 +47,14 @@
 
     void showRoom(roomId);
   }
+
+  $effect(() => {
+    const roomId = server.rtc.roomId;
+    if (roomId !== undefined && roomId !== previousVoiceRoomId) {
+      resetVoiceGridState(voiceGridState);
+    }
+    previousVoiceRoomId = roomId;
+  });
 </script>
 
 <div class="flex h-full w-full min-h-0 min-w-0 overflow-hidden">
@@ -56,7 +70,7 @@
     class="flex grow-0 h-full w-full flex-col items-center justify-center min-h-0 min-w-0 overflow-hidden"
   >
     {#if server.selectedRoom?.type === "voice"}
-      <VoiceGrid {server} />
+      <VoiceGrid {server} gridState={voiceGridState} />
     {:else if server.selectedRoom?.type === "text"}
       {@const room = server.rooms.find(server.selectedRoom.id)}
       {#if cache !== undefined && room?.type === "text"}

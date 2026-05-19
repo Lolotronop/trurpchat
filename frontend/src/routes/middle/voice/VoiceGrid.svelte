@@ -1,3 +1,28 @@
+<script lang="ts" module>
+  export type VoiceGridState = {
+    layoutMode: "grid" | "focus";
+    focusedTileId: string | undefined;
+    hideOthers: boolean;
+    shouldHide: boolean;
+  };
+
+  export function createVoiceGridState(): VoiceGridState {
+    return {
+      layoutMode: "grid",
+      focusedTileId: undefined,
+      hideOthers: false,
+      shouldHide: true,
+    };
+  }
+
+  export function resetVoiceGridState(state: VoiceGridState) {
+    state.layoutMode = "grid";
+    state.focusedTileId = undefined;
+    state.hideOthers = false;
+    state.shouldHide = true;
+  }
+</script>
+
 <script lang="ts">
   import {
     ChevronDown,
@@ -26,6 +51,7 @@
 
   type Props = {
     server: Server;
+    gridState: VoiceGridState;
   };
 
   type Tile = {
@@ -34,7 +60,7 @@
     userId: number;
   };
 
-  const { server }: Props = $props();
+  const { server, gridState }: Props = $props();
 
   const g = gitGud();
 
@@ -79,18 +105,14 @@
     return nextTiles;
   });
 
-  let layoutMode = $state<"grid" | "focus">("grid");
-  let focusedTileId = $state<string | undefined>(undefined);
-  let hideOthers = $state(false);
-  let shouldHide = $state(true);
   let isFullscreen = $state(false);
   const immersiveFocus = $derived(
-    layoutMode === "focus" && hideOthers && isFullscreen,
+    gridState.layoutMode === "focus" && gridState.hideOthers && isFullscreen,
   );
 
-  const focusedTile = $derived(tiles.find((tile) => tile.id === focusedTileId));
+  const focusedTile = $derived(tiles.find((tile) => tile.id === gridState.focusedTileId));
   const secondaryTiles = $derived(
-    focusedTileId ? tiles.filter((tile) => tile.id !== focusedTileId) : [],
+    gridState.focusedTileId ? tiles.filter((tile) => tile.id !== gridState.focusedTileId) : [],
   );
   const focusedUser = $derived(findConnectedUser(focusedTile?.userId));
   const focusedPeer = $derived.by(() => {
@@ -204,17 +226,17 @@
   }
 
   function updateFocusLayout() {
-    if (!focusContainer || layoutMode !== "focus") {
+    if (!focusContainer || gridState.layoutMode !== "focus") {
       return;
     }
 
     const availableWidth = focusContainer.clientWidth;
     const availableHeight = focusContainer.clientHeight;
-    const secondaryHeightBudget = hideOthers
+    const secondaryHeightBudget = gridState.hideOthers
       ? 0
       : Math.min(Math.max(availableHeight * 0.28, 120), 320);
 
-    secondaryItemWidth = hideOthers
+    secondaryItemWidth = gridState.hideOthers
       ? 0
       : getOptimalTileWidth(
           availableWidth,
@@ -222,7 +244,7 @@
           secondaryTiles.length,
         );
 
-    const secondaryHeight = hideOthers
+    const secondaryHeight = gridState.hideOthers
       ? 0
       : getWrappedBlockHeight(
           availableWidth,
@@ -261,20 +283,20 @@
 
   function cancelControlsHide() {
     clearTimeout(hideTimeout);
-    shouldHide = false;
+    gridState.shouldHide = false;
   }
 
   function scheduleControlsHide() {
     clearTimeout(hideTimeout);
 
     if (isInteractingWithControls) {
-      shouldHide = false;
+      gridState.shouldHide = false;
       return;
     }
 
     hideTimeout = setTimeout(() => {
       if (!isInteractingWithControls) {
-        shouldHide = true;
+        gridState.shouldHide = true;
       }
     }, AUTO_HIDE_DELAY);
   }
@@ -324,7 +346,7 @@
     }
 
     const onMouseMove = (event: MouseEvent) => {
-      shouldHide = false;
+      gridState.shouldHide = false;
 
       if (beginControlsInteraction(event.target)) {
         return;
@@ -353,7 +375,7 @@
     const onMouseLeave = () => {
       isInteractingWithControls = false;
       clearTimeout(hideTimeout);
-      shouldHide = true;
+      gridState.shouldHide = true;
     };
 
     const onDblClick = (event: MouseEvent) => {
@@ -457,14 +479,14 @@
   }
 
   function toggleTileFocus(tileId: string) {
-    if (layoutMode === "focus" && focusedTileId === tileId) {
-      layoutMode = "grid";
-      focusedTileId = undefined;
+    if (gridState.layoutMode === "focus" && gridState.focusedTileId === tileId) {
+      gridState.layoutMode = "grid";
+      gridState.focusedTileId = undefined;
       return;
     }
 
-    layoutMode = "focus";
-    focusedTileId = tileId;
+    gridState.layoutMode = "focus";
+    gridState.focusedTileId = tileId;
   }
 
   function handleTileClick(tileId: string, event: MouseEvent) {
@@ -485,9 +507,9 @@
   }
 
   $effect(() => {
-    if (!focusedTileId || !tiles.some((tile) => tile.id === focusedTileId)) {
-      layoutMode = "grid";
-      focusedTileId = undefined;
+    if (!gridState.focusedTileId || !tiles.some((tile) => tile.id === gridState.focusedTileId)) {
+      gridState.layoutMode = "grid";
+      gridState.focusedTileId = undefined;
     }
   });
 
@@ -512,7 +534,7 @@
   $effect(() => {
     const tileCount = secondaryTiles.length;
 
-    if (secondaryContainer && !hideOthers) {
+    if (secondaryContainer && !gridState.hideOthers) {
       secondaryItemWidth = getOptimalTileWidth(
         secondaryContainer.clientWidth,
         secondaryContainer.clientHeight,
@@ -522,7 +544,7 @@
   });
 
   $effect(() => {
-    if (focusContainer && layoutMode === "focus") {
+    if (focusContainer && gridState.layoutMode === "focus") {
       updateFocusLayout();
     }
   });
@@ -545,7 +567,7 @@
             {user}
             speaking={g.mic.speaking && !g.muted}
             cameraStream={g.camera.showMyVideo ? g.camera.stream : undefined}
-            shouldHideInfo={shouldHide}
+            shouldHideInfo={gridState.shouldHide}
             {edgeToEdge}
           />
         </ContextMenu>
@@ -579,7 +601,7 @@
             mutedByMe={peer?.mute}
             {user}
             cameraStream={peer.cameraStream}
-            shouldHideInfo={shouldHide}
+            shouldHideInfo={gridState.shouldHide}
             {edgeToEdge}
           />
         </ContextMenu>
@@ -588,7 +610,7 @@
           speaking={false}
           {user}
           cameraStream={undefined}
-          shouldHideInfo={shouldHide}
+          shouldHideInfo={gridState.shouldHide}
           {edgeToEdge}
         />
       {/if}
@@ -599,7 +621,7 @@
           {server}
           {user}
           {player}
-          shouldHideInfo={shouldHide}
+          shouldHideInfo={gridState.shouldHide}
           {edgeToEdge}
         />
       {/if}
@@ -624,13 +646,13 @@
 <BitsConfig defaultPortalTo={isFullscreen ? portalHost : undefined}>
   <div
     class="relative h-full w-full overflow-hidden"
-    class:cursor-none={shouldHide}
+    class:cursor-none={gridState.shouldHide}
     bind:this={gridShell}
     {@attach attachGridShell}
   >
     <div bind:this={portalHost} class="contents"></div>
 
-    {#if layoutMode === "focus" && focusedTile}
+    {#if gridState.layoutMode === "focus" && focusedTile}
       <div
         class="flex h-full w-full min-h-0 min-w-0 items-center justify-center overflow-hidden {immersiveFocus ? 'p-0' : 'p-2'}"
         bind:this={focusContainer}
@@ -650,9 +672,9 @@
             <div
               class={[
                 "pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 transition-opacity duration-100  ",
-                shouldHide && 'opacity-0',
-                hideOthers && !immersiveFocus ? 'bottom-3' : '-bottom-10',
-                hideOthers && immersiveFocus ? 'bottom-16' : '-bottom-10'
+                gridState.shouldHide && 'opacity-0',
+                gridState.hideOthers && !immersiveFocus ? 'bottom-3' : '-bottom-10',
+                gridState.hideOthers && immersiveFocus ? 'bottom-16' : '-bottom-10'
               ]}
             >
               <div
@@ -664,12 +686,12 @@
                   class="flex gap-1 px-2"
                   data-no-focus-toggle
                   onclick={() => {
-                    hideOthers = !hideOthers;
+                    gridState.hideOthers = !gridState.hideOthers;
                     updateFocusLayout();
                   }}
                 >
                   <Users class="size-4" />
-                  {#if hideOthers}
+                  {#if gridState.hideOthers}
                     <ChevronUp class="size-4" />
                   {:else}
                     <ChevronDown class="size-4" />
@@ -679,7 +701,7 @@
             </div>
           </div>
 
-          {#if !hideOthers && secondaryTiles.length > 0}
+          {#if !gridState.hideOthers && secondaryTiles.length > 0}
             <div
               class="flex max-h-full w-full flex-wrap justify-center gap-2 overflow-y-auto overflow-x-hidden"
               bind:this={secondaryContainer}
@@ -713,7 +735,7 @@
     {/if}
 
     <div
-      class="pointer-events-none absolute inset-0 transition-opacity duration-100 {shouldHide && 'opacity-0'}"
+      class="pointer-events-none absolute inset-0 transition-opacity duration-100 {gridState.shouldHide && 'opacity-0'}"
     >
       <div
         class="pointer-events-none absolute inset-x-0 bottom-0 h-28"
@@ -760,7 +782,7 @@
             data-controls
             class="flex items-center gap-2 bg-background/80 rounded-md pointer-events-auto w-fit"
           >
-            {#if layoutMode === "focus" && focusedCanAdjustVolume}
+            {#if gridState.layoutMode === "focus" && focusedCanAdjustVolume}
               <div class="w-36 flex items-center gap-2">
                 <Button
                   variant="ghost"
