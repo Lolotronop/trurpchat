@@ -48,7 +48,8 @@
     server.state.permissions.find(
       (permission) =>
         permission.subjectType === subjectType &&
-        permission.subjectId === (subjectType === "everyone" ? null : subjectId) &&
+        permission.subjectId ===
+          (subjectType === "everyone" ? null : subjectId) &&
         permission.roomId === roomId,
     ),
   );
@@ -63,8 +64,8 @@
     const allow = row?.allow ?? 0;
     const deny = row?.deny ?? 0;
     const next = {
-      allow: value === "allow" ? (allow | bit) : (allow & ~bit),
-      deny: value === "deny" ? (deny | bit) : (deny & ~bit),
+      allow: value === "allow" ? allow | bit : allow & ~bit,
+      deny: value === "deny" ? deny | bit : deny & ~bit,
     };
 
     if (row) {
@@ -91,10 +92,12 @@
 
 <div class="flex flex-col gap-2">
   <Input bind:value={search} placeholder="Поиск прав" />
-  {#each permissions as [name, info] (name)}
+  {#each permissions as [ name, info ] (name)}
     {@const bit = Permission[name]}
     {@const value = getValue(row, bit)}
-    <div class="flex items-center justify-between gap-3 rounded border px-3 py-2">
+    <div
+      class="flex items-center justify-between gap-3 rounded border px-3 py-2"
+    >
       <div class="min-w-0">
         <p class="truncate text-sm font-medium">{info.label}</p>
         <p class="text-muted-foreground truncate text-xs">{info.description}</p>
@@ -112,7 +115,6 @@
         <Button
           variant={value === "inherit" ? "secondary" : "ghost"}
           size="icon"
-          class="text-muted-foreground"
           aria-label="Без изменений"
           onclick={() => setValue(bit, "inherit")}
         >

@@ -74,7 +74,7 @@ export const permissionInfo: Record<
   MANAGE_PERMISSIONS: {
     label: "Управление правами",
     description: "Создание, изменение и удаление переопределений прав.",
-    scope: "global",
+    scope: "both",
   },
   VIEW_ROOM: {
     label: "Просмотр комнаты",
