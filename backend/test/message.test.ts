@@ -93,6 +93,8 @@ describe("message handlers", () => {
   test("action.message.list sends a range and masks deleted messages", async () => {
     const { ctx, alice } = await createSeededContext();
     await ctx.db.update(rooms).set({ nextMessageId: 2 }).where(eq(rooms.id, 10));
+    const stateRoom = ctx.state.rooms.find((room) => room.id === 10);
+    if (stateRoom) stateRoom.nextMessageId = 2;
     await ctx.db.insert(messages).values([
       { id: 0, roomId: 10, userId: 2, text: "visible" },
       { id: 1, roomId: 10, userId: 2, text: "deleted", deletedAt: new Date() },
@@ -114,6 +116,8 @@ describe("message handlers", () => {
   test("action.message.unread upserts unread marker", async () => {
     const { ctx, alice } = await createSeededContext();
     await ctx.db.update(rooms).set({ nextMessageId: 5 }).where(eq(rooms.id, 10));
+    const stateRoom = ctx.state.rooms.find((room) => room.id === 10);
+    if (stateRoom) stateRoom.nextMessageId = 5;
 
     const first = await messageHandlers["action.message.unread"](ctx, alice, {
       type: "action.message.unread",

@@ -196,11 +196,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("toId must be less than 100"));
     }
 
-    const [room] = await ctx.db
-      .select()
-      .from(rooms)
-      .where(and(eq(rooms.id, roomId), isNull(rooms.deletedAt)))
-      .limit(1);
+    const room = ctx.state.rooms.find((room) => room.id === roomId);
 
     if (!room) {
       return err(new Error("Room not found"));
@@ -260,11 +256,7 @@ export const messageHandlers: Handlers<MessageAction> = {
 
     const userId = ws.data.userId;
 
-    const [room] = await ctx.db
-      .select()
-      .from(rooms)
-      .where(eq(rooms.id, roomId))
-      .limit(1);
+    const room = ctx.state.rooms.find((room) => room.id === roomId);
     if (!room) {
       return err(new Error("Room not found"));
     }

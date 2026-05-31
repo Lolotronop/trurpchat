@@ -75,11 +75,7 @@ const iceConfig = config.iceConfig;
 const serverId = await getOrCreateServerId();
 
 export async function getAllUsers(ctx: HandlerContext): Promise<User[]> {
-  const allUsers = await ctx.db
-    .select()
-    .from(users)
-    .where(isNull(users.deletedAt));
-  const offlineUsers: OfflineUser[] = allUsers
+  const offlineUsers: OfflineUser[] = ctx.state.users
     .filter((u) => !ctx.clients.has(u.id))
     .map((u) => ({ ...u, online: false }));
 
@@ -225,7 +221,7 @@ Bun.serve<WsData, never>({
         unread: usersUnread,
       });
 
-      await sendRoleList(ctx.db, ws);
+      sendRoleList(ctx.state, ws);
 
       send(ws, {
         type: "event.permission.list",

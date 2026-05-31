@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { Room, RoomAction } from "trurpchat-shared";
 import { Permission, patch, perm } from "trurpchat-shared";
@@ -61,22 +61,11 @@ export const roomHandlers: Handlers<RoomAction> = {
     const result = cheks(ctx, ws, room);
     if (result.isErr()) return result;
 
-    const created = await ctx.db.transaction(async (tx) => {
-      const [roomOrderRow] = await tx
-        .select({ order: rooms.order })
-        .from(rooms)
-        .where(isNull(rooms.deletedAt))
-        .orderBy(desc(rooms.order))
-        .limit(1);
-
-      const order = roomOrderRow ? roomOrderRow.order + 1 : 0;
-      return (
-        await tx
-          .insert(rooms)
-          .values([{ ...room, order }])
-          .returning()
-      )[0];
-    });
+    const order = Math.max(-1, ...ctx.state.rooms.map((room) => room.order)) + 1;
+    const [created] = await ctx.db
+      .insert(rooms)
+      .values([{ ...room, order }])
+      .returning();
 
     if (!created) return err(new Error(`Failed to crate room ${room.name}`));
 
@@ -177,7 +166,9 @@ export const roomHandlers: Handlers<RoomAction> = {
     } else if ("visibilityMode" in roomUpdate) {
       sendRoomList(
         ctx,
-        await ctx.db.select().from(rooms).where(isNull(rooms.deletedAt)),
+        ctx.state.rooms.map((room) =>
+          room.id === updatedRoom.id ? updatedRoom : room,
+        ),
       );
     } else {
       sendRoom(ctx, updatedRoom);

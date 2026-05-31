@@ -1,4 +1,4 @@
-import { and, eq, getColumns, isNull } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { UserAction } from "trurpchat-shared";
 import {
@@ -35,7 +35,7 @@ export const userHandlers: Handlers<UserAction> = {
       return err(new Error(`Failed to create user ${msg.name}`));
     }
 
-    await createKey(ctx.db, user.id);
+    const key = await createKey(ctx.db, user.id);
 
     const createdEvent = {
       type: "event.user.created" as const,
@@ -45,6 +45,10 @@ export const userHandlers: Handlers<UserAction> = {
       },
     };
     patch(ctx.state, createdEvent);
+    patch(ctx.state, {
+      type: "event.key.list" as const,
+      keys: [...ctx.state.keys, key],
+    });
     sendAll(ctx.clients.values(), createdEvent);
 
     const admins = ctx.clients
@@ -54,13 +58,7 @@ export const userHandlers: Handlers<UserAction> = {
       );
     sendAll(admins, {
       type: "event.key.list",
-      keys: await ctx.db
-        .select({
-          ...getColumns(keys),
-        })
-        .from(keys)
-        .innerJoin(users, eq(keys.userId, users.id))
-        .where(isNull(users.deletedAt)),
+      keys: ctx.state.keys,
     });
 
     return ok();
@@ -127,10 +125,9 @@ export const userHandlers: Handlers<UserAction> = {
       };
       send(client, meEvent);
       const clientIsAdmin = perm.can(ctx.state, Permission.MANAGE_KEYS, msg.id);
-      const userKeys = await ctx.db
-        .select()
-        .from(keys)
-        .where(!clientIsAdmin ? eq(keys.userId, msg.id) : undefined);
+      const userKeys = ctx.state.keys.filter(
+        (key) => clientIsAdmin || key.userId === msg.id,
+      );
       send(client, {
         type: "event.key.list",
         keys: userKeys,

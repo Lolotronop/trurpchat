@@ -147,6 +147,22 @@ export function seedState(ctx: HandlerContext) {
       deny: 0,
     },
   );
+  ctx.state.keys.push(
+    {
+      id: 1,
+      key: "admin-key",
+      userId: 1,
+      createdAt: new Date(0),
+      lastSeen: new Date(0),
+    },
+    {
+      id: 2,
+      key: "alice-key",
+      userId: 2,
+      createdAt: new Date(0),
+      lastSeen: new Date(0),
+    },
+  );
 }
 
 export async function seedDb(ctx: HandlerContext) {

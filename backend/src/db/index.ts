@@ -24,7 +24,9 @@ export async function createKey(database: BackendDb, userId: number) {
     key: Math.random().toString(36).slice(4),
     userId,
   };
-  await database.insert(keys).values([keyData]);
+  const [key] = await database.insert(keys).values([keyData]).returning();
+  if (!key) throw new Error(`Failed to create key for user ${userId}`);
+  return key;
 }
 
 export async function getOrCreateServerId(database: BackendDb = db) {

@@ -1,9 +1,8 @@
-import { and, desc, eq, getColumns, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
-import type { Role, RoleAction, ServerEvent, UserRole } from "trurpchat-shared";
+import type { Role, RoleAction, ServerEvent, SharedState, UserRole } from "trurpchat-shared";
 import { Permission, patch } from "trurpchat-shared";
-import type { BackendDb } from "$src/db";
-import { roles, userRoles, users } from "$src/db";
+import { roles, userRoles } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
 import type { Handlers } from "./types";
@@ -25,46 +24,32 @@ function validateRoleInput(role: Partial<Role>) {
   return ok();
 }
 
-export async function getAllRoles(database: BackendDb): Promise<Role[]> {
-  return await database
-    .select({
-      id: roles.id,
-      name: roles.name,
-      color: roles.color,
-      section: roles.section,
-      order: roles.order,
-    })
-    .from(roles)
-    .where(isNull(roles.deletedAt));
+export function getAllRoles(state: SharedState): Role[] {
+  return state.roles;
 }
 
-export async function getAllAssignments(
-  database: BackendDb,
-): Promise<UserRole[]> {
-  return await database
-    .select({
-      ...getColumns(userRoles),
-    })
-    .from(userRoles)
-    .innerJoin(users, eq(userRoles.userId, users.id))
-    .innerJoin(roles, eq(userRoles.roleId, roles.id))
-    .where(and(isNull(users.deletedAt), isNull(roles.deletedAt)));
+export function getAllAssignments(state: SharedState): UserRole[] {
+  return state.userRoles.filter(
+    (assignment) =>
+      state.users.some((user) => user.id === assignment.userId) &&
+      state.roles.some((role) => role.id === assignment.roleId),
+  );
 }
 
-export async function sendRoleList(
-  database: BackendDb,
+export function sendRoleList(
+  state: SharedState,
   client: Parameters<typeof send>[0],
 ) {
   send(client, {
     type: "event.role.list",
-    roles: await getAllRoles(database),
-    assignments: await getAllAssignments(database),
+    roles: getAllRoles(state),
+    assignments: getAllAssignments(state),
   });
 }
 
 export const roleHandlers: Handlers<RoleAction> = {
   "action.role.list": async (ctx, ws, _msg) => {
-    await sendRoleList(ctx.db, ws);
+    sendRoleList(ctx.state, ws);
     return ok();
   },
 
@@ -80,36 +65,21 @@ export const roleHandlers: Handlers<RoleAction> = {
       return validation;
     }
 
-    const created = await ctx.db.transaction(async (tx) => {
-      const [roleOrderRow] = await tx
-        .select({ order: roles.order })
-        .from(roles)
-        .where(isNull(roles.deletedAt))
-        .orderBy(desc(roles.order))
-        .limit(1);
-
-      let order = 0;
-      if (roleOrderRow) {
-        order = roleOrderRow.order + 1;
-      }
-
-      const [createdRole] = await tx
-        .insert(roles)
-        .values({
-          ...msg.role,
-          section: msg.role.section ?? false,
-          order,
-        })
-        .returning({
-          id: roles.id,
-          name: roles.name,
-          color: roles.color,
-          section: roles.section,
-          order: roles.order,
-        });
-
-      return createdRole;
-    });
+    const order = Math.max(-1, ...ctx.state.roles.map((role) => role.order)) + 1;
+    const [created] = await ctx.db
+      .insert(roles)
+      .values({
+        ...msg.role,
+        section: msg.role.section ?? false,
+        order,
+      })
+      .returning({
+        id: roles.id,
+        name: roles.name,
+        color: roles.color,
+        section: roles.section,
+        order: roles.order,
+      });
 
     if (!created) {
       return err(new Error(`Failed to create role ${msg.role.name}`));
@@ -211,7 +181,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       sendRoleEvent(ctx, {
         type: "event.role.list",
         roles: normalizedRoles,
-        assignments: await getAllAssignments(ctx.db),
+        assignments: getAllAssignments(ctx.state),
       });
     } else {
       sendRoleEvent(ctx, {
@@ -277,21 +247,13 @@ export const roleHandlers: Handlers<RoleAction> = {
       );
     }
 
-    const [user] = await ctx.db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(eq(users.id, msg.userId), isNull(users.deletedAt)))
-      .limit(1);
+    const user = ctx.state.users.find((user) => user.id === msg.userId);
 
     if (!user) {
       return err(new Error(`User ${msg.userId} not found`));
     }
 
-    const [role] = await ctx.db
-      .select({ id: roles.id })
-      .from(roles)
-      .where(and(eq(roles.id, msg.roleId), isNull(roles.deletedAt)))
-      .limit(1);
+    const role = ctx.state.roles.find((role) => role.id === msg.roleId);
 
     if (!role) {
       return err(new Error(`Role ${msg.roleId} not found`));

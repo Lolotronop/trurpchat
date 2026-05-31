@@ -1,20 +1,28 @@
-import { and, eq, getColumns, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { KeyAction } from "trurpchat-shared";
 import { Permission, patch, perm } from "trurpchat-shared";
-import { createKey, keys, users } from "$src/db";
+import { createKey, keys } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { Handlers } from "./types";
 import { canSession } from "./types";
 
-async function refreshBackendKeys(
+function getVisibleKeys(
   ctx: Parameters<Handlers<KeyAction>["action.key.add"]>[0],
+  userId: number,
+  isAdmin: boolean,
 ) {
-  const event = {
+  return ctx.state.keys.filter((key) => isAdmin || key.userId === userId);
+}
+
+function setBackendKeys(
+  ctx: Parameters<Handlers<KeyAction>["action.key.add"]>[0],
+  newKeys: typeof ctx.state.keys,
+) {
+  patch(ctx.state, {
     type: "event.key.list" as const,
-    keys: await ctx.db.select().from(keys),
-  };
-  patch(ctx.state, event);
+    keys: newKeys,
+  });
 }
 
 export const keyHandlers: Handlers<KeyAction> = {
@@ -30,18 +38,15 @@ export const keyHandlers: Handlers<KeyAction> = {
       );
     }
 
-    const [targetUser] = await ctx.db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(eq(users.id, msg.userId), isNull(users.deletedAt)))
-      .limit(1);
+    const targetUser = ctx.state.users.find((user) => user.id === msg.userId);
 
     if (!targetUser) {
       return err(new Error(`User ${msg.userId} not found`));
     }
 
-    await createKey(ctx.db, msg.userId);
-    await refreshBackendKeys(ctx);
+    const key = await createKey(ctx.db, msg.userId);
+    const backendKeys = [...ctx.state.keys, key];
+    setBackendKeys(ctx, backendKeys);
 
     for (const [_, client] of ctx.clients) {
       const id = client.data.userId;
@@ -67,17 +72,10 @@ export const keyHandlers: Handlers<KeyAction> = {
 
   "action.key.remove": async (ctx, ws, msg) => {
     const isAdmin = canSession(ctx, ws, Permission.MANAGE_KEYS);
-    const keyss = await ctx.db
-      .select({
-        ...getColumns(keys),
-      })
-      .from(keys)
-      .innerJoin(users, eq(keys.userId, users.id))
-      .where(and(eq(keys.id, msg.keyId), isNull(users.deletedAt)));
-    if (keyss.length === 0 || !keyss[0]) {
+    const key = ctx.state.keys.find((key) => key.id === msg.keyId);
+    if (!key || !ctx.state.users.some((user) => user.id === key.userId)) {
       return err(new Error(`Key ${msg.keyId} not found`));
     }
-    const key = keyss[0];
 
     if (!isAdmin && ws.data.userId !== key.userId) {
       return err(
@@ -87,19 +85,11 @@ export const keyHandlers: Handlers<KeyAction> = {
       );
     }
     await ctx.db.delete(keys).where(eq(keys.id, msg.keyId));
-    await refreshBackendKeys(ctx);
-    const allKeys = await ctx.db
-      .select({
-        ...getColumns(keys),
-      })
-      .from(keys)
-      .innerJoin(users, eq(keys.userId, users.id))
-      .where(
-        and(
-          isNull(users.deletedAt),
-          !isAdmin ? eq(keys.userId, ws.data.userId) : undefined,
-        ),
-      );
+    setBackendKeys(
+      ctx,
+      ctx.state.keys.filter((key) => key.id !== msg.keyId),
+    );
+    const allKeys = getVisibleKeys(ctx, ws.data.userId, isAdmin);
 
     send(ws, {
       type: "event.key.list",
@@ -129,18 +119,7 @@ export const keyHandlers: Handlers<KeyAction> = {
 
   "action.key.list": async (ctx, ws, __) => {
     const isAdmin = canSession(ctx, ws, Permission.MANAGE_KEYS);
-    const allKeys = await ctx.db
-      .select({
-        ...getColumns(keys),
-      })
-      .from(keys)
-      .innerJoin(users, eq(keys.userId, users.id))
-      .where(
-        and(
-          isNull(users.deletedAt),
-          !isAdmin ? eq(keys.userId, ws.data.userId) : undefined,
-        ),
-      );
+    const allKeys = getVisibleKeys(ctx, ws.data.userId, isAdmin);
 
     send(ws, {
       type: "event.key.list",
