@@ -1,18 +1,12 @@
-import { and, eq, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { TypingAction } from "trurpchat-shared";
-import { patch } from "trurpchat-shared";
-import { rooms } from "$src/db";
+import { patch, perm } from "trurpchat-shared";
 import { sendAll } from "$src/send";
 import type { Handlers } from "./types";
 
 export const typingHandlers: Handlers<TypingAction> = {
   "action.typing": async (ctx, ws, { roomId }) => {
-    const [room] = await ctx.db
-      .select()
-      .from(rooms)
-      .where(and(eq(rooms.id, roomId), isNull(rooms.deletedAt)))
-      .limit(1);
+    const room = ctx.state.rooms.find((room) => room.id === roomId);
 
     if (!room) {
       return err(new Error("Room not found"));
@@ -20,6 +14,11 @@ export const typingHandlers: Handlers<TypingAction> = {
 
     if (room.type !== "text") {
       return err(new Error("Room is not a text room"));
+    }
+
+    const can = perm.can(ctx.state, perm.bit.VIEW_ROOM, ws.data.userId, roomId);
+    if (!can) {
+      return err(new Error("Missing VIEW_ROOM"));
     }
 
     const event = {

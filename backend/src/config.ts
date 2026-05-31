@@ -1,6 +1,6 @@
-import { env } from "bun";
 import { isAbsolute, resolve } from "node:path";
-import { err, ok, ResultAsync, type Result } from "neverthrow";
+import { env } from "bun";
+import { err, ok, type Result, ResultAsync } from "neverthrow";
 import type { IceConfig, OvenMediaEngineConfig } from "trurpchat-shared";
 
 export type BackendConfig = {
@@ -13,7 +13,12 @@ export type BackendConfig = {
 
 class ConfigError extends Error {
   constructor(problems: string[]) {
-    super(["Invalid backend configuration:", ...problems.map((problem) => `- ${problem}`)].join("\n"));
+    super(
+      [
+        "Invalid backend configuration:",
+        ...problems.map((problem) => `- ${problem}`),
+      ].join("\n"),
+    );
     this.name = "ConfigError";
   }
 }
@@ -90,17 +95,22 @@ function loadIceConfig(): ResultAsync<IceConfig, string> {
 
   return ResultAsync.fromPromise(
     file.text(),
-    (error) => `Unable to read ICE config at ${sourceDescription}: ${describeError(error)}`,
+    (error) =>
+      `Unable to read ICE config at ${sourceDescription}: ${describeError(error)}`,
   ).andThen((content): Result<IceConfig, string> => {
     let parsed: unknown;
     try {
       parsed = JSON.parse(content);
     } catch (error) {
-      return err(`Failed to parse ICE config at ${sourceDescription}: ${describeError(error)}`);
+      return err(
+        `Failed to parse ICE config at ${sourceDescription}: ${describeError(error)}`,
+      );
     }
 
     if (!isIceConfig(parsed)) {
-      return err(`Invalid ICE config at ${sourceDescription}: expected { iceServers: [...] }`);
+      return err(
+        `Invalid ICE config at ${sourceDescription}: expected { iceServers: [...] }`,
+      );
     }
 
     return ok(parsed);
@@ -120,7 +130,8 @@ export async function loadConfig(): Promise<BackendConfig> {
     port: parsePort(env.PORT, 3000),
     ovenServerUrl: env.OVEN_SERVER_URL,
     ovenMediaEngine: {
-      host: ovenHost(env.OVEN_HOST) ?? ovenHost(env.OVEN_SERVER_URL) ?? "localhost",
+      host:
+        ovenHost(env.OVEN_HOST) ?? ovenHost(env.OVEN_SERVER_URL) ?? "localhost",
       watchPort: parsePort(env.OVEN_WATCH_PORT, 3333),
       streamPort: parsePort(env.OVEN_STREAM_PORT, 1935),
       appName: env.OVEN_APP_NAME ?? "app",

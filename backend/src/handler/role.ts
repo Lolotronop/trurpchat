@@ -6,10 +6,13 @@ import type { BackendDb } from "$src/db";
 import { roles, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
-import { canSession } from "./types";
 import type { Handlers } from "./types";
+import { canSession } from "./types";
 
-function sendRoleEvent(ctx: Parameters<Handlers<RoleAction>["action.role.create"]>[0], event: ServerEvent) {
+function sendRoleEvent(
+  ctx: Parameters<Handlers<RoleAction>["action.role.create"]>[0],
+  event: ServerEvent,
+) {
   patch(ctx.state, event);
   sendAll(ctx.clients.values(), event);
 }
@@ -35,7 +38,9 @@ export async function getAllRoles(database: BackendDb): Promise<Role[]> {
     .where(isNull(roles.deletedAt));
 }
 
-export async function getAllAssignments(database: BackendDb): Promise<UserRole[]> {
+export async function getAllAssignments(
+  database: BackendDb,
+): Promise<UserRole[]> {
   return await database
     .select({
       ...getColumns(userRoles),
@@ -131,70 +136,72 @@ export const roleHandlers: Handlers<RoleAction> = {
     }
 
     const { id, ...rest } = msg.role;
-    const { updated, normalizedRoles } = await ctx.db.transaction(async (tx) => {
-      const [updatedRole] = await tx
-        .update(roles)
-        .set(rest)
-        .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
-        .returning({
-          id: roles.id,
-          name: roles.name,
-          color: roles.color,
-          section: roles.section,
-          order: roles.order,
-        });
-
-      if (!updatedRole) {
-        return { updated: undefined, normalizedRoles: undefined };
-      }
-
-      if (rest.order === undefined) {
-        return { updated: updatedRole, normalizedRoles: undefined };
-      }
-
-      const [neighbor] = await tx
-        .select({ order: roles.order })
-        .from(roles)
-        .where(and(ne(roles.id, id), isNull(roles.deletedAt)))
-        .orderBy(sql`abs(${roles.order} - ${updatedRole.order})`)
-        .limit(1);
-
-      if (!shouldNormalizeOrder(updatedRole.order, neighbor)) {
-        return { updated: updatedRole, normalizedRoles: undefined };
-      }
-
-      const allRoles = (
-        await tx.select().from(roles).where(isNull(roles.deletedAt))
-      ).sort((a, b) => a.order - b.order);
-
-      const normalizedRoles: Role[] = [];
-      for (let index = 0; index < allRoles.length; index++) {
-        const role = allRoles[index];
-        if (!role) continue;
-
-        const order = index * 100;
-        const [normalizedRole] = await tx
+    const { updated, normalizedRoles } = await ctx.db.transaction(
+      async (tx) => {
+        const [updatedRole] = await tx
           .update(roles)
-          .set({ order })
-          .where(eq(roles.id, role.id))
+          .set(rest)
+          .where(and(eq(roles.id, id), isNull(roles.deletedAt)))
           .returning({
             id: roles.id,
             name: roles.name,
             color: roles.color,
-              section: roles.section,
+            section: roles.section,
             order: roles.order,
           });
 
-        if (normalizedRole) {
-          normalizedRoles.push(normalizedRole);
+        if (!updatedRole) {
+          return { updated: undefined, normalizedRoles: undefined };
         }
-      }
 
-      return {
-        updated: normalizedRoles.find((role) => role.id === updatedRole.id),
-        normalizedRoles,
-      };
-    });
+        if (rest.order === undefined) {
+          return { updated: updatedRole, normalizedRoles: undefined };
+        }
+
+        const [neighbor] = await tx
+          .select({ order: roles.order })
+          .from(roles)
+          .where(and(ne(roles.id, id), isNull(roles.deletedAt)))
+          .orderBy(sql`abs(${roles.order} - ${updatedRole.order})`)
+          .limit(1);
+
+        if (!shouldNormalizeOrder(updatedRole.order, neighbor)) {
+          return { updated: updatedRole, normalizedRoles: undefined };
+        }
+
+        const allRoles = (
+          await tx.select().from(roles).where(isNull(roles.deletedAt))
+        ).sort((a, b) => a.order - b.order);
+
+        const normalizedRoles: Role[] = [];
+        for (let index = 0; index < allRoles.length; index++) {
+          const role = allRoles[index];
+          if (!role) continue;
+
+          const order = index * 100;
+          const [normalizedRole] = await tx
+            .update(roles)
+            .set({ order })
+            .where(eq(roles.id, role.id))
+            .returning({
+              id: roles.id,
+              name: roles.name,
+              color: roles.color,
+              section: roles.section,
+              order: roles.order,
+            });
+
+          if (normalizedRole) {
+            normalizedRoles.push(normalizedRole);
+          }
+        }
+
+        return {
+          updated: normalizedRoles.find((role) => role.id === updatedRole.id),
+          normalizedRoles,
+        };
+      },
+    );
 
     if (!updated) {
       return err(new Error(`Role ${id} not found`));
@@ -223,23 +230,25 @@ export const roleHandlers: Handlers<RoleAction> = {
       );
     }
 
-    const { deletedAssignments, deleted } = await ctx.db.transaction(async (tx) => {
-      const deletedAssignments = await tx
-        .delete(userRoles)
-        .where(eq(userRoles.roleId, msg.id))
-        .returning({
-          userId: userRoles.userId,
-          roleId: userRoles.roleId,
-        });
+    const { deletedAssignments, deleted } = await ctx.db.transaction(
+      async (tx) => {
+        const deletedAssignments = await tx
+          .delete(userRoles)
+          .where(eq(userRoles.roleId, msg.id))
+          .returning({
+            userId: userRoles.userId,
+            roleId: userRoles.roleId,
+          });
 
-      const [deleted] = await tx
-        .update(roles)
-        .set({ deletedAt: new Date() })
-        .where(and(eq(roles.id, msg.id), isNull(roles.deletedAt)))
-        .returning({ id: roles.id });
+        const [deleted] = await tx
+          .update(roles)
+          .set({ deletedAt: new Date() })
+          .where(and(eq(roles.id, msg.id), isNull(roles.deletedAt)))
+          .returning({ id: roles.id });
 
-      return { deletedAssignments, deleted };
-    });
+        return { deletedAssignments, deleted };
+      },
+    );
 
     if (!deleted) {
       return err(new Error(`Role ${msg.id} not found`));
@@ -313,7 +322,9 @@ export const roleHandlers: Handlers<RoleAction> = {
   "action.role.unassign": async (ctx, ws, msg) => {
     if (!canSession(ctx, ws, Permission.MANAGE_ROLES)) {
       return err(
-        new Error(`User ${ws.data.userId} is not admin, tryed to unassign role`),
+        new Error(
+          `User ${ws.data.userId} is not admin, tryed to unassign role`,
+        ),
       );
     }
 

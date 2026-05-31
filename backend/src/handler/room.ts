@@ -5,8 +5,8 @@ import { Permission, patch, perm } from "trurpchat-shared";
 import { rooms } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
-import { canSession } from "./types";
 import type { HandlerContext, Handlers } from "./types";
+import { canSession } from "./types";
 
 function cheks(
   ctx: HandlerContext,

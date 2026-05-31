@@ -1,7 +1,13 @@
 import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { UserAction } from "trurpchat-shared";
-import { Permission, connectedUser, user as findUser, patch, perm } from "trurpchat-shared";
+import {
+  connectedUser,
+  user as findUser,
+  Permission,
+  patch,
+  perm,
+} from "trurpchat-shared";
 import { createKey, keys, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { Handlers } from "./types";
@@ -43,7 +49,9 @@ export const userHandlers: Handlers<UserAction> = {
 
     const admins = ctx.clients
       .values()
-      .filter((c) => perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId));
+      .filter((c) =>
+        perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId),
+      );
     sendAll(admins, {
       type: "event.key.list",
       keys: await ctx.db
@@ -64,11 +72,16 @@ export const userHandlers: Handlers<UserAction> = {
     if (!me) {
       return err(new Error(`User ${ws.data.userId} is not connected`));
     }
+    // prevent user from spoofing their watched by list
+    if (data.watchedBy) delete data.watchedBy;
     if (data.streaming || data.camera) {
       const voiceRoom = ctx.state.voiceUsers.find(
         (entry) => entry.userId === ws.data.userId,
       );
-      if (!voiceRoom || !canSession(ctx, ws, Permission.STREAM, voiceRoom.roomId)) {
+      if (
+        !voiceRoom ||
+        !canSession(ctx, ws, Permission.STREAM, voiceRoom.roomId)
+      ) {
         return err(new Error("Missing STREAM"));
       }
     }
@@ -93,7 +106,6 @@ export const userHandlers: Handlers<UserAction> = {
         ),
       );
     }
-
 
     const { id: _id, type: _type, ...rest } = msg;
     const updated = await ctx.db

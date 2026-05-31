@@ -4,10 +4,12 @@ import type { KeyAction } from "trurpchat-shared";
 import { Permission, patch, perm } from "trurpchat-shared";
 import { createKey, keys, users } from "$src/db";
 import { send, sendAll } from "$src/send";
-import { canSession } from "./types";
 import type { Handlers } from "./types";
+import { canSession } from "./types";
 
-async function refreshBackendKeys(ctx: Parameters<Handlers<KeyAction>["action.key.add"]>[0]) {
+async function refreshBackendKeys(
+  ctx: Parameters<Handlers<KeyAction>["action.key.add"]>[0],
+) {
   const event = {
     type: "event.key.list" as const,
     keys: await ctx.db.select().from(keys),
@@ -17,8 +19,10 @@ async function refreshBackendKeys(ctx: Parameters<Handlers<KeyAction>["action.ke
 
 export const keyHandlers: Handlers<KeyAction> = {
   "action.key.add": async (ctx, ws, msg) => {
-    const isAdmin = canSession(ctx, ws, Permission.MANAGE_KEYS);
-    if (!isAdmin && ws.data.userId !== msg.userId) {
+    const canManage = canSession(ctx, ws, Permission.MANAGE_KEYS);
+    const isSelf = ws.data.userId === msg.userId;
+    const allow = canManage || isSelf;
+    if (!allow) {
       return err(
         new Error(
           `User ${ws.data.userId} is not admin, tryed to add key for ${msg.userId}`,
@@ -39,39 +43,25 @@ export const keyHandlers: Handlers<KeyAction> = {
     await createKey(ctx.db, msg.userId);
     await refreshBackendKeys(ctx);
 
-    const allKeys = await ctx.db
-      .select({
-        ...getColumns(keys),
-      })
-      .from(keys)
-      .innerJoin(users, eq(keys.userId, users.id))
-      .where(
-        and(
-          isNull(users.deletedAt),
-          !isAdmin ? eq(keys.userId, ws.data.userId) : undefined,
-        ),
-      );
-
-    send(ws, {
-      type: "event.key.list",
-      keys: allKeys,
-    });
-
-    if (msg.userId !== ws.data.userId) {
-      const affectedUser = ctx.clients.get(msg.userId);
-      if (!affectedUser) {
-        // the user is not connected
-        return ok();
+    for (const [_, client] of ctx.clients) {
+      const id = client.data.userId;
+      const can = perm.can(ctx.state, Permission.MANAGE_KEYS, id);
+      if (can) {
+        send(client, {
+          type: "event.key.list",
+          keys: ctx.state.keys,
+        });
+      } else if (id === msg.userId) {
+        const filtered = ctx.state.keys.filter(
+          (key) => key.userId === msg.userId,
+        );
+        send(client, {
+          type: "event.key.list",
+          keys: filtered,
+        });
       }
-      const userKeys = allKeys.filter((k) => k.userId !== msg.userId);
-      const admins = ctx.clients
-        .values()
-        .filter((c) => perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId));
-      sendAll([...admins, affectedUser], {
-        type: "event.key.list",
-        keys: userKeys,
-      });
     }
+
     return ok();
   },
 
@@ -125,7 +115,9 @@ export const keyHandlers: Handlers<KeyAction> = {
       const userKeys = allKeys.filter((k) => k.userId !== key.userId);
       const admins = ctx.clients
         .values()
-        .filter((c) => perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId));
+        .filter((c) =>
+          perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId),
+        );
       sendAll([...admins, affectedUser], {
         type: "event.key.list",
         keys: userKeys,

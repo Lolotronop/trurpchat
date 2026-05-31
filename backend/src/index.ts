@@ -5,17 +5,24 @@ import type {
   OfflineUser,
   User,
 } from "trurpchat-shared";
-import { createSharedState, defaultConnectedUserState, mentions, patch, perm, user } from "trurpchat-shared";
+import {
+  createSharedState,
+  defaultConnectedUserState,
+  mentions,
+  patch,
+  perm,
+  user,
+} from "trurpchat-shared";
 import { loadConfig } from "./config";
 import {
   db,
   getOrCreateServerId,
-  runMigrations,
   keys,
   messages,
   permissions,
   roles,
   rooms,
+  runMigrations,
   unread,
   userRoles,
   users,
@@ -51,12 +58,14 @@ ctx.state.rooms.push(
   ...(await db.select().from(rooms).where(isNull(rooms.deletedAt))),
 );
 ctx.state.users.push(
-  ...(
-    await db.select().from(users).where(isNull(users.deletedAt))
-  ).map((user): OfflineUser => ({ ...user, online: false })),
+  ...(await db.select().from(users).where(isNull(users.deletedAt))).map(
+    (user): OfflineUser => ({ ...user, online: false }),
+  ),
 );
 ctx.state.keys.push(...(await db.select().from(keys)));
-ctx.state.roles.push(...(await db.select().from(roles).where(isNull(roles.deletedAt))));
+ctx.state.roles.push(
+  ...(await db.select().from(roles).where(isNull(roles.deletedAt))),
+);
 ctx.state.userRoles.push(...(await db.select().from(userRoles)));
 ctx.state.permissions.push(...(await db.select().from(permissions)));
 
@@ -66,7 +75,10 @@ const iceConfig = config.iceConfig;
 const serverId = await getOrCreateServerId();
 
 export async function getAllUsers(ctx: HandlerContext): Promise<User[]> {
-  const allUsers = await ctx.db.select().from(users).where(isNull(users.deletedAt));
+  const allUsers = await ctx.db
+    .select()
+    .from(users)
+    .where(isNull(users.deletedAt));
   const offlineUsers: OfflineUser[] = allUsers
     .filter((u) => !ctx.clients.has(u.id))
     .map((u) => ({ ...u, online: false }));

@@ -1,11 +1,11 @@
 import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { MessageAction } from "trurpchat-shared";
-import { Permission, mentions, patch, perm } from "trurpchat-shared";
+import { mentions, Permission, patch, perm } from "trurpchat-shared";
 import { messages, rooms, unread } from "$src/db";
 import { send, sendAll } from "$src/send";
-import { canSession } from "./types";
 import type { Handlers } from "./types";
+import { canSession } from "./types";
 
 export const messageHandlers: Handlers<MessageAction> = {
   "action.message.create": async (ctx, ws, { roomId, text, replyTo }) => {
@@ -19,12 +19,17 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("Message text is too long"));
     }
 
+    const room = ctx.state.rooms.find((room) => room.id === roomId);
+    if (!room || room.type !== "text") {
+      return err(new Error("Room is not a text room or does not exist"));
+    }
+
     if (!canSession(ctx, ws, Permission.SEND_MESSAGES, roomId)) {
       return err(new Error("Missing SEND_MESSAGES"));
     }
 
     if (replyTo) {
-      const replyToMessage = await ctx.db
+      const [replyToMessage] = await ctx.db
         .select()
         .from(messages)
         .where(and(eq(messages.id, replyTo), eq(messages.roomId, roomId)))
@@ -77,7 +82,14 @@ export const messageHandlers: Handlers<MessageAction> = {
       message,
     };
     patch(ctx.state, event);
-    sendAll(ctx.clients.values().filter((client) => perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, roomId)), event);
+    sendAll(
+      ctx.clients
+        .values()
+        .filter((client) =>
+          perm.can(ctx.state, Permission.VIEW_ROOM, client.data.userId, roomId),
+        ),
+      event,
+    );
 
     return ok();
   },
@@ -125,7 +137,12 @@ export const messageHandlers: Handlers<MessageAction> = {
 
   "action.message.delete": async (ctx, ws, { roomId, id }) => {
     const userId = ws.data.userId;
-    const canDeleteOthers = canSession(ctx, ws, Permission.DELETE_MESSAGES, roomId);
+    const canDeleteOthers = canSession(
+      ctx,
+      ws,
+      Permission.DELETE_MESSAGES,
+      roomId,
+    );
 
     const [existing] = await ctx.db
       .select()

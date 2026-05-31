@@ -27,6 +27,30 @@ describe("permission handlers", () => {
     expect(alice.sent.some((msg) => msg.type === "event.room.list")).toBe(true);
   });
 
+  test("action.permission.create rejects duplicate permission targets", async () => {
+    const { ctx, admin } = await createSeededContext();
+
+    const result = await permissionHandlers["action.permission.create"](ctx, admin, {
+      type: "action.permission.create",
+      permission: {
+        subjectType: "everyone",
+        subjectId: null,
+        roomId: null,
+        allow: Permission.VIEW_ROOM,
+        deny: 0,
+      },
+    });
+    const duplicateTargets = ctx.state.permissions.filter(
+      (permission) =>
+        permission.subjectType === "everyone" &&
+        permission.subjectId === null &&
+        permission.roomId === null,
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(duplicateTargets).toHaveLength(1);
+  });
+
   test("action.permission.update updates an existing permission", async () => {
     const { ctx, admin } = await createSeededContext();
 

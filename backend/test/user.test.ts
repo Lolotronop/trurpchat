@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
+import type { OfflineUser } from "trurpchat-shared";
 import { users } from "$src/db";
 import { userHandlers } from "$src/handler/user";
 import { createSeededContext } from "./helpers";
@@ -8,8 +9,14 @@ describe("user handlers", () => {
   test("action.user.create creates a user and key", async () => {
     const { ctx, admin } = await createSeededContext();
 
-    const result = await userHandlers["action.user.create"](ctx, admin, { type: "action.user.create", name: "new-user" });
-    const [created] = await ctx.db.select().from(users).where(eq(users.name, "new-user"));
+    const result = await userHandlers["action.user.create"](ctx, admin, {
+      type: "action.user.create",
+      name: "new-user",
+    });
+    const [created] = await ctx.db
+      .select()
+      .from(users)
+      .where(eq(users.name, "new-user"));
 
     expect(result.isOk()).toBe(true);
     expect(created).toBeDefined();
@@ -19,10 +26,29 @@ describe("user handlers", () => {
   test("action.user.state updates connected user state", async () => {
     const { ctx, alice } = await createSeededContext();
 
-    const result = await userHandlers["action.user.state"](ctx, alice, { type: "action.user.state", muted: true });
+    const result = await userHandlers["action.user.state"](ctx, alice, {
+      type: "action.user.state",
+      muted: true,
+    });
 
     expect(result.isOk()).toBe(true);
-    expect(ctx.state.users.find((user) => user.id === 2 && user.online)?.muted).toBe(true);
+    expect(
+      ctx.state.users.find((user) => user.id === 2 && user.online)?.muted,
+    ).toBe(true);
+  });
+
+  test("action.user.state does not let clients spoof watcher lists", async () => {
+    const { ctx, alice } = await createSeededContext();
+
+    await userHandlers["action.user.state"](ctx, alice, {
+      type: "action.user.state",
+      watchedBy: [1],
+    });
+    const aliceState = ctx.state.users.find(
+      (user) => user.id === 2 && user.online,
+    ) as OfflineUser | undefined;
+
+    expect(aliceState?.watchedBy).toEqual([]);
   });
 
   test("action.user.update updates a user", async () => {
@@ -35,13 +61,18 @@ describe("user handlers", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    expect(ctx.state.users.find((user) => user.id === 2)?.displayName).toBe("Alice Display");
+    expect(ctx.state.users.find((user) => user.id === 2)?.displayName).toBe(
+      "Alice Display",
+    );
   });
 
   test("action.user.delete soft-deletes a user and closes active client", async () => {
     const { ctx, admin, alice } = await createSeededContext();
 
-    const result = await userHandlers["action.user.delete"](ctx, admin, { type: "action.user.delete", id: 2 });
+    const result = await userHandlers["action.user.delete"](ctx, admin, {
+      type: "action.user.delete",
+      id: 2,
+    });
     const [deleted] = await ctx.db.select().from(users).where(eq(users.id, 2));
 
     expect(result.isOk()).toBe(true);

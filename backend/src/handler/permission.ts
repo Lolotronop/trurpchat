@@ -69,6 +69,17 @@ export const permissionHandlers: Handlers<PermissionAction> = {
       return err(new Error(targetError));
     }
 
+    // TODO: enforce at SQL level?
+    const existing = ctx.state.permissions.find(
+      (row) =>
+        row.subjectType === msg.permission.subjectType &&
+        row.subjectId === msg.permission.subjectId &&
+        row.roomId === msg.permission.roomId,
+    );
+    if (existing) {
+      return err(new Error("Permission already exists"));
+    }
+
     const [permission] = await ctx.db
       .insert(permissions)
       .values(msg.permission)

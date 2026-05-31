@@ -24,6 +24,19 @@ describe("key handlers", () => {
     expect(dbKeys.length).toBe(2);
   });
 
+  test("action.key.add notifies the affected user with only their own keys", async () => {
+    const { ctx, admin, alice } = await createSeededContext();
+
+    const result = await keyHandlers["action.key.add"](ctx, admin, {
+      type: "action.key.add",
+      userId: 2,
+    });
+    const event = lastSent<{ type: "event.key.list"; keys: Array<{ userId: number }> }>(alice);
+
+    expect(result.isOk()).toBe(true);
+    expect(event.keys.map((key) => key.userId)).toEqual([2, 2]);
+  });
+
   test("action.key.remove removes a key", async () => {
     const { ctx, admin } = await createSeededContext();
 

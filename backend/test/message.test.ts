@@ -21,6 +21,41 @@ describe("message handlers", () => {
     expect(ctx.state.rooms.find((room) => room.id === 10)?.nextMessageId).toBe(1);
   });
 
+  test("action.message.create rejects voice rooms", async () => {
+    const { ctx, alice } = await createSeededContext();
+
+    const result = await messageHandlers["action.message.create"](ctx, alice, {
+      type: "action.message.create",
+      roomId: 20,
+      text: "voice rooms should not store text messages",
+    });
+    const dbMessages = await ctx.db
+      .select()
+      .from(messages)
+      .where(eq(messages.roomId, 20));
+
+    expect(result.isErr()).toBe(true);
+    expect(dbMessages).toHaveLength(0);
+  });
+
+  test("action.message.create rejects replies to missing messages", async () => {
+    const { ctx, alice } = await createSeededContext();
+
+    const result = await messageHandlers["action.message.create"](ctx, alice, {
+      type: "action.message.create",
+      roomId: 10,
+      text: "replying to nothing",
+      replyTo: 123,
+    });
+    const dbMessages = await ctx.db
+      .select()
+      .from(messages)
+      .where(eq(messages.roomId, 10));
+
+    expect(result.isErr()).toBe(true);
+    expect(dbMessages).toHaveLength(0);
+  });
+
   test("action.message.edit edits own message", async () => {
     const { ctx, alice } = await createSeededContext();
     await ctx.db.update(rooms).set({ nextMessageId: 1 }).where(eq(rooms.id, 10));

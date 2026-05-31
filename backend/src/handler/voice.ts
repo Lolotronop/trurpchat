@@ -1,11 +1,14 @@
 import { err, ok } from "neverthrow";
 import type { ConnectedUser, VoiceAction } from "trurpchat-shared";
-import { Permission, connectedUser, patch, user } from "trurpchat-shared";
+import { connectedUser, Permission, patch, user } from "trurpchat-shared";
 import { send, sendAll } from "$src/send";
-import { canSession } from "./types";
 import type { Handlers } from "./types";
+import { canSession } from "./types";
 
-function sendUserState(ctx: Parameters<Handlers<VoiceAction>["action.voice.join"]>[0], target: ConnectedUser) {
+function sendUserState(
+  ctx: Parameters<Handlers<VoiceAction>["action.voice.join"]>[0],
+  target: ConnectedUser,
+) {
   const event = {
     type: "event.user.state" as const,
     user: target,
@@ -50,7 +53,8 @@ export const voiceHandlers: Handlers<VoiceAction> = {
   "action.voice.join": (ctx, ws, msg) => {
     const room = ctx.state.rooms.find((room) => room.id === msg.room);
     if (!room) return err(new Error(`Room ${msg.room} not found`));
-    if (room.type !== "voice") return err(new Error(`Room ${msg.room} is not a voice room`));
+    if (room.type !== "voice")
+      return err(new Error(`Room ${msg.room} is not a voice room`));
     if (!canSession(ctx, ws, Permission.VIEW_ROOM, msg.room)) {
       return err(new Error("Missing VIEW_ROOM"));
     }
@@ -97,8 +101,13 @@ export const voiceHandlers: Handlers<VoiceAction> = {
     const target = connectedUser(ctx.state, msg.userId);
     if (!target) return err(new Error(`Client ${msg.userId} not found`));
 
-    const voiceRoom = ctx.state.voiceUsers.find((entry) => entry.userId === msg.userId);
-    if (!voiceRoom || !canSession(ctx, ws, Permission.VIEW_ROOM, voiceRoom.roomId)) {
+    const voiceRoom = ctx.state.voiceUsers.find(
+      (entry) => entry.userId === msg.userId,
+    );
+    if (
+      !voiceRoom ||
+      !canSession(ctx, ws, Permission.VIEW_ROOM, voiceRoom.roomId)
+    ) {
       return err(new Error("Missing VIEW_ROOM"));
     }
 
@@ -117,9 +126,15 @@ export const voiceHandlers: Handlers<VoiceAction> = {
   "action.voice.pause": (ctx, ws, msg) => {
     const to = ctx.clients.get(msg.userId);
     const target = user(ctx.state, msg.userId);
-    if (!to || !target?.online) return err(new Error(`Client ${msg.userId} not found`));
-    const voiceRoom = ctx.state.voiceUsers.find((entry) => entry.userId === msg.userId);
-    if (!voiceRoom || !canSession(ctx, ws, Permission.PAUSE_STREAMS, voiceRoom.roomId)) {
+    if (!to || !target?.online)
+      return err(new Error(`Client ${msg.userId} not found`));
+    const voiceRoom = ctx.state.voiceUsers.find(
+      (entry) => entry.userId === msg.userId,
+    );
+    if (
+      !voiceRoom ||
+      !canSession(ctx, ws, Permission.PAUSE_STREAMS, voiceRoom.roomId)
+    ) {
       return err(new Error("Missing PAUSE_STREAMS"));
     }
     if (!target.streaming) return ok();

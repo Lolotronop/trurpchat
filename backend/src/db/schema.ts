@@ -2,6 +2,7 @@ import { defineRelations, sql } from "drizzle-orm";
 import * as t from "drizzle-orm/sqlite-core";
 import { sqliteTable as table } from "drizzle-orm/sqlite-core";
 import type * as Shared from "trurpchat-shared";
+import type { Attachment } from "trurpchat-shared";
 
 export const users = table("users", {
   id: t.integer({ mode: "number" }).primaryKey(),
@@ -101,38 +102,13 @@ export const permissions = table(
       "permissions_subject_check",
       sql`(${tb.subjectType} = 'everyone' AND ${tb.subjectId} IS NULL) OR (${tb.subjectType} IN ('role', 'user') AND ${tb.subjectId} IS NOT NULL)`,
     ),
-    t.uniqueIndex("permissions_unique").on(
-      tb.subjectType,
-      tb.subjectId,
-      tb.roomId,
-    ),
+    t
+      .uniqueIndex("permissions_unique")
+      .on(tb.subjectType, tb.subjectId, tb.roomId),
   ],
 );
 
 export type Permission = typeof permissions.$inferSelect;
-
-type AttachmentData =
-  | {
-      type: "image" | "video";
-      path: string;
-      width: number;
-      height: number;
-    }
-  | {
-      type: "audio";
-      duration: number;
-    }
-  | {
-      type: "file";
-      mimeType: string;
-    };
-
-type Attachment = {
-  data: AttachmentData;
-  name: string;
-  path: string;
-  size: number;
-};
 
 export const messages = table(
   "messages",
