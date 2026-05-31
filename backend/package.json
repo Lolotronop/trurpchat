@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "bun --watch index.ts",
-    "push": "drizzle-kit push"
+    "push": "drizzle-kit push",
+    "test": "DATABASE_URL=:memory: bun test"
   },
   "devDependencies": {
     "@types/bun": "^1.3.6",

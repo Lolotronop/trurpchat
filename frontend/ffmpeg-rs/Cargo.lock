@@ -134,6 +134,7 @@ version = "0.1.0"
 dependencies = [
  "ffmpeg-next",
  "hound",
+ "log",
  "parking_lot",
  "simplelog",
  "spin_sleep",

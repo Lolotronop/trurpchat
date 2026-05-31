@@ -2,6 +2,9 @@
   "name": "trurpchat-shared",
   "type": "module",
   "private": true,
+  "scripts": {
+    "test": "bun test"
+  },
   "exports": {
     ".": "./src/index.ts"
   },

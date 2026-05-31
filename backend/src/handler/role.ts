@@ -2,7 +2,8 @@ import { and, desc, eq, getColumns, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { Role, RoleAction, ServerEvent, UserRole } from "trurpchat-shared";
 import { Permission, patch } from "trurpchat-shared";
-import { db, roles, userRoles, users } from "$src/db";
+import type { BackendDb } from "$src/db";
+import { roles, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
 import { canSession } from "./types";
@@ -21,8 +22,8 @@ function validateRoleInput(role: Partial<Role>) {
   return ok();
 }
 
-export async function getAllRoles(): Promise<Role[]> {
-  return await db
+export async function getAllRoles(database: BackendDb): Promise<Role[]> {
+  return await database
     .select({
       id: roles.id,
       name: roles.name,
@@ -34,8 +35,8 @@ export async function getAllRoles(): Promise<Role[]> {
     .where(isNull(roles.deletedAt));
 }
 
-export async function getAllAssignments(): Promise<UserRole[]> {
-  return await db
+export async function getAllAssignments(database: BackendDb): Promise<UserRole[]> {
+  return await database
     .select({
       ...getColumns(userRoles),
     })
@@ -45,17 +46,20 @@ export async function getAllAssignments(): Promise<UserRole[]> {
     .where(and(isNull(users.deletedAt), isNull(roles.deletedAt)));
 }
 
-export async function sendRoleList(client: Parameters<typeof send>[0]) {
+export async function sendRoleList(
+  database: BackendDb,
+  client: Parameters<typeof send>[0],
+) {
   send(client, {
     type: "event.role.list",
-    roles: await getAllRoles(),
-    assignments: await getAllAssignments(),
+    roles: await getAllRoles(database),
+    assignments: await getAllAssignments(database),
   });
 }
 
 export const roleHandlers: Handlers<RoleAction> = {
-  "action.role.list": async (_ctx, ws, _msg) => {
-    await sendRoleList(ws);
+  "action.role.list": async (ctx, ws, _msg) => {
+    await sendRoleList(ctx.db, ws);
     return ok();
   },
 
@@ -71,7 +75,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       return validation;
     }
 
-    const created = await db.transaction(async (tx) => {
+    const created = await ctx.db.transaction(async (tx) => {
       const [roleOrderRow] = await tx
         .select({ order: roles.order })
         .from(roles)
@@ -127,7 +131,7 @@ export const roleHandlers: Handlers<RoleAction> = {
     }
 
     const { id, ...rest } = msg.role;
-    const { updated, normalizedRoles } = await db.transaction(async (tx) => {
+    const { updated, normalizedRoles } = await ctx.db.transaction(async (tx) => {
       const [updatedRole] = await tx
         .update(roles)
         .set(rest)
@@ -200,7 +204,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       sendRoleEvent(ctx, {
         type: "event.role.list",
         roles: normalizedRoles,
-        assignments: await getAllAssignments(),
+        assignments: await getAllAssignments(ctx.db),
       });
     } else {
       sendRoleEvent(ctx, {
@@ -219,7 +223,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       );
     }
 
-    const { deletedAssignments, deleted } = await db.transaction(async (tx) => {
+    const { deletedAssignments, deleted } = await ctx.db.transaction(async (tx) => {
       const deletedAssignments = await tx
         .delete(userRoles)
         .where(eq(userRoles.roleId, msg.id))
@@ -264,7 +268,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       );
     }
 
-    const [user] = await db
+    const [user] = await ctx.db
       .select({ id: users.id })
       .from(users)
       .where(and(eq(users.id, msg.userId), isNull(users.deletedAt)))
@@ -274,7 +278,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       return err(new Error(`User ${msg.userId} not found`));
     }
 
-    const [role] = await db
+    const [role] = await ctx.db
       .select({ id: roles.id })
       .from(roles)
       .where(and(eq(roles.id, msg.roleId), isNull(roles.deletedAt)))
@@ -284,7 +288,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       return err(new Error(`Role ${msg.roleId} not found`));
     }
 
-    const [assignment] = await db
+    const [assignment] = await ctx.db
       .insert(userRoles)
       .values({ userId: msg.userId, roleId: msg.roleId })
       .onConflictDoNothing()
@@ -313,7 +317,7 @@ export const roleHandlers: Handlers<RoleAction> = {
       );
     }
 
-    const [assignment] = await db
+    const [assignment] = await ctx.db
       .delete(userRoles)
       .where(
         and(eq(userRoles.userId, msg.userId), eq(userRoles.roleId, msg.roleId)),

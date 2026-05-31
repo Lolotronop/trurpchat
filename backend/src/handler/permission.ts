@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { PermissionAction, PermissionRow } from "trurpchat-shared";
 import { Permission, patch, perm } from "trurpchat-shared";
-import { db, permissions } from "$src/db";
+import { permissions } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { Handlers } from "./types";
 import { canSession } from "./types";
@@ -69,7 +69,7 @@ export const permissionHandlers: Handlers<PermissionAction> = {
       return err(new Error(targetError));
     }
 
-    const [permission] = await db
+    const [permission] = await ctx.db
       .insert(permissions)
       .values(msg.permission)
       .returning();
@@ -98,7 +98,7 @@ export const permissionHandlers: Handlers<PermissionAction> = {
       return err(new Error(targetError));
     }
 
-    const [permission] = await db
+    const [permission] = await ctx.db
       .update(permissions)
       .set(msg.permission)
       .where(eq(permissions.id, msg.permission.id))
@@ -117,7 +117,7 @@ export const permissionHandlers: Handlers<PermissionAction> = {
       return err(new Error("Missing MANAGE_PERMISSIONS"));
     }
 
-    const [permission] = await db
+    const [permission] = await ctx.db
       .delete(permissions)
       .where(eq(permissions.id, msg.id))
       .returning();

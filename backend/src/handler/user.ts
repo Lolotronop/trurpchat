@@ -2,7 +2,7 @@ import { and, eq, getColumns, isNull } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { UserAction } from "trurpchat-shared";
 import { Permission, connectedUser, user as findUser, patch, perm } from "trurpchat-shared";
-import { createKey, db, keys, userRoles, users } from "$src/db";
+import { createKey, keys, userRoles, users } from "$src/db";
 import { send, sendAll } from "$src/send";
 import type { Handlers } from "./types";
 import { canSession } from "./types";
@@ -16,7 +16,7 @@ export const userHandlers: Handlers<UserAction> = {
       );
     }
 
-    const [user] = await db
+    const [user] = await ctx.db
       .insert(users)
       .values([
         {
@@ -29,7 +29,7 @@ export const userHandlers: Handlers<UserAction> = {
       return err(new Error(`Failed to create user ${msg.name}`));
     }
 
-    await createKey(user.id);
+    await createKey(ctx.db, user.id);
 
     const createdEvent = {
       type: "event.user.created" as const,
@@ -46,7 +46,7 @@ export const userHandlers: Handlers<UserAction> = {
       .filter((c) => perm.can(ctx.state, Permission.MANAGE_KEYS, c.data.userId));
     sendAll(admins, {
       type: "event.key.list",
-      keys: await db
+      keys: await ctx.db
         .select({
           ...getColumns(keys),
         })
@@ -96,7 +96,7 @@ export const userHandlers: Handlers<UserAction> = {
 
 
     const { id: _id, type: _type, ...rest } = msg;
-    const updated = await db
+    const updated = await ctx.db
       .update(users)
       .set(rest)
       .where(and(eq(users.id, msg.id), isNull(users.deletedAt)))
@@ -115,7 +115,7 @@ export const userHandlers: Handlers<UserAction> = {
       };
       send(client, meEvent);
       const clientIsAdmin = perm.can(ctx.state, Permission.MANAGE_KEYS, msg.id);
-      const userKeys = await db
+      const userKeys = await ctx.db
         .select()
         .from(keys)
         .where(!clientIsAdmin ? eq(keys.userId, msg.id) : undefined);
@@ -145,8 +145,8 @@ export const userHandlers: Handlers<UserAction> = {
       );
     }
 
-    await db.delete(keys).where(eq(keys.userId, msg.id));
-    await db.delete(userRoles).where(eq(userRoles.userId, msg.id));
+    await ctx.db.delete(keys).where(eq(keys.userId, msg.id));
+    await ctx.db.delete(userRoles).where(eq(userRoles.userId, msg.id));
 
     // this has to be done after the keys are already deleted
     // otherwise the client might reconnect
@@ -157,7 +157,7 @@ export const userHandlers: Handlers<UserAction> = {
       client.close();
     }
 
-    const deleted = await db
+    const deleted = await ctx.db
       .update(users)
       .set({ deletedAt: new Date() })
       .where(and(eq(users.id, msg.id), isNull(users.deletedAt)))

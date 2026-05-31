@@ -3,7 +3,6 @@ import type { Flatten } from "./utils";
 export type AttachmentData =
   | {
       type: "image" | "video";
-      path: string;
       width: number;
       height: number;
     }
@@ -13,11 +12,11 @@ export type AttachmentData =
     }
   | {
       type: "file";
-      mimeType: string;
     };
 
 export type Attachment = {
   data: AttachmentData;
+  mimeType: string;
   name: string;
   path: string;
   size: number;

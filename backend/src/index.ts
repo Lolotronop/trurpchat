@@ -10,6 +10,7 @@ import { loadConfig } from "./config";
 import {
   db,
   getOrCreateServerId,
+  runMigrations,
   keys,
   messages,
   permissions,
@@ -37,12 +38,14 @@ async function loadBackendConfig() {
 
 const config = await loadBackendConfig();
 
+runMigrations();
 await seed();
 console.log(await getKeys());
 
 const ctx: HandlerContext = {
   clients: new Map<number, WsClient>(),
   state: createSharedState(),
+  db,
 };
 ctx.state.rooms.push(
   ...(await db.select().from(rooms).where(isNull(rooms.deletedAt))),
@@ -63,7 +66,7 @@ const iceConfig = config.iceConfig;
 const serverId = await getOrCreateServerId();
 
 export async function getAllUsers(ctx: HandlerContext): Promise<User[]> {
-  const allUsers = await db.select().from(users).where(isNull(users.deletedAt));
+  const allUsers = await ctx.db.select().from(users).where(isNull(users.deletedAt));
   const offlineUsers: OfflineUser[] = allUsers
     .filter((u) => !ctx.clients.has(u.id))
     .map((u) => ({ ...u, online: false }));
@@ -210,7 +213,7 @@ Bun.serve<WsData, never>({
         unread: usersUnread,
       });
 
-      await sendRoleList(ws);
+      await sendRoleList(ctx.db, ws);
 
       send(ws, {
         type: "event.permission.list",

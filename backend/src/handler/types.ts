@@ -1,6 +1,7 @@
 import type { Result } from "neverthrow";
 import type { Message, PermissionMask, SharedState } from "trurpchat-shared";
 import { Permission, perm, user } from "trurpchat-shared";
+import type { BackendDb } from "$src/db";
 import type { WsClient } from "$src/voice";
 
 export type MessageNames<T extends { type: string }> = {
@@ -10,6 +11,7 @@ export type MessageNames<T extends { type: string }> = {
 export type HandlerContext = {
   clients: Map<number, WsClient>;
   state: SharedState;
+  db: BackendDb;
 };
 
 export type HandlerFunction<T extends Message> = (

@@ -2,7 +2,7 @@ import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { MessageAction } from "trurpchat-shared";
 import { Permission, mentions, patch, perm } from "trurpchat-shared";
-import { db, messages, rooms, unread } from "$src/db";
+import { messages, rooms, unread } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { canSession } from "./types";
 import type { Handlers } from "./types";
@@ -24,7 +24,7 @@ export const messageHandlers: Handlers<MessageAction> = {
     }
 
     if (replyTo) {
-      const replyToMessage = await db
+      const replyToMessage = await ctx.db
         .select()
         .from(messages)
         .where(and(eq(messages.id, replyTo), eq(messages.roomId, roomId)))
@@ -35,7 +35,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       }
     }
 
-    const result = await db.transaction(async (tx) => {
+    const result = await ctx.db.transaction(async (tx) => {
       const [lastIdRow] = await tx
         .select({ nextMessageId: rooms.nextMessageId })
         .from(rooms)
@@ -90,7 +90,7 @@ export const messageHandlers: Handlers<MessageAction> = {
 
     const hasMention = mentions.has(text);
 
-    const [message] = await db
+    const [message] = await ctx.db
       .update(messages)
       .set({ text, editedAt: new Date(), edited: true, hasMention })
       .where(
@@ -127,7 +127,7 @@ export const messageHandlers: Handlers<MessageAction> = {
     const userId = ws.data.userId;
     const canDeleteOthers = canSession(ctx, ws, Permission.DELETE_MESSAGES, roomId);
 
-    const [existing] = await db
+    const [existing] = await ctx.db
       .select()
       .from(messages)
       .where(and(eq(messages.id, id), eq(messages.roomId, roomId)))
@@ -141,7 +141,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("You can only delete your own messages"));
     }
 
-    await db
+    await ctx.db
       .update(messages)
       .set({ deletedAt: new Date() })
       .where(and(eq(messages.id, id), eq(messages.roomId, roomId)));
@@ -179,7 +179,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error("toId must be less than 100"));
     }
 
-    const [room] = await db
+    const [room] = await ctx.db
       .select()
       .from(rooms)
       .where(and(eq(rooms.id, roomId), isNull(rooms.deletedAt)))
@@ -201,7 +201,7 @@ export const messageHandlers: Handlers<MessageAction> = {
       );
     }
 
-    const msg = await db
+    const msg = await ctx.db
       .select()
       .from(messages)
       .where(
@@ -243,7 +243,7 @@ export const messageHandlers: Handlers<MessageAction> = {
 
     const userId = ws.data.userId;
 
-    const [room] = await db
+    const [room] = await ctx.db
       .select()
       .from(rooms)
       .where(eq(rooms.id, roomId))
@@ -260,14 +260,14 @@ export const messageHandlers: Handlers<MessageAction> = {
       return err(new Error(`Can't mark the future as unread, bud`));
     }
 
-    const [updated] = await db
+    const [updated] = await ctx.db
       .update(unread)
       .set({ unreadId })
       .where(and(eq(unread.roomId, roomId), eq(unread.userId, userId)))
       .returning();
 
     if (!updated) {
-      await db.insert(unread).values({ roomId, userId, unreadId });
+      await ctx.db.insert(unread).values({ roomId, userId, unreadId });
     }
 
     return ok();

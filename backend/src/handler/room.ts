@@ -2,7 +2,7 @@ import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { err, ok } from "neverthrow";
 import type { Room, RoomAction } from "trurpchat-shared";
 import { Permission, patch, perm } from "trurpchat-shared";
-import { db, rooms } from "$src/db";
+import { rooms } from "$src/db";
 import { send, sendAll } from "$src/send";
 import { shouldNormalizeOrder } from "./order";
 import { canSession } from "./types";
@@ -61,7 +61,7 @@ export const roomHandlers: Handlers<RoomAction> = {
     const result = cheks(ctx, ws, room);
     if (result.isErr()) return result;
 
-    const created = await db.transaction(async (tx) => {
+    const created = await ctx.db.transaction(async (tx) => {
       const [roomOrderRow] = await tx
         .select({ order: rooms.order })
         .from(rooms)
@@ -89,7 +89,7 @@ export const roomHandlers: Handlers<RoomAction> = {
       return err(new Error("Only admins can delete rooms"));
     }
 
-    const deleted = await db
+    const deleted = await ctx.db
       .update(rooms)
       .set({ deletedAt: new Date() })
       .where(and(eq(rooms.id, id), isNull(rooms.deletedAt)))
@@ -121,7 +121,7 @@ export const roomHandlers: Handlers<RoomAction> = {
     const result = cheks(ctx, ws, roomUpdate);
     if (result.isErr()) return result;
 
-    const { updatedRoom, normalizedRooms } = await db.transaction(
+    const { updatedRoom, normalizedRooms } = await ctx.db.transaction(
       async (tx) => {
         const [updatedRoom] = await tx
           .update(rooms)
@@ -177,7 +177,7 @@ export const roomHandlers: Handlers<RoomAction> = {
     } else if ("visibilityMode" in roomUpdate) {
       sendRoomList(
         ctx,
-        await db.select().from(rooms).where(isNull(rooms.deletedAt)),
+        await ctx.db.select().from(rooms).where(isNull(rooms.deletedAt)),
       );
     } else {
       sendRoom(ctx, updatedRoom);
