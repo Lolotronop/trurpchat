@@ -1,6 +1,10 @@
 # Trurpchat
 
 <p align="center">
+  <a href="README.md">English</a> · <a href="README_RU.md">Русский</a>
+</p>
+
+<p align="center">
   <strong><a href="https://github.com/lolotronop/trurpchat/releases">download</a></strong>
   ·
   <strong><a href="#run-with-docker">run</a></strong>
