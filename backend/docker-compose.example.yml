@@ -1,0 +1,38 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    environment:
+      # Browser-facing OvenMediaEngine settings advertised by the backend.
+      # Use your server's public IP/DNS name instead of 127.0.0.1 for remote clients.
+      OVEN_HOST: 127.0.0.1
+      OVEN_STREAM_PORT: 1935
+      OVEN_WATCH_PORT: 3333
+      OVEN_APP_NAME: app
+      OVEN_SECURE: "false"
+    ports:
+      - "3000:3000"
+    volumes:
+      - backend-data:/data
+      # Bootstrap ICE config using Google STUN servers. Copy this file and replace it with
+      # your own TURN-capable config for production NAT traversal.
+      - ./ice.json.example:/app/backend/ice.json:ro
+    depends_on:
+      - ome
+    restart: unless-stopped
+
+  ome:
+    image: airensoft/ovenmediaengine:v0.20.0
+    container_name: ome
+    environment:
+      # Set this to the host/IP clients use to reach OME. 127.0.0.1 matches local-only testing.
+      OME_HOST_IP: 127.0.0.1
+    ports:
+      - "1935:1935" # RTMP ingest
+      - "3333:3333" # WebRTC signaling/playback
+      - "10000-10009:10000-10009/udp" # WebRTC ICE/data UDP ports
+    restart: unless-stopped
+
+volumes:
+  backend-data:
